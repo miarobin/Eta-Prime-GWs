@@ -1,4 +1,4 @@
-from cosmoTransitions.finiteT import Jb_spline, Jf_spline
+from cosmoTransitions.finiteT import Jb_exact2
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize, misc, signal
@@ -18,7 +18,7 @@ class Potential:
 		#All the parameters needed to construct the potential.
 		self.lmb = lmb
 		self.kappa = kappa
-		self.mSig2 = m2Sig
+		self.m2Sig = m2Sig
 		self.muSig = muSig
 		self.xi = xi
 		self.loop = loop
@@ -28,31 +28,30 @@ class Potential:
 		#Higgs dependent masses for fermions & bosons, their derivative wrt h (twice) and their respective DoF
 		self.mSq = {
 			#Phi Mass	
-			'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - (2/np.sqrt(6))*self.muSig * phi + 3*(self.lmb/2 + self.kappa/6) * phi**2
+			'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - (2/np.sqrt(6))*self.muSig * phi + 3*(self.lmb/2 + self.kappa/6) * phi**2,
 					1.],
 			#Eta Prime Mass
-			'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + (2/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
+			'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + (2/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2,
 					1.],
 			#X Mass
-			'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
+			'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + 3*self.kappa/6) * phi**2,
 					8.],
 			#Pi Mass
-			'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi - (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
+			'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi - (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2,
 					8.]
 					}
 		
 	def V(self,phi):
 		##The tree level, zero temperature potential.
 		phi = np.array(phi)
-		return -(0.5*self.mSig**2) * phi**2 - self.muSig/(3*np.sqrt(6)) * phi**3 + 0.25 * (self.lmb/2 + self.kappa/6) * phi**4
+		return -(0.5*self.m2Sig) * phi**2 - self.muSig/(3*np.sqrt(6)) * phi**3 + 0.25 * (self.lmb/2 + self.kappa/6) * phi**4
     
 	def V1T(self,phi,T):
 		phi = np.array(phi)
 		if T==0:
 			return np.zeros(phi.shape)
 		
-		return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],self.mSq['X'],self.mSq['Pi']]],axis=0) 
-					+ np.sum([-n*Jf_spline((m2(phi,T)/T**2)) for m2, n in []],axis=0))*T**4/(2*np.pi**2), phi.shape)
+		return np.reshape((np.sum([n*Jb_exact2((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
 
 
 	def V1_cutoff(self, h):
@@ -79,7 +78,7 @@ class Potential:
 		#Uses finite difference method to fourth order. Takes scalar h and T.
 		return (self.dVdT(phi,T-2*eps) - 8*self.dVdT(phi,T-eps) + 8*self.dVdT(phi,T+eps) - self.dVdT(phi,T+2*eps)) / (12.*eps)
 
-	def findminima(self,T,rstart=+2*v,rcounter=1, tolerance=None):
+	def findminima(self,T,rstart=6000,rcounter=1, tolerance=None):
 		#For a linear sigma model. Returns the minimum away from the origin.
 		#Roll down to rhs minimum:
 		rhs = optimize.minimize(lambda X: self.Vtot(X, T), rstart,tol=tolerance).x[0]
@@ -87,7 +86,7 @@ class Potential:
 		if abs(rhs)<2.5:
 			#If so, try a new start
 			if rcounter<=3:
-				lhs,rhs = self.findminima(T,rstart=rstart,rcounter=rcounter+1)
+				rhs = self.findminima(T,rstart=rstart*1.1,rcounter=rcounter+1)
 			else:
 				return None
 		return rhs
@@ -96,7 +95,7 @@ class Potential:
 		#Finds the difference between the symmetric and broken minima.
 		vT = self.findminima(T)
 		if vT is not None:
-			return self.Vtot(0, T) - self.Vtot(vT, T)
+			return + self.Vtot(0, T) - self.Vtot(vT, T)
 		else:
 			if num_res:
 				return 1e30
@@ -104,24 +103,25 @@ class Potential:
 				return None
 
 
-	def	criticalT(self, guessIn=None,prnt=False):
+	def	criticalT(self, guessIn=None,prnt=True):
 		#Critical temperature is when delta V is zero (i.e. both minima at the same height)
 		#Find delta V for a range of temperatures & interpolate between them. 
 
-		Ts = np.linspace(120,130,num=500); deltaVs = np.array([[T, self.deltaV(T)] for T in Ts if self.deltaV(T) is not None])
+		Ts = np.linspace(4000,6000,num=200); deltaVs = np.array([[T, self.deltaV(T)] for T in Ts if self.deltaV(T) is not None])
 		
 		if len(deltaVs)<5: return None #Catches if there are just not enough points to make a verdict.
 		print(deltaVs)
+		
 		
 		#Ensure each deltaV is decreasing with increasing T.
 		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs[:,1])))[x]<=0, range(len(deltaVs[:,0])))); deltaVs=deltaVs[j]
 		print(deltaVs)
 		if len(deltaVs)<5: return None		
 
-		func = interpolate.UnivariateSpline(deltaVs[:,0], abs(deltaVs[:,1])/v**2, k=3,s=0)
+		func = interpolate.UnivariateSpline(deltaVs[:,0], abs(deltaVs[:,1]), k=3,s=0)
 		if prnt:
 			plt.plot(deltaVs[:,0], func(deltaVs[:,0]))
-			plt.plot(deltaVs[:,0], deltaVs[:,1]/v**2,color = 'red')
+			plt.plot(deltaVs[:,0], deltaVs[:,1],color = 'red')
 			plt.show()
 		
 		if guessIn==None:
@@ -131,12 +131,12 @@ class Potential:
 		#Minimise interpolated function (two methods in case one fails)
 		res = optimize.minimize(lambda x: abs(func(x)), guess,bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0]))])
 		if prnt: print(res)
-		if res.success and res.fun<1:
+		if res.success and res.fun<1e13:
 			return res.x[0]
 		else:
 			res = optimize.minimize(lambda x: abs(func(x)), guess,method='Nelder-Mead',bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0]))])
 			if prnt: print(res)
-			if res.success and res.fun<5:
+			if res.success and res.fun<5e13:
 				return res.x[0]
 			else:
 				if guessIn == None: return self.criticalT(guessIn = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.9 + min(deltaVs[:,0]))

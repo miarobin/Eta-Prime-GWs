@@ -63,7 +63,7 @@ def action(V,T,prnt=False):
 #Plots the potential as a function of temperature
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-0,1000,num=100),V.Vtot(np.linspace(0,1000,num=100),T),label=f"T={T}")
+		plt.plot(np.linspace(-500,10000,num=100),V.Vtot(np.linspace(-500,10000,num=100),T),label=f"T={T}")
 	plt.legend()
 	plt.show()
 	
@@ -323,7 +323,7 @@ def alpha(V, Tn):
 	delV = abs(V.Vtot(0,Tn) - V.Vtot(minima,Tn))
 	ddelVdT = abs(V.dVdT(0,Tn) - V.dVdT(minima,Tn))
 	#Note g_star is defined at the top of the document.
-	return (30/(_g_star(Tn)*np.pi**2*Tn**4)) * (-delV + Tn*ddelVdT)
+	return (30/(_g_star*np.pi**2*Tn**4)) * (-delV + Tn*ddelVdT/4)
 	
 	
 def gravitationalWave(V):
@@ -366,9 +366,37 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 if __name__ == "__main__":
 	print('hello')
-	
+
 	#Lambda, Kappa, m^2_Sigma, Mu_Sig, Xi.
-	V = Potential.Potential(0.01, 0.01, 800**2, 100, -250000)
+	V1 = Potential.Potential(1, 1, 3000**2, 9000, -250000)
 	
-	plotV(V, [0, 100, 500, 1000])
-	print(gravitationalWave(V))
+	v0=V1.findminima(0)
+
+	masses_m = [float(np.sqrt(m2(v0,0))) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X'],V1.mSq['Pi']]]
+	GW_m = gravitationalWave(V1)
+	
+	print('Mass at the zero temperature vev of phi')
+	print('Phi, Eta, X, Pi')
+	print(f'Mia: {masses_m}')
+	print(f'Djuna: {[6708.2, 9000., 8529.36, 866.025]}')
+	print('Gravitational Wave Parameters')
+	print('Tn, beta/H, alpha')
+	print(f'Mia: {GW_m}')
+	print(f'Djuna: {[5452.63, 15762.3, 0.00249046]}')
+	'''
+	
+	V2 = Potential.Potential(1.2, 1, 831.363**2, 1000, -490000.)
+	
+	v0=V2.findminima(0)
+	masses_m = [float(np.sqrt(m2(v0,0))) for m2, n in [V2.mSq['Phi'],V2.mSq['Eta'],V2.mSq['X'],V2.mSq['Pi']]]
+	GW_m = gravitationalWave(V2)
+	plotV(V2, [0, 1000, 2000])
+	
+	print('Mass at the zero temperature vev of phi')
+	print('Phi, Eta, X, Pi')
+	print(f'Mia: {masses_m}')
+	print(f'Djuna: {[1376.08, 1238.47, 1736.47, 1212.44]}')
+	print('Gravitational Wave Parameters')
+	print('Tn, beta/H, alpha')
+	print(f'Mia: {GW_m}')
+	print(f'Djuna: {[1272.54, 154926., 0.000441171]}')'''
