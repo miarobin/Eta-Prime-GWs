@@ -1,4 +1,3 @@
-from cosmoTransitions.tunneling1D import SingleFieldInstanton
 from cosmoTransitions.finiteT import Jb_spline, Jf_spline
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,129 +6,96 @@ from sympy import diff
 from scipy import interpolate
 from itertools import takewhile
 
+#FOR A LINEAR POTENTIAL (i.e. a symmetric and a non-symmetric phase)
+
 ##Important constants for the potential.
 mh = 125.18; mW = 80.385; mZ = 91.1875; mt = 173.1; mb = 4.18; v = 246.; l = mh**2/v**2
 
 
-
-def gammaa(ep, g4, delta):
-	if ep<1-np.sqrt(8/9):
-		ge = (3*(1-ep)-np.sqrt(1+9*(ep**2-2*ep)))/2
-	else:
-		ge=np.sqrt(2)
-	return 1/(ge/g4 - delta)
-
 class Potential:
-	def F(self, h):
-		return np.sqrt(np.cos(self.beta)**2*(1+self.ga*h/v)**2 + np.sin(self.beta)**2)
-	def dFdh(self, h):
-		return np.cos(self.beta)**2*(self.ga/v)*(1+h*self.ga/v)/self.F(h)
-		
 
-	def __init__(self, ep,g4,ga,beta,higgs_corr=True,loop=True,msbar=False):
-		self.ep = ep
-		self.g4 = g4
-		self.ga = ga
-		self.beta = beta
-		self.hcorr = higgs_corr
+	def __init__(self, lmb, kappa, m2Sig, muSig, loop=False):
+		#All the parameters needed to construct the potential.
+		self.lmb = lmb
+		self.kappa = kappa
+		self.mSig2 = m2Sig
+		self.muSig = muSig
 		self.loop = loop
-		self.msbar = msbar
+		#Looks like loops not needed for this calculation.
 
 
 		#Higgs dependent masses for fermions & bosons, their derivative wrt h (twice) and their respective DoF
 		self.mSq = {
-			#Higgs Mass	
-			'h': [lambda h: mh**2 + 3.*l*v*self.g4*(1-self.ep)*h + 1.5*l*self.g4**2*h**2, 
+			#Phi Mass	
+			'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - (2/np.sqrt(6))*self.muSig * phi + 3*(self.lmb/2 + self.kappa/6) * phi**2
 					1.],
-			#W Mass
-			'W': [lambda h: mW**2*self.F(h)**2,
-					4.],
-			#Z Mass
-			'Z': [lambda h: mZ**2*self.F(h)**2,
-					2.],
-			#Wl Mass
-			'Wl': [lambda h: self.dFdh(h)/self.F(h) * (mh**2*h + 1.5*np.sqrt(l)*mh*self.g4*(1-self.ep)*h**2 + 0.5*l*self.g4**2*h**3) + mW**2*self.F(h)**2,
-					2.],
-			#Zl Mass
-			'Zl': [lambda h: self.dFdh(h)/self.F(h) * (mh**2*h + 1.5*np.sqrt(l)*mh*self.g4*(1-self.ep)*h**2 + 0.5*l*self.g4**2*h**3) + mZ**2*self.F(h)**2,
+			#Eta Prime Mass
+			'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + (2/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
 					1.],
-			#top mass
-			't': [lambda h: mt**2*self.F(h)**2,
-					-12.],
-			#bottom mass
-			'b': [lambda h: mb**2*self.F(h)**2,
-					-12.],
-			#Goldstone Mass
-			'G': [lambda h: self.dFdh(h)*(mh**2*h + 1.5*np.sqrt(l)*mh*self.g4*(1-self.ep)*h**2 + 0.5*l*self.g4**2*h**3)/self.F(h), 
-					3.],
+			#X Mass
+			'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
+					8.],
+			#Pi Mass
+			'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
+					8.]
 					}
 		
-	def V(self,h):
+	def V(self,phi):
 		##The tree level, zero temperature potential.
-		h = np.array(h)
-		return (0.5*mh**2)*h**2 + 0.5*np.sqrt(l)*mh*self.g4*(1-self.ep)*h**3 + 0.125*l*self.g4**2*h**4
+		phi = np.array(phi)
+		return -(0.5*self.mSig**2) * phi**2 - self.muSig/(3*np.sqrt(6)) * phi**3 + 0.25 * (self.lmb/2 + self.kappa/6) * phi**4
     
-	def V1T(self,h,T):
-		h = np.array(h)
+	def V1T(self,phi,T):
+		phi = np.array(phi)
 		if T==0:
-			return np.zeros(h.shape)
-		if self.hcorr:
-			return np.reshape((np.sum([n*Jb_spline((m2(h)/T**2)) for m2, n in [self.mSq['W'],self.mSq['Z'],self.mSq['h'],self.mSq['Wl'],self.mSq['Zl']]],axis=0) 
-					+ np.sum([-n*Jf_spline((m2(h)/T**2)) for m2, n in [self.mSq['t']]],axis=0))*T**4/(2*np.pi**2), h.shape)
-		else:
-			return np.reshape((np.sum([n*Jb_spline((m2(h)/T**2)) for m2, n in [self.mSq['W'],self.mSq['Z']]],axis=0) 
-					+ np.sum([-n*Jf_spline((m2(h)/T**2)) for m2, n in [self.mSq['t']]],axis=0))*T**4/(2*np.pi**2), h.shape)
+			return np.zeros(phi.shape)
+		
+		return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],self.mSq['X'],self.mSq['Pi']]],axis=0) 
+					+ np.sum([-n*Jf_spline((m2(phi,T)/T**2)) for m2, n in []],axis=0))*T**4/(2*np.pi**2), phi.shape)
 
-	def V1_msbar(self, h, Q=2*v):
-		h = np.array(h)
-		
-		return np.reshape(np.sum([n * m2(h)**2 * (np.log(np.abs(m2(h)/Q**2) + 1e-100) - 1.5) for m2, n in [self.mSq['t'],self.mSq['h']]],axis=0) + np.sum([n * m2(h)**2 * (np.log(np.abs(m2(h)/Q**2) + 1e-100) - 5/6) for m2, n in [self.mSq['W'],self.mSq['Z'],self.mSq['Wl'],self.mSq['Zl']]],axis=0),h .shape)/(64.*np.pi**2)
-		
-		
+
 	def V1_cutoff(self, h):
 		# One loop corrections to effective potential in cut-off regularisation scheme.
+		#MAY NOT NEED THESE YET!
 		h = np.array(h)
 			
 		return np.reshape(np.sum([n * (m2(h)**2 * (np.log(np.abs(m2(h)/m2(0)) + 1e-100) - 1.5) + 2*m2(h)*m2(0)) for m2, n in [self.mSq['W'],self.mSq['Z'],self.mSq['t'],self.mSq['h'],self.mSq['Wl'],self.mSq['Zl']]],axis=0)/(64.*np.pi**2), h.shape)
 		
 
-	def Vtot(self,h,T):
-		h = np.array(h)
+	def Vtot(self,phi,T):
+		#This finds the total (one-loop/tree level) thermal effective potential.
+		phi = np.array(phi)
 		if self.loop:
-			if self.msbar:
-				return self.V(h) + self.V1T(h,T).real + self.V1_msbar(h).real
-			else:
-				return self.V(h) + self.V1T(h,T).real + self.V1_cutoff(h).real
+			return self.V(phi) + self.V1T(phi,T).real + self.V1_cutoff(phi).real
 		else:
-			return self.V(h) + self.V1T(h,T).real
+			return self.V(phi) + self.V1T(phi,T).real
 
-			
-	def dVdT(self,h,T,eps=0.001):
+	def dVdT(self,phi,T,eps=0.001):
 		#Uses finite difference method to fourth order. Takes scalar h and T.
-		return (self.Vtot(h,T-2*eps) - 8*self.Vtot(h,T-eps) + 8*self.Vtot(h,T+eps) - self.Vtot(h,T+2*eps)) / (12.*eps)
+		return (self.Vtot(phi,T-2*eps) - 8*self.Vtot(phi,T-eps) + 8*self.Vtot(phi,T+eps) - self.Vtot(phi,T+2*eps)) / (12.*eps)
 			
-	def d2VdT2(self,h,T,eps=0.001):
+	def d2VdT2(self,phi,T,eps=0.001):
 		#Uses finite difference method to fourth order. Takes scalar h and T.
-		return (self.dVdT(h,T-2*eps) - 8*self.dVdT(h,T-eps) + 8*self.dVdT(h,T+eps) - self.dVdT(h,T+2*eps)) / (12.*eps)
+		return (self.dVdT(phi,T-2*eps) - 8*self.dVdT(phi,T-eps) + 8*self.dVdT(phi,T+eps) - self.dVdT(phi,T+2*eps)) / (12.*eps)
 
-	def findminima(self,T,lstart=-2*v,rcounter=1, tolerance=None):
-		#Roll down to lhs minimum:
-		lhs = optimize.minimize(lambda X: self.Vtot(X, T), lstart*rcounter,tol=tolerance).x[0]
+	def findminima(self,T,rstart=+2*v,rcounter=1, tolerance=None):
+		#For a linear sigma model. Returns the minimum away from the origin.
 		#Roll down to rhs minimum:
-		rhs = optimize.minimize(lambda X: self.Vtot(X, T), 0,tol=tolerance).x[0]
+		rhs = optimize.minimize(lambda X: self.Vtot(X, T), rstart,tol=tolerance).x[0]
 		#Check the two rolls didn't find the same minimum:
-		if abs(lhs-rhs)<2.5:
+		if abs(rhs)<2.5:
 			#If so, try a new start
 			if rcounter<=3:
-				lhs,rhs = self.findminima(T,lstart=lstart,rcounter=rcounter+1)
+				lhs,rhs = self.findminima(T,rstart=rstart,rcounter=rcounter+1)
 			else:
-				return ((lhs+rhs)/2, None)
-		return (lhs, rhs)
+				return None
+		return rhs
 
 	def deltaV(self,T,num_res=False):
-		lhs, rhs = self.findminima(T)
-		if rhs is not None:
-			return self.Vtot(lhs, T) - self.Vtot(rhs, T)
+		#Finds the difference between the symmetric and broken minima.
+		vT = self.findminima(T)
+		if vT is not None:
+			return self.Vtot(0, T) - self.Vtot(vT, T)
 		else:
 			if num_res:
 				return 1e30
@@ -138,21 +104,15 @@ class Potential:
 
 
 	def	criticalT(self, guessIn=None,prnt=False):
+		#Critical temperature is when delta V is zero (i.e. both minima at the same height)
 		#Find delta V for a range of temperatures & interpolate between them. 
-		'''if prnt:
-			lhs, rhs = self.findminima(0)
-			if rhs is not None:
-				if lhs < -3000: lhs = -3500
-				plt.plot(np.linspace(lhs-0.5*v,rhs +0.5*v,num=100),self.Vtot(np.linspace(lhs-0.5*v,rhs +0.5*v,num=100),0),label="Vtot at T=0GeV")
-				plt.plot(np.linspace(lhs-0.5*v,rhs +0.5*v,num=100),self.Vtot(np.linspace(lhs-0.5*v,rhs +0.5*v,num=100),200),label="Vtot at T=200GeV")
-				plt.legend()
-				plt.show()'''
-		
+
 		Ts = np.linspace(120,130,num=500); deltaVs = np.array([[T, self.deltaV(T)] for T in Ts if self.deltaV(T) is not None])
-		#Ensure each deltaV is decreasing with increasing T
-		if len(deltaVs)<5: return None
+		
+		if len(deltaVs)<5: return None #Catches if there are just not enough points to make a verdict.
 		print(deltaVs)
 		
+		#Ensure each deltaV is decreasing with increasing T.
 		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs[:,1])))[x]<=0, range(len(deltaVs[:,0])))); deltaVs=deltaVs[j]
 		print(deltaVs)
 		if len(deltaVs)<5: return None		
@@ -181,6 +141,7 @@ class Potential:
 				if guessIn == None: return self.criticalT(guessIn = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.9 + min(deltaVs[:,0]))
 				else: return None
 
+	#### These are supplemental ####
 		
 	def T0(self, plot=False):
 	#NOTE TO SELF this might need updating to find a numerical minima.
@@ -194,18 +155,6 @@ class Potential:
 			plt.show()
 		return T0
 			
-	def gammaedelta(self):
-		print(f"eps in V = {self.ep}")
-		print(f"3(1-eps)={3*(1-self.ep)}")
-		print(f"sqrt bit = {np.sqrt(1+9*(self.ep**2-2*self.ep))}")
-		ge = (3*(1-self.ep)-np.sqrt(1+9*(self.ep**2-2*self.ep)))/2
-		print(f"ge in V = {ge}")
-		de = ge/self.g4 - 1/(self.ga)
-		return(ge,de)
-		
-	def vStar(self):
-		ge,delta=self.gammaedelta()
-		return -v*(ge/self.g4 - delta)
 	
 	def findPeaks(self, T):
 		lhs,rhs = self.findminima(T)
@@ -235,26 +184,4 @@ class Potential:
 		
 		
 if __name__ == "__main__":
-	## Choose epsilon and gamma4 to slot into the potential, and the temperature to evaluate at.
-	eps = 0.02; g4 = 1; delta = -0.1; beta = 0.05
-	print(f"$\gamma_a$ = {gammaa(eps,g4,delta)}")
-	
-	#The Potential Object.
-	V = Potential(eps,g4,gammaa(eps,g4,delta),beta,higgs_corr=True,loop=True)
-	
-	print(f"Thermal Minimum:{optimize.minimize(lambda h:V.V1T(h,150),-246).x}")
-	print(f"Tree level maximum: {optimize.minimize(lambda h:-V.V(h), -246).x}")
-	
-	#Tn, beta_H, alp = gravitationalWave(V)
-	#print(f"Tn = {Tn}, beta/H = {beta_H}, alpha = {alp}")
-
-	Ts = [246,190]
-	for T in Ts:
-		plt.plot(np.linspace(-2*v,.5*v, num=100), np.abs(V.imaginary(np.linspace(-2*v,.5*v, num=100),T)),label=f"T = {T} GeV, Imaginary")
-		plt.plot(np.linspace(-2*v,.5*v, num=100),np.abs(V.real(np.linspace(-2*v,.5*v, num=100),T)),label=f"T = {T} GeV, Real")
-
-	plt.title(f"$\epsilon = ${eps}, $\delta$={delta}, $\gamma_4$={g4}, $beta$={beta}")
-	plt.xlabel(f"$h$")
-	plt.ylabel(f"$|V(h,T)|$")
-	plt.legend()
-	plt.show()
+	print('hello')
