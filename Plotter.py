@@ -4,8 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate, optimize
 import csv
-from tqdm import tqdm
-import cProfile
 from multiprocessing import Pool
 
 ##Important constants for the potential.

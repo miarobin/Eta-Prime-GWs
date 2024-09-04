@@ -14,12 +14,13 @@ mh = 125.18; mW = 80.385; mZ = 91.1875; mt = 173.1; mb = 4.18; v = 246.; l = mh*
 
 class Potential:
 
-	def __init__(self, lmb, kappa, m2Sig, muSig, loop=False):
+	def __init__(self, lmb, kappa, m2Sig, muSig, xi, loop=False):
 		#All the parameters needed to construct the potential.
 		self.lmb = lmb
 		self.kappa = kappa
 		self.mSig2 = m2Sig
 		self.muSig = muSig
+		self.xi = xi
 		self.loop = loop
 		#Looks like loops not needed for this calculation.
 
@@ -33,10 +34,10 @@ class Potential:
 			'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + (2/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
 					1.],
 			#X Mass
-			'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
+			'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
 					8.],
 			#Pi Mass
-			'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
+			'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi - (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2
 					8.]
 					}
 		
