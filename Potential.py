@@ -105,18 +105,22 @@ class Potential:
 
 	def	criticalT(self, guessIn=None,prnt=True):
 		#Critical temperature is when delta V is zero (i.e. both minima at the same height)
-		#Find delta V for a range of temperatures & interpolate between them. 
 
-		Ts = np.linspace(4000,6000,num=200); deltaVs = np.array([[T, self.deltaV(T)] for T in Ts if self.deltaV(T) is not None])
+		#First a quick scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
+		Ts_init = np.linspace(500,20000,num=10); deltaVs_init = np.array([[T, self.deltaV(T)] for T in Ts_init if self.deltaV(T) is not None])
+		T_init = min(abs(deltaVs_init), key = lambda x:x[1])[0]
+	
+
+		#Find delta V for a finer scan of temperatures & interpolate between them. 
+		Ts = np.linspace(T_init*0.75,T_init*1.25,num=200); deltaVs = np.array([[T, self.deltaV(T)] for T in Ts if self.deltaV(T) is not None])
 		
 		if len(deltaVs)<5: return None #Catches if there are just not enough points to make a verdict.
-		print(deltaVs)
 		
 		
 		#Ensure each deltaV is decreasing with increasing T.
 		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs[:,1])))[x]<=0, range(len(deltaVs[:,0])))); deltaVs=deltaVs[j]
-		print(deltaVs)
-		if len(deltaVs)<5: return None		
+		
+		if len(deltaVs)<5: return None #Again, catching where there are too few points.
 
 		func = interpolate.UnivariateSpline(deltaVs[:,0], abs(deltaVs[:,1]), k=3,s=0)
 		if prnt:
