@@ -1,10 +1,11 @@
-from cosmoTransitions.finiteT import Jb_exact2
+import cosmoTransitions.finiteT as fT
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize, misc, signal
 from sympy import diff
 from scipy import interpolate
 from itertools import takewhile
+import os
 
 #FOR A LINEAR POTENTIAL (i.e. a symmetric and a non-symmetric phase)
 
@@ -14,7 +15,7 @@ mh = 125.18; mW = 80.385; mZ = 91.1875; mt = 173.1; mb = 4.18; v = 246.; l = mh*
 
 class Potential:
 
-	def __init__(self, lmb, kappa, m2Sig, muSig, xi, loop=False):
+	def __init__(self, lmb, kappa, m2Sig, muSig, xi, POWER, loop=False):
 		#All the parameters needed to construct the potential.
 		self.lmb = lmb
 		self.kappa = kappa
@@ -22,24 +23,46 @@ class Potential:
 		self.muSig = muSig
 		self.xi = xi
 		self.loop = loop
+		self.POWER = POWER
 		#Looks like loops not needed for this calculation.
 
-
+		#The coefficient of the symmetry breaking term as it's quite verbose:
+		if 3/self.POWER - 1 == 0 or 3/self.POWER==1:
+			sym_brk = 0
+		else:
+			sym_brk = 2*self.POWER * (3/self.POWER)*(3/self.POWER-1)*(1/np.sqrt(6))**(3/self.POWER)
+		
 		#Higgs dependent masses for fermions & bosons, their derivative wrt h (twice) and their respective DoF
-		self.mSq = {
-			#Phi Mass	
-			'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - (2/np.sqrt(6))*self.muSig * phi + 3*(self.lmb/2 + self.kappa/6) * phi**2,
-					1.],
-			#Eta Prime Mass
-			'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + (2/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2,
-					1.],
-			#X Mass
-			'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + 3*self.kappa/6) * phi**2,
-					8.],
-			#Pi Mass
-			'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi - (1/np.sqrt(6))*self.muSig * phi + (self.lmb/2 + self.kappa/6) * phi**2,
-					8.]
-					}
+		if sym_brk != 0:
+			self.mSq = {
+				#Phi Mass	
+				'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig -  sym_brk * self.muSig * phi**(3/self.POWER - 2) + 3*(self.lmb/2 + self.kappa/6) * phi**2,
+						1.],
+				#Eta Prime Mass
+				'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + sym_brk * self.muSig * phi**(3/self.POWER - 2) + (self.lmb/2 + self.kappa/6) * phi**2,
+						1.],
+				#X Mass
+				'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + 0.5 * sym_brk * self.muSig * phi**(3/self.POWER - 2) + (self.lmb/2 + 3*self.kappa/6) * phi**2,
+						8.],
+				#Pi Mass
+				'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi - 0.5 * sym_brk * self.muSig * phi**(3/self.POWER - 2) + (self.lmb/2 + self.kappa/6) * phi**2,
+						8.]
+						}
+		else:
+			self.mSq = {
+				#Phi Mass	
+				'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + 3*(self.lmb/2 + self.kappa/6) * phi**2,
+						1.],
+				#Eta Prime Mass
+				'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + (self.lmb/2 + self.kappa/6) * phi**2,
+						1.],
+				#X Mass
+				'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + (self.lmb/2 + 3*self.kappa/6) * phi**2,
+						8.],
+				#Pi Mass
+				'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + (self.lmb/2 + self.kappa/6) * phi**2,
+						8.]
+						}
 		
 	def V(self,phi):
 		##The tree level, zero temperature potential.
@@ -51,7 +74,7 @@ class Potential:
 		if T==0:
 			return np.zeros(phi.shape)
 		
-		return np.reshape((np.sum([n*Jb_exact2((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
+		return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
 
 
 	def V1_cutoff(self, h):
@@ -78,22 +101,24 @@ class Potential:
 		#Uses finite difference method to fourth order. Takes scalar h and T.
 		return (self.dVdT(phi,T-2*eps) - 8*self.dVdT(phi,T-eps) + 8*self.dVdT(phi,T+eps) - self.dVdT(phi,T+2*eps)) / (12.*eps)
 
-	def findminima(self,T,rstart=6000,rcounter=1, tolerance=None):
+	def findminima(self,T,rstart=20000,rcounter=1, tolerance=None):
 		#For a linear sigma model. Returns the minimum away from the origin.
 		#Roll down to rhs minimum:
-		rhs = optimize.minimize(lambda X: self.Vtot(X, T), rstart,tol=tolerance).x[0]
+		rhs = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',tol=tolerance).x[0]
 		#Check the two rolls didn't find the same minimum:
-		if abs(rhs)<2.5:
+		if abs(rhs)<100:
 			#If so, try a new start
-			if rcounter<=3:
-				rhs = self.findminima(T,rstart=rstart*1.1,rcounter=rcounter+1)
+			if rcounter<=4:
+				rhs = self.findminima(T,rstart=rstart*0.9,rcounter=rcounter+1)
 			else:
 				return None
 		return rhs
 
-	def deltaV(self,T,num_res=False):
+	def deltaV(self,T, rstart=None, num_res=False):
 		#Finds the difference between the symmetric and broken minima.
-		vT = self.findminima(T)
+		if rstart is not None: vT = self.findminima(T, rstart=rstart)
+		else: vT = self.findminima(T)
+		
 		if vT is not None:
 			return + self.Vtot(0, T) - self.Vtot(vT, T)
 		else:
@@ -104,15 +129,25 @@ class Potential:
 
 
 	def	criticalT(self, guessIn=None,prnt=True):
-		#Critical temperature is when delta V is zero (i.e. both minima at the same height)
+		#Critical temperature is when delta V is zero (i.e. both minima at the same height) THIS HAS TO BE QUITE ACCURATE!
+		
+		#We need a scale. We'll take that to be roughly 4 powers of the vev at zero temperature.
+		scale = self.findminima(0)
 
 		#First a quick scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-		Ts_init = np.linspace(500,20000,num=10); deltaVs_init = np.array([[T, self.deltaV(T)] for T in Ts_init if self.deltaV(T) is not None])
-		T_init = min(abs(deltaVs_init), key = lambda x:x[1])[0]
+		Ts_init = np.linspace(500,60000,num=500); deltaVs_init = np.array([[T, self.deltaV(T, rstart=scale)] for T in Ts_init if self.deltaV(T,rstart=scale) is not None])
+		
+		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
+		k = list(takewhile(lambda x: deltaVs_init[x,1]>0, range(len(deltaVs_init[:,0]))))
+		print(deltaVs_init)
+		deltaVs_init=deltaVs_init[k]; T_init = deltaVs_init[-1,0]
+		
+		
+		print(T_init)
+		#T_init = min(deltaVs_init[:,0], key = lambda x: abs(self.deltaV(x)))
 	
-
 		#Find delta V for a finer scan of temperatures & interpolate between them. 
-		Ts = np.linspace(T_init*0.75,T_init*1.25,num=200); deltaVs = np.array([[T, self.deltaV(T)] for T in Ts if self.deltaV(T) is not None])
+		Ts = np.linspace(T_init*0.95,T_init*1.35,num=500); deltaVs = np.array([[T, self.deltaV(T, rstart=scale)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
 		
 		if len(deltaVs)<5: return None #Catches if there are just not enough points to make a verdict.
 		
@@ -122,29 +157,30 @@ class Potential:
 		
 		if len(deltaVs)<5: return None #Again, catching where there are too few points.
 
-		func = interpolate.UnivariateSpline(deltaVs[:,0], abs(deltaVs[:,1]), k=3,s=0)
+		func = interpolate.UnivariateSpline(deltaVs[:,0], abs(deltaVs[:,1]), k=3, s=0)
 		if prnt:
 			plt.plot(deltaVs[:,0], func(deltaVs[:,0]))
 			plt.plot(deltaVs[:,0], deltaVs[:,1],color = 'red')
 			plt.show()
 		
 		if guessIn==None:
-			guess = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.75 + min(deltaVs[:,0])
+			guess = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.85 + min(deltaVs[:,0])
 		else: guess = guessIn
-		print(f'guess = {guess}; min = {min(deltaVs[:,0])}; max = {max(deltaVs[:,0])}')
+		print(f'guess = {guess}; min = {min(deltaVs[:,0])}; max = {max(deltaVs[:,0])*1.2}')
 		#Minimise interpolated function (two methods in case one fails)
-		res = optimize.minimize(lambda x: abs(func(x)), guess,bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0]))])
+		res = optimize.minimize(lambda x: abs(func(x)), guess,bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0])*1.2)])
 		if prnt: print(res)
-		if res.success and res.fun<1e13:
+		if res.success and res.fun<scale**3:
 			return res.x[0]
 		else:
 			res = optimize.minimize(lambda x: abs(func(x)), guess,method='Nelder-Mead',bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0]))])
 			if prnt: print(res)
-			if res.success and res.fun<5e13:
+			if res.success and res.fun<5*scale**3:
 				return res.x[0]
 			else:
-				if guessIn == None: return self.criticalT(guessIn = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.9 + min(deltaVs[:,0]))
-				else: return None
+				#if guessIn == None: return self.criticalT(guessIn = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.9 + min(deltaVs[:,0]))
+				#else: return None
+				return None
 
 	#### These are supplemental ####
 		
@@ -187,6 +223,38 @@ class Potential:
 		return self.V(h) + (self.V1T(h,T)).real + (self.V1_cutoff(h)).real
 
 		
+
+##SPLINE FIT
+# Spline fitting, Jb
+_xbmin = -3.72402637
+# We're setting the lower acceptable bound as the point where it's a minimum
+# This guarantees that it's a monatonically increasing function, and the first
+# deriv is continuous.
+_xbmax = 1.41e3
+_Jb_dat_path = fT.spline_data_path+"/finiteT_b.dat.txt"
+if os.path.exists(_Jb_dat_path):
+    _xb, _yb = np.loadtxt(_Jb_dat_path).T
+else:
+    # x = |xmin|*sinh(y), where y in linear
+    # (so that we're not overpopulating the uniteresting region)
+    _xb = np.linspace(np.arcsinh(-1.3*20),
+                         np.arcsinh(-20*_xbmax/_xbmin), 1000)
+    _xb = abs(_xbmin)*np.sinh(_xb)/20
+    _yb = fT.Jb_exact2(_xb)
+    np.savetxt(_Jb_dat_path, np.array([_xb, _yb]).T)
+
+
+_tckb = interpolate.splrep(_xb, _yb)
+def Jb_spline(X,n=0):
+    """Jb interpolated from a saved spline. Input is (m/T)^2."""
+    X = np.array(X)
+    x = X.ravel()
+    y = interpolate.splev(x,_tckb, der=n).ravel()
+    y[x < _xbmin] = interpolate.splev(_xbmin,_tckb, der=n)
+    y[x > _xbmax] = 0
+    return y.reshape(X.shape)
+
+
 		
 if __name__ == "__main__":
 	print('hello')

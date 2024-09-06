@@ -63,7 +63,7 @@ def action(V,T,prnt=False):
 #Plots the potential as a function of temperature
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-500,10000,num=100),V.Vtot(np.linspace(-500,10000,num=100),T),label=f"T={T}")
+		plt.plot(np.linspace(-500,10000,num=100),V.Vtot(np.linspace(-500,10000,num=100),T)-V.Vtot(0,T),label=f"T={T}")
 	plt.legend()
 	plt.show()
 	
@@ -91,7 +91,7 @@ def grid(V, tc=None, prnt=False):
 	maxT = tc*0.96
 
 	#Set up for the scan of S3 against T:
-	stepSize = .2; bounds = []; flare = []; guess = None
+	stepSize = .1; bounds = []; flare = []; guess = None
 	#First point to find if we go up or down
 	T1 = maxT; T2 = maxT-stepSize
 	A1=action(V,T1); A2=action(V,T2)
@@ -111,7 +111,7 @@ def grid(V, tc=None, prnt=False):
 	#ASCEND
 	if A1/T1<=140:
 		#A variable stepsize...
-		miniStepSize = (tc-T1)*0.2
+		miniStepSize = (tc-T1)*0.1
 		
 		Aa = A1; Ta = T1
 		Ab = action(V,T1+miniStepSize); Tb = T1+miniStepSize
@@ -123,7 +123,7 @@ def grid(V, tc=None, prnt=False):
 		while Ab/Tb <= 140:
 			Aa = Ab; Ta = Tb
 			#Update the backstep size so we move towards Tc
-			miniStepSize=(tc-Tb)*0.2
+			miniStepSize=(tc-Tb)*0.1
 			#If it gets too small we're probably in trouble.?
 			if miniStepSize < 0.00001: 
 				return None, None, 3
@@ -366,9 +366,19 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 if __name__ == "__main__":
 	print('hello')
+	#Xi, mu_Sigma, Lambda, Kappa, m_Sigma
+	[-250000., 1000., 0.01, 0.01, 5000.]
+	V0 = Potential.Potential(0.01, 0.01, 5000**2, 1000, -250000, 3)
+	plotV(V0, [45000, 47500, 50000])
+	v0=V0.findminima(0)
+	masses_m = [float(np.sqrt(m2(v0,0))) for m2, n in [V0.mSq['Phi'],V0.mSq['Eta'],V0.mSq['X'],V0.mSq['Pi']]]
+	print(f'Mia: {masses_m}')
+	GW_m = gravitationalWave(V0)
+	print(f'Mia: {GW_m}')
 
-	#Lambda, Kappa, m^2_Sigma, Mu_Sig, Xi.
-	V1 = Potential.Potential(1, 1, 3000**2, 9000, -250000)
+	#Lambda, Kappa, m^2_Sigma, Mu_Sig, Xi, N
+	'''
+	V1 = Potential.Potential(1, 1, 3000**2, 9000, -250000, 1)
 	
 	v0=V1.findminima(0)
 
@@ -383,9 +393,9 @@ if __name__ == "__main__":
 	print('Tn, beta/H, alpha')
 	print(f'Mia: {GW_m}')
 	print(f'Djuna: {[5452.63, 15762.3, 0.00249046]}')
-	'''
 	
-	V2 = Potential.Potential(1.2, 1, 831.363**2, 1000, -490000.)
+	
+	V2 = Potential.Potential(1.2, 1, 831.363**2, 1000, -490000., 1)
 	
 	v0=V2.findminima(0)
 	masses_m = [float(np.sqrt(m2(v0,0))) for m2, n in [V2.mSq['Phi'],V2.mSq['Eta'],V2.mSq['X'],V2.mSq['Pi']]]
