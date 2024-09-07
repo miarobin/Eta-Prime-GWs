@@ -368,7 +368,7 @@ if __name__ == "__main__":
 	print('hello')
 	#Xi, mu_Sigma, Lambda, Kappa, m_Sigma
 	[-250000., 1000., 0.01, 0.01, 5000.]
-	V0 = Potential.Potential(0.01, 0.01, 5000**2, 1000, -250000, 3)
+	V0 = Potential.Potential(0.01, 0.01, 5000**2, 1000, -250000, 3, 3)
 	plotV(V0, [45000, 47500, 50000])
 	v0=V0.findminima(0)
 	masses_m = [float(np.sqrt(m2(v0,0))) for m2, n in [V0.mSq['Phi'],V0.mSq['Eta'],V0.mSq['X'],V0.mSq['Pi']]]

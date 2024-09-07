@@ -15,7 +15,7 @@ mh = 125.18; mW = 80.385; mZ = 91.1875; mt = 173.1; mb = 4.18; v = 246.; l = mh*
 
 class Potential:
 
-	def __init__(self, lmb, kappa, m2Sig, muSig, xi, POWER, loop=False):
+	def __init__(self, lmb, kappa, m2Sig, muSig, xi, N, F, loop=False):
 		#All the parameters needed to construct the potential.
 		self.lmb = lmb
 		self.kappa = kappa
@@ -23,29 +23,30 @@ class Potential:
 		self.muSig = muSig
 		self.xi = xi
 		self.loop = loop
-		self.POWER = POWER
+		self.N = N
+		self.F = F
 		#Looks like loops not needed for this calculation.
 
-		#The coefficient of the symmetry breaking term as it's quite verbose:
-		if 3/self.POWER - 1 == 0 or 3/self.POWER==1:
-			sym_brk = 0
+		#The coefficient of the determinant term as it's quite verbose:
+		if self.F/self.N==1:
+			det_coef = 0
 		else:
-			sym_brk = 2*self.POWER * (3/self.POWER)*(3/self.POWER-1)*(1/np.sqrt(6))**(3/self.POWER)
+			det_coef = 2*self.N * (self.F/self.N)*(self.F/self.N-1)*(1/np.sqrt(6))**(self.F/self.N)
 		
 		#Higgs dependent masses for fermions & bosons, their derivative wrt h (twice) and their respective DoF
-		if sym_brk != 0:
+		if det_coef != 0:
 			self.mSq = {
 				#Phi Mass	
-				'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig -  sym_brk * self.muSig * phi**(3/self.POWER - 2) + 3*(self.lmb/2 + self.kappa/6) * phi**2,
+				'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig -  det_coef * self.muSig * phi**(self.F/self.N - 2) + 3*(self.lmb/2 + self.kappa/6) * phi**2,
 						1.],
 				#Eta Prime Mass
-				'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + sym_brk * self.muSig * phi**(3/self.POWER - 2) + (self.lmb/2 + self.kappa/6) * phi**2,
+				'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + det_coef * self.muSig * phi**(self.F/self.N - 2) + (self.lmb/2 + self.kappa/6) * phi**2,
 						1.],
 				#X Mass
-				'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + 0.5 * sym_brk * self.muSig * phi**(3/self.POWER - 2) + (self.lmb/2 + 3*self.kappa/6) * phi**2,
+				'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + 0.5 * det_coef * self.muSig * phi**(self.F/self.N - 2) + (self.lmb/2 + 3*self.kappa/6) * phi**2,
 						8.],
 				#Pi Mass
-				'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi - 0.5 * sym_brk * self.muSig * phi**(3/self.POWER - 2) + (self.lmb/2 + self.kappa/6) * phi**2,
+				'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi - 0.5 * det_coef * self.muSig * phi**(self.F/self.N - 2) + (self.lmb/2 + self.kappa/6) * phi**2,
 						8.]
 						}
 		else:
@@ -64,7 +65,7 @@ class Potential:
 						8.]
 						}
 		
-	def V(self,phi):
+	def V(self,phi): #Comment which equation numbers!!!
 		##The tree level, zero temperature potential.
 		phi = np.array(phi)
 		return -(0.5*self.m2Sig) * phi**2 - self.muSig/(3*np.sqrt(6)) * phi**3 + 0.25 * (self.lmb/2 + self.kappa/6) * phi**4

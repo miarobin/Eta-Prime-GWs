@@ -48,9 +48,9 @@ def S3T(V,*T):
 	return (Tn, GravitationalWave.alpha(V,Tn), GravitationalWave.beta_over_H(V,Tn,grd), GravitationalWave.wallVelocity(V,GravitationalWave.alpha(V,Tn), Tn), message)
 
 
-def populate(lmb, kappa, m2Sig, muSig, xi, POWER):
+def populate(lmb, kappa, m2Sig, muSig, xi, N, F):
 	#Lambda, Kappa, m^2_Sigma, Mu_Sig, Xi.
-	V = Potential.Potential(lmb, kappa, m2Sig, muSig, xi, POWER)
+	V = Potential.Potential(lmb, kappa, m2Sig, muSig, xi, N, F)
 
 	Tn, grd, message = GravitationalWave.grid(V)
 	
@@ -149,8 +149,8 @@ if __name__ == "__main__":
 	data = data[:20]
 
 	#Changing the power of the breaking term (1 is from Rachel's paper, 1/N is from Csaba's paper)
-	results_1 = np.array([populate(row[2], row[3], row[4]**2, row[1], row[0], POWER=1) for row in data])
-	results_3 = np.array([populate(row[2], row[3], row[4]**2, row[1], row[0], POWER=3) for row in data])
+	results_1 = np.array([populate(row[2], row[3], row[4]**2, row[1], row[0], N=1, F=3) for row in data])
+	results_3 = np.array([populate(row[2], row[3], row[4]**2, row[1], row[0], N=3, F=3) for row in data])
 
 	column_titles = ['Lambda', 'Kappa', 'm^2_Sigma', 'mu_Sigma', 'xi', 'Tn', 'Alpha', 'Beta']
 	# File path to save the CSV
