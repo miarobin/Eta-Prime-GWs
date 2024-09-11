@@ -13,9 +13,13 @@ import os
 mh = 125.18; mW = 80.385; mZ = 91.1875; mt = 173.1; mb = 4.18; v = 246.; l = mh**2/v**2
 
 
+class NotImplemented(Exception):
+    pass
+
+
 class Potential:
 
-	def __init__(self, lmb, kappa, m2Sig, muSig, xi, N, F, loop=False):
+	def __init__(self, lmb, kappa, m2Sig, muSig, xi, N, F, muSSI=0, loop=False):
 		#All the parameters needed to construct the potential.
 		self.lmb = lmb
 		self.kappa = kappa
@@ -25,45 +29,84 @@ class Potential:
 		self.loop = loop
 		self.N = N
 		self.F = F
+		self.muSSI = muSSI
 		#Looks like loops not needed for this calculation.
 
 		#The coefficient of the determinant term as it's quite verbose:
-		if self.F/self.N==1:
-			det_coef = 0
-		else:
-			det_coef = 2*self.N * (self.F/self.N)*(self.F/self.N-1)*(1/np.sqrt(6))**(self.F/self.N)
+		det_coef = 2*self.N * (self.F/self.N)*(self.F/self.N-1)*(1/np.sqrt(6))**(self.F/self.N)
 		
-		#Higgs dependent masses for fermions & bosons, their derivative wrt h (twice) and their respective DoF
-		if det_coef != 0:
+		#Field dependent masses for fermions & bosons, their derivative wrt h (twice) and their respective DoF
+		if F==3:
 			self.mSq = {
 				#Phi Mass	
-				'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig -  det_coef * self.muSig * phi**(self.F/self.N - 2) + 3*(self.lmb/2 + self.kappa/6) * phi**2,
+				'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig
+							- det_coef * self.muSig * phi**np.ceil([(self.F/self.N - 2),0]) 
+							+ 3*(self.lmb/2 + self.kappa/6) * phi**2,
 						1.],
 				#Eta Prime Mass
-				'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + det_coef * self.muSig * phi**(self.F/self.N - 2) + (self.lmb/2 + self.kappa/6) * phi**2,
+				'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig 
+							+ det_coef * self.muSig * phi**np.ceil([(self.F/self.N - 2),0]) 
+							+ (self.lmb/2 + self.kappa/6) * phi**2,
 						1.],
 				#X Mass
-				'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + 0.5 * det_coef * self.muSig * phi**(self.F/self.N - 2) + (self.lmb/2 + 3*self.kappa/6) * phi**2,
+				'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi 
+		  					+ 0.5 * det_coef * self.muSig * phi**np.ceil([(self.F/self.N - 2),0]) 
+							+ (self.lmb/2 + 3*self.kappa/6) * phi**2,
 						8.],
 				#Pi Mass
-				'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi - 0.5 * det_coef * self.muSig * phi**(self.F/self.N - 2) + (self.lmb/2 + self.kappa/6) * phi**2,
+				'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi 
+		   					- 0.5 * det_coef * self.muSig * phi**np.ceil([(self.F/self.N - 2),0]) + (self.lmb/2 + self.kappa/6) * phi**2,
 						8.]
 						}
+
+		elif F==4:
+			self.mSq = {
+				#Phi Mass
+				'Phi': [lambda phi, T: (1/24)*((9*self.kappa + 36*self.lmb - 9*self.muSig)*phi**2 
+								   				+ 6*self.muSSI - 24*self.m2Sig
+												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+						1.],
+				#Eta Prime Mass
+				'Eta': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb + 3*self.muSig)*phi**2 
+								   				+ 2*self.muSSI - 8*self.m2Sig
+												+ (2/3)*T**2 * (8*self.kappa + 17*self.lmb)),
+						1.],
+				#X8 Mass
+				'X8': [lambda phi, T: (1/8)*((3*self.kappa + 4*self.lmb + self.muSig)*phi**2 
+								   				- 24*self.xi - 8*self.m2Sig
+												+ (2/3)*T**2 * (8*self.kappa + 17*self.lmb)),
+						1.],
+				#X3 Mass
+				'X3': [lambda phi, T: (1/24)*((9*self.kappa + 12*self.lmb + 3*self.muSig)*phi**2 
+								   				- 24*self.muSSI - 24*self.m2Sig
+												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+						1.],
+				#Pi8 Mass
+				'Pi8': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb - self.muSig)*phi**2 
+								   				- 24*self.xi - 8*self.m2Sig
+												+ (2/3)*T**2 * (8*self.kappa + 17*self.lmb)),
+						1.],
+				#Pi3 Mass
+				'Pi3': [lambda phi, T: (1/24)*((3*self.kappa + 12*self.lmb - 3*self.muSig)*phi**2 
+								   				+ 32*self.xi - 24*self.m2Sig
+												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+						1.],
+				#EtaPhi
+				'EtaPhi': [lambda phi, T: (1/24)*(3*(3*self.kappa + 4*self.lmb + self.muSig)*phi**2 
+								   				+ 18*self.muSSI - 24*self.m2Sig
+												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+						1.],
+				#EtaChi
+				'EtaChi': [lambda phi, T: (1/24)*(3*(self.kappa + 4*self.lmb - self.muSig)*phi**2 
+								   				+ 18*self.muSSI - 24*self.m2Sig
+												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+						1.]
+			}
+
+
 		else:
-			self.mSq = {
-				#Phi Mass	
-				'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + 3*(self.lmb/2 + self.kappa/6) * phi**2,
-						1.],
-				#Eta Prime Mass
-				'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig + (self.lmb/2 + self.kappa/6) * phi**2,
-						1.],
-				#X Mass
-				'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + (self.lmb/2 + 3*self.kappa/6) * phi**2,
-						8.],
-				#Pi Mass
-				'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi + (self.lmb/2 + self.kappa/6) * phi**2,
-						8.]
-						}
+			raise NotImplemented("My hovercraft is full of eels")
+			
 		
 	def V(self,phi): #Comment which equation numbers!!!
 		##The tree level, zero temperature potential.
