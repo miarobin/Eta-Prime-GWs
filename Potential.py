@@ -19,7 +19,7 @@ class NotImplemented(Exception):
 
 class Potential:
 
-	def __init__(self, lmb, kappa, m2Sig, muSig, xi, N, F, muSSI=0, loop=False):
+	def __init__(self, xi, muSig, lmb, kappa, m2Sig, N, F, muSSI=0, loop=False):
 		#All the parameters needed to construct the potential.
 		self.lmb = lmb
 		self.kappa = kappa
@@ -34,32 +34,32 @@ class Potential:
 
 		#The coefficient of the determinant term as it's quite verbose:
 		det_coef = 2*self.N * (self.F/self.N)*(self.F/self.N-1)*(1/np.sqrt(6))**(self.F/self.N)
-		
 		#Field dependent masses for fermions & bosons, their derivative wrt h (twice) and their respective DoF
-		if F==3:
+		if self.F==3:
 			self.mSq = {
 				#Phi Mass	
 				'Phi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig
-							- det_coef * self.muSig * phi**np.ceil([(self.F/self.N - 2),0]) 
-							+ 3*(self.lmb/2 + self.kappa/6) * phi**2,
+							- det_coef * self.muSig * phi**max([abs(self.F/self.N - 2),0]) 
+							+ (1/6)*(3*self.kappa + 9*self.lmb) * phi**2,
 						1.],
 				#Eta Prime Mass
 				'Eta': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig 
-							+ det_coef * self.muSig * phi**np.ceil([(self.F/self.N - 2),0]) 
-							+ (self.lmb/2 + self.kappa/6) * phi**2,
+							+ det_coef * self.muSig * phi**max([abs(self.F/self.N - 2),0]) 
+							+ (1/6)*(3*self.lmb + self.kappa) * phi**2,
 						1.],
 				#X Mass
 				'X': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi 
-		  					+ 0.5 * det_coef * self.muSig * phi**np.ceil([(self.F/self.N - 2),0]) 
-							+ (self.lmb/2 + 3*self.kappa/6) * phi**2,
+		  					+ 0.5 * det_coef * self.muSig * phi**max([abs(self.F/self.N - 2),0]) 
+							+ (1/6)*(3*self.lmb + 3*self.kappa) * phi**2,
 						8.],
 				#Pi Mass
 				'Pi': [lambda phi, T: (5*self.lmb/6 + self.kappa/2) * T**2 - self.m2Sig - 3 * self.xi 
-		   					- 0.5 * det_coef * self.muSig * phi**np.ceil([(self.F/self.N - 2),0]) + (self.lmb/2 + self.kappa/6) * phi**2,
+		   					- 0.5 * det_coef * self.muSig * phi**max([abs(self.F/self.N - 2),0]) 
+							+ (1/6)*(3*self.lmb + self.kappa) * phi**2,
 						8.]
 						}
 
-		elif F==4:
+		elif self.F==4:
 			self.mSq = {
 				#Phi Mass
 				'Phi': [lambda phi, T: (1/24)*((9*self.kappa + 36*self.lmb - 9*self.muSig)*phi**2 
@@ -183,12 +183,10 @@ class Potential:
 		
 		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
 		k = list(takewhile(lambda x: deltaVs_init[x,1]>0, range(len(deltaVs_init[:,0]))))
-		print(deltaVs_init)
+	
 		deltaVs_init=deltaVs_init[k]; T_init = deltaVs_init[-1,0]
 		
 		
-		print(T_init)
-		#T_init = min(deltaVs_init[:,0], key = lambda x: abs(self.deltaV(x)))
 	
 		#Find delta V for a finer scan of temperatures & interpolate between them. 
 		Ts = np.linspace(T_init*0.95,T_init*1.35,num=500); deltaVs = np.array([[T, self.deltaV(T, rstart=scale)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
@@ -210,7 +208,7 @@ class Potential:
 		if guessIn==None:
 			guess = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.85 + min(deltaVs[:,0])
 		else: guess = guessIn
-		print(f'guess = {guess}; min = {min(deltaVs[:,0])}; max = {max(deltaVs[:,0])*1.2}')
+		#print(f'guess = {guess}; min = {min(deltaVs[:,0])}; max = {max(deltaVs[:,0])*1.2}')
 		#Minimise interpolated function (two methods in case one fails)
 		res = optimize.minimize(lambda x: abs(func(x)), guess,bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0])*1.2)])
 		if prnt: print(res)

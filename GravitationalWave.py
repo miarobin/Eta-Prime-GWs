@@ -7,6 +7,7 @@ from scipy import interpolate, optimize
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+import TestCode
 
 #Terminal Colour Escape Sequences
 RESET = "\033[0m"  # Reset all formatting
@@ -91,7 +92,7 @@ def grid(V, tc=None, prnt=False):
 	maxT = tc*0.96
 
 	#Set up for the scan of S3 against T:
-	stepSize = .1; bounds = []; flare = []; guess = None
+	stepSize = .05; bounds = []; flare = []; guess = None
 	#First point to find if we go up or down
 	T1 = maxT; T2 = maxT-stepSize
 	A1=action(V,T1); A2=action(V,T2)
@@ -111,7 +112,7 @@ def grid(V, tc=None, prnt=False):
 	#ASCEND
 	if A1/T1<=140:
 		#A variable stepsize...
-		miniStepSize = (tc-T1)*0.1
+		miniStepSize = (tc-T1)*0.05
 		
 		Aa = A1; Ta = T1
 		Ab = action(V,T1+miniStepSize); Tb = T1+miniStepSize
@@ -156,7 +157,7 @@ def grid(V, tc=None, prnt=False):
 					
 		#Ascending stopping criteria achieved if code exits while loop. Flare around temperature to more accurately calculate gradient.
 		bounds = [(Ta*0.99,Tb*1.01)]; guess = Ta + miniStepSize/2
-		flare = [Tb + (tc - Tb)*adj for adj in [-1.5,-1.1,-0.65,-0.5,-0.2,-0.1,-0.05,0.1,0.05] if Tb + (tc - Tb)*adj < tc] 
+		flare = [Tb + (tc - Tb)*adj for adj in [-3,-2,-1.5,-1.1,-0.65,-0.5,-0.2,-0.1,-0.05,-0.025,-0.01,0.01,0.025,0.05] if Tb + (tc - Tb)*adj < tc] 
 		
 	
 	#DESCEND
@@ -209,7 +210,7 @@ def grid(V, tc=None, prnt=False):
 
 
 		#If we found Tc by descending, we'll want to do flare around descent values
-		flare = [T1 + adj*stepSize for adj in [-0.5,-1.2,-2,-2.5,-3,-4,-6,-10]]
+		flare = [T1 + adj*stepSize for adj in [-0.5,-0.75,-1.,-1.2,-2,-2.5,-3,-4,-6,-10]]
 		if A1/T1>=140 and A2/T2<=140:
 			bounds = [(T2,T1)]; guess = T2 + stepSize/2
 		else:
@@ -250,7 +251,7 @@ def grid(V, tc=None, prnt=False):
 	#plt.plot(np.array(_Ts), np.ones((len(_Ts)))*140)
 	#plt.show()
 
-	interpolator = interpolate.UnivariateSpline(_Ts,np.array(_As)/np.array(_Ts),k=5, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)
+	interpolator = interpolate.UnivariateSpline(_Ts,np.array(_As)/np.array(_Ts),k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)
 
 	if prnt: print(f"Bounds = {bounds}, guess = {guess}")
 	res = 0
@@ -328,7 +329,7 @@ def alpha(V, Tn):
 	
 def gravitationalWave(V):
 	#This method is slow so we only want to run it once, then just pass through the interpolated function to everything else.
-	Tn, grd, message = grid(V,prnt=True)
+	Tn, grd, message = grid(V,prnt=False)
 	
 	#Calculate nucleation temperature
 	if Tn == None:
@@ -339,7 +340,7 @@ def gravitationalWave(V):
 	#Calculate alpha
 	alp = alpha(V, Tn)
 	
-	return(Tn, beta_H, alp)
+	return(Tn, alp, beta_H)
 
 
 def wallVelocity(V, alpha, T):
@@ -366,47 +367,9 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 if __name__ == "__main__":
 	print('hello')
-	#Xi, mu_Sigma, Lambda, Kappa, m_Sigma
-	[-250000., 1000., 0.01, 0.01, 5000.]
-	V0 = Potential.Potential(0.01, 0.01, 5000**2, 1000, -250000, 3, 3)
-	plotV(V0, [45000, 47500, 50000])
-	v0=V0.findminima(0)
-	masses_m = [float(np.sqrt(m2(v0,0))) for m2, n in [V0.mSq['Phi'],V0.mSq['Eta'],V0.mSq['X'],V0.mSq['Pi']]]
-	print(f'Mia: {masses_m}')
-	GW_m = gravitationalWave(V0)
-	print(f'Mia: {GW_m}')
+	test = TestCode.TestPotential()
+	test.test_F3(0)
+	test.test_F3(1)
+	test.test_F3(2)
 
-	#Lambda, Kappa, m^2_Sigma, Mu_Sig, Xi, N
-	'''
-	V1 = Potential.Potential(1, 1, 3000**2, 9000, -250000, 1)
-	
-	v0=V1.findminima(0)
 
-	masses_m = [float(np.sqrt(m2(v0,0))) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X'],V1.mSq['Pi']]]
-	GW_m = gravitationalWave(V1)
-	
-	print('Mass at the zero temperature vev of phi')
-	print('Phi, Eta, X, Pi')
-	print(f'Mia: {masses_m}')
-	print(f'Djuna: {[6708.2, 9000., 8529.36, 866.025]}')
-	print('Gravitational Wave Parameters')
-	print('Tn, beta/H, alpha')
-	print(f'Mia: {GW_m}')
-	print(f'Djuna: {[5452.63, 15762.3, 0.00249046]}')
-	
-	
-	V2 = Potential.Potential(1.2, 1, 831.363**2, 1000, -490000., 1)
-	
-	v0=V2.findminima(0)
-	masses_m = [float(np.sqrt(m2(v0,0))) for m2, n in [V2.mSq['Phi'],V2.mSq['Eta'],V2.mSq['X'],V2.mSq['Pi']]]
-	GW_m = gravitationalWave(V2)
-	plotV(V2, [0, 1000, 2000])
-	
-	print('Mass at the zero temperature vev of phi')
-	print('Phi, Eta, X, Pi')
-	print(f'Mia: {masses_m}')
-	print(f'Djuna: {[1376.08, 1238.47, 1736.47, 1212.44]}')
-	print('Gravitational Wave Parameters')
-	print('Tn, beta/H, alpha')
-	print(f'Mia: {GW_m}')
-	print(f'Djuna: {[1272.54, 154926., 0.000441171]}')'''
