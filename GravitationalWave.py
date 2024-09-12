@@ -368,8 +368,13 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 if __name__ == "__main__":
 	print('hello')
 	test = TestCode.TestPotential()
+	'''
 	test.test_F3(0)
 	test.test_F3(1)
 	test.test_F3(2)
-
+	'''
+	
+	#test.test_F4(0)
+	test.test_F4(2)
+	#test.test_F4(2)
 

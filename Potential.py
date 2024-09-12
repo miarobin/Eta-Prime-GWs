@@ -69,30 +69,30 @@ class Potential:
 				#Eta Prime Mass
 				'Eta': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb + 3*self.muSig)*phi**2 
 								   				+ 2*self.muSSI - 8*self.m2Sig
-												+ (2/3)*T**2 * (8*self.kappa + 17*self.lmb)),
+												+ (8/12)*T**2 * (8*self.kappa + 17*self.lmb)),
 						1.],
 				#X8 Mass
 				'X8': [lambda phi, T: (1/8)*((3*self.kappa + 4*self.lmb + self.muSig)*phi**2 
-								   				- 24*self.xi - 8*self.m2Sig
-												+ (2/3)*T**2 * (8*self.kappa + 17*self.lmb)),
-						1.],
+								   				- 3*self.xi - 8*self.m2Sig
+												+ (8/12)*T**2 * (8*self.kappa + 17*self.lmb)),
+						8.],
 				#X3 Mass
 				'X3': [lambda phi, T: (1/24)*((9*self.kappa + 12*self.lmb + 3*self.muSig)*phi**2 
-								   				- 24*self.muSSI - 24*self.m2Sig
+								   				- 32*self.xi - 24*self.m2Sig
 												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
-						1.],
+						3.],
 				#Pi8 Mass
 				'Pi8': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb - self.muSig)*phi**2 
 								   				- 24*self.xi - 8*self.m2Sig
-												+ (2/3)*T**2 * (8*self.kappa + 17*self.lmb)),
-						1.],
+												+ (8/12)*T**2 * (8*self.kappa + 17*self.lmb)),
+						8.],
 				#Pi3 Mass
 				'Pi3': [lambda phi, T: (1/24)*((3*self.kappa + 12*self.lmb - 3*self.muSig)*phi**2 
-								   				+ 32*self.xi - 24*self.m2Sig
+								   				- 32*self.xi - 24*self.m2Sig
 												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
-						1.],
-				#EtaPhi
-				'EtaPhi': [lambda phi, T: (1/24)*(3*(3*self.kappa + 4*self.lmb + self.muSig)*phi**2 
+						3.],
+				#EtaPsi
+				'EtaPsi': [lambda phi, T: (1/24)*(3*(3*self.kappa + 4*self.lmb + self.muSig)*phi**2 
 								   				+ 18*self.muSSI - 24*self.m2Sig
 												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
 						1.],
@@ -105,22 +105,38 @@ class Potential:
 
 
 		else:
-			raise NotImplemented("My hovercraft is full of eels")
+			raise NotImplemented(f"F={self.F} not implemented yet in mSq")
 			
 		
 	def V(self,phi): #Comment which equation numbers!!!
 		##The tree level, zero temperature potential.
 		phi = np.array(phi)
-		return -(0.5*self.m2Sig) * phi**2 - self.muSig/(3*np.sqrt(6)) * phi**3 + 0.25 * (self.lmb/2 + self.kappa/6) * phi**4
-    
+		if self.F == 3:
+			return -(0.5*self.m2Sig) * phi**2 - self.muSig/(3*np.sqrt(6)) * phi**3 + 0.25 * (self.lmb/2 + self.kappa/6) * phi**4
+		elif self.F == 4:
+			return -(0.5*self.m2Sig) * phi**2 + (-self.muSig/32 + self.lmb/8 + self.kappa/32) * phi**4
+		
+		else:
+			raise NotImplemented(f"F={self.F} not implemented yet in V tree")
+
+
 	def V1T(self,phi,T):
 		phi = np.array(phi)
 		if T==0:
 			return np.zeros(phi.shape)
 		
-		return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
+		if self.F == 3:
+			return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],
+																		  			self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
+		elif self.F == 4:
+			return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],
+																		  			self.mSq['X8'],self.mSq['X3'],
+																					self.mSq['Pi8'],self.mSq['Pi3'],
+																					self.mSq['EtaPsi'],self.mSq['EtaChi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
 
-
+		else:
+			raise NotImplemented(f"F={self.F} not implemented yet in V1T")
+		
 	def V1_cutoff(self, h):
 		# One loop corrections to effective potential in cut-off regularisation scheme.
 		#MAY NOT NEED THESE YET!
