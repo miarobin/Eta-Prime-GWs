@@ -64,7 +64,7 @@ def action(V,T,prnt=False):
 #Plots the potential as a function of temperature
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-500,10000,num=100),V.Vtot(np.linspace(-500,10000,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+		plt.plot(np.linspace(-500,1000,num=100),V.Vtot(np.linspace(-500,10000,num=100),T)-V.Vtot(0,T),label=f"T={T}")
 	plt.legend()
 	plt.show()
 	
@@ -375,6 +375,9 @@ if __name__ == "__main__":
 	'''
 	
 	#test.test_F4(0)
-	test.test_F4(2)
 	#test.test_F4(2)
+	#test.test_F4(2)
+	
+	#test.testN_F4(0, 2)
+	test.testSymmRestoration(0,3)
 

@@ -47,10 +47,10 @@ def S3T(V,*T):
 	
 	return (Tn, GravitationalWave.alpha(V,Tn), GravitationalWave.beta_over_H(V,Tn,grd), GravitationalWave.wallVelocity(V,GravitationalWave.alpha(V,Tn), Tn), message)
 
-
-def populate(lmb, kappa, m2Sig, muSig, xi, N, F):
+def populate(xi, muSig, lmb, kappa, m2Sig, N, F):
 	#Lambda, Kappa, m^2_Sigma, Mu_Sig, Xi.
-	V = Potential.Potential(lmb, kappa, m2Sig, muSig, xi, N, F)
+	V = Potential.Potential(xi, muSig, lmb, kappa, m2Sig, N, F)
+	GravitationalWave.plotV(V,[0,10,50,100])
 
 	Tn, grd, message = GravitationalWave.grid(V)
 	
@@ -62,7 +62,7 @@ def populate(lmb, kappa, m2Sig, muSig, xi, N, F):
 		return (0, 0, 0, 0, message)
 	
 
-def plotDifference(data, results_1, results_3):
+def plotDifference(data, results, Ns):
 	#So you can see exactly where the points have moved to
 	markers = [".","o","v","^","<",">","1","2","3","4","8","s","p","P","*","h","H","+","x","D","d","|","-"]
 	
@@ -73,18 +73,20 @@ def plotDifference(data, results_1, results_3):
 		x = 4*point[4]**2*(point[3]+3*point[2])/(point[1]*(point[1] + np.sqrt(point[1]**2 + 4*point[4]**2*(point[3] + 3*point[2]))))
 		ratio = np.sqrt(3)*np.sqrt(1/(x+1))
 		ratios.append(ratio)
-	print(results_1)
-	print(results_3)
+
 	
 	colormap = plt.cm.plasma #or any other colormap
 	normalize = matplotlib.colors.Normalize(vmin=min(ratios), vmax=max(ratios))
 	for i in range(len(data)):
-		plt.scatter(results_1[i,2], results_1[i,1], c = ratios[i], alpha=0.5, marker=markers[i], cmap=colormap, norm=normalize)
-		plt.scatter(results_3[i,2], results_3[i,1], c = ratios[i], marker = markers[i], cmap=colormap, norm=normalize)
+		for N in Ns:
+			plt.scatter(results[N,i,2], results[N,i,1], c = ratios[i], alpha=1/N, marker=markers[i], cmap=colormap, norm=normalize)
+
 
 	plt.xscale("log")
 	plt.yscale("log")
 	plt.colorbar()
+	plt.xlabel(f'beta/H')
+	plt.ylabel(f'alpha')
 	plt.show()
 
 	
@@ -93,7 +95,7 @@ if __name__ == "__main__":
 	
 
 #Xi, mu_Sigma, Lambda, Kappa, m_Sigma
-	data = np.array([
+	dataF3 = np.array([
  [-250000., 100., 0.01, 0.01, 800.],
  [-250000., 100., 0.01, 0.01, 500.],
  [-250000., 1000., 0.01, 0.01, 5000.],
@@ -146,19 +148,82 @@ if __name__ == "__main__":
  [-250000., 9000., 0.1, 1., 10.]
 	])
 	
-	data = data[:20]
+	dataF3 = dataF3[:20]
+	
+	dataF4 = np.array(
+	[[1., 0.0159439, 1., 279.801],
+ [0.1832, 0.0400589, 0.0340461, 184.187],
+ [0.0782609, 0.0152908, 0.0264089, 406.113],
+ [0.40943, 0.145084, 0.0147786, 1822.93],
+ [7.11314, 1.29084, 3.11112, 2500.31],
+ [4.80576, 0.482538, 3.21777, 781.017],
+ [2., 0.308642, 2., 481.431],
+ [1., 0.288504, 0.4, 2117.03],
+ [0.5, 0.12716, 0.3, 2788.96],
+ [1., 0.059453, 1., 547.209],
+ [3., 0.333554, 2.8, 549.451],
+ [0.5, 0.0784602, 0.3, 2000.],
+ [2., 0.252551, 1.5, 614.103],
+ [3., 0.408554, 2.5, 480.177],
+ [1., 0.279321, 0.5, 719.534],
+ [0.0716646, 0.0134228, 0.0206629, 586.858],
+ [0.5, 0.090625, 0.2, 1000.],
+ [1., 0.094518, 1., 1503.06],
+ [0.7, 0.0634564, 0.5, 497.923],
+ [3., 0.0877929, 2.8, 648.089],
+ [1., 0.146701, 0.5, 447.919],
+ [0.5, 0.0794444, 0.2, 1354.35],
+ [1., 0.08, 1., 2032.78],
+ [0.566423, 0.139436, 0.0522319, 2460.73],
+ [4., 0.195313, 4., 404.754],
+ [7.40275, 1.78942, 0.887677, 2331.09],
+ [0.916804, 0.0513227, 0.81068, 1409.14],
+ [1., 0.0635802, 0.9, 604.448],
+ [1.8, 0.262327, 1., 1531.72],
+ [0.7, 0.067284, 0.5, 433.415],
+ [0.886234, 0.152521, 0.322259, 604.578],
+ [0.873178, 0.182685, 0.167786, 681.383],
+ [0.448218, 0.100183, 0.0611488, 138.485],
+ [4., 0.059453, 4., 1511.87],
+ [1., 0.0236295, 1., 1481.69],
+ [0.8, 0.193036, 0.05, 800.],
+ [6.96888, 1.62827, 0.627876, 2554.57],
+ [0.5, 0.00510204, 0.5, 1000.],
+ [4., 0.034626, 4., 1778.36],
+ [1., 0.0171468, 1., 1860.15],
+ [1., 0.0388889, 0.9, 685.706],
+ [1.54993, 0.235733, 0.672107, 1615.88],
+ [0.374256, 0.0495923, 0.185553, 1616.35],
+ [1., 0.0111383, 1., 1193.82],
+ [0.5, 0.0294444, 0.4, 391.322],
+ [1., 0.0118343, 1., 1207.9],
+ [1., 0.0118343, 1., 1207.9],
+ [1.05, 0.0187027, 1., 268.541],
+ [3., 0.0193698, 3., 719.424],
+ [1., 0.00617284, 1., 295.559]])
+	
 
-	#Changing the power of the breaking term (1 is from Rachel's paper, 1/N is from Csaba's paper)
-	results_1 = np.array([populate(row[2], row[3], row[4]**2, row[1], row[0], N=1, F=3) for row in data])
-	results_3 = np.array([populate(row[2], row[3], row[4]**2, row[1], row[0], N=3, F=3) for row in data])
+	dataF4 = dataF4[:3]
+	
 
-	column_titles = ['Lambda', 'Kappa', 'm^2_Sigma', 'mu_Sigma', 'xi', 'Tn', 'Alpha', 'Beta']
-	# File path to save the CSV
-	file_path = f'Test_NF3_ASBPower_1.csv'
-	save_arrays_to_csv(file_path, column_titles, data[:,0], data[:,1], data[:,2], data[:,3], results_1[:,0], results_1[:,1], results_1[:,2])
-	# File path to save the CSV
-	file_path = f'Test_NF3_ASBPower_3.csv'
-	save_arrays_to_csv(file_path, column_titles, data[:,0], data[:,1], data[:,2], data[:,3], results_3[:,0], results_3[:,1], results_3[:,2])
 
-	plotDifference(data, results_1, results_3)
+	F = 4
+
+	Ns = [1, 2]
+	results = []
+	
+	for N in Ns:
+		#Changing the power of the breaking term (1 is from Rachel's paper, 1/N is from Csaba's paper)
+		#, xi, muSig, lmb, kappa, m2Sig, N, F, muSSI=0
+		results_N = np.array([populate(0, row[0],row[1],row[2],row[3]**2, N=N, F=F) for row in dataF4])
+		results.append(results_N)
+
+		column_titles = ['mu_Sigma', 'Lambda', 'Kappa', 'm^2_Sigma', 'Tn', 'Alpha', 'Beta']
+		# File path to save the CSV
+		file_path = f'Test_N{N}F{F}_ASBPower.csv'
+		save_arrays_to_csv(file_path, column_titles, dataF4[:,0], dataF4[:,1], dataF4[:,2], dataF4[:,3], results[:,0], results[:,1], results[:,2])
+
+	plotDifference(dataF4, results)
+	
+
 

@@ -60,48 +60,74 @@ class Potential:
 						}
 
 		elif self.F==4:
-			self.mSq = {
-				#Phi Mass
-				'Phi': [lambda phi, T: (1/24)*((9*self.kappa + 36*self.lmb - 9*self.muSig)*phi**2 
-								   				+ 6*self.muSSI - 24*self.m2Sig
-												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
-						1.],
-				#Eta Prime Mass
-				'Eta': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb + 3*self.muSig)*phi**2 
-								   				+ 2*self.muSSI - 8*self.m2Sig
-												+ (8/12)*T**2 * (8*self.kappa + 17*self.lmb)),
-						1.],
-				#X8 Mass
-				'X8': [lambda phi, T: (1/8)*((3*self.kappa + 4*self.lmb + self.muSig)*phi**2 
-								   				- 3*self.xi - 8*self.m2Sig
-												+ (8/12)*T**2 * (8*self.kappa + 17*self.lmb)),
-						8.],
-				#X3 Mass
-				'X3': [lambda phi, T: (1/24)*((9*self.kappa + 12*self.lmb + 3*self.muSig)*phi**2 
-								   				- 32*self.xi - 24*self.m2Sig
-												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
-						3.],
-				#Pi8 Mass
-				'Pi8': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb - self.muSig)*phi**2 
-								   				- 24*self.xi - 8*self.m2Sig
-												+ (8/12)*T**2 * (8*self.kappa + 17*self.lmb)),
-						8.],
-				#Pi3 Mass
-				'Pi3': [lambda phi, T: (1/24)*((3*self.kappa + 12*self.lmb - 3*self.muSig)*phi**2 
-								   				- 32*self.xi - 24*self.m2Sig
-												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
-						3.],
-				#EtaPsi
-				'EtaPsi': [lambda phi, T: (1/24)*(3*(3*self.kappa + 4*self.lmb + self.muSig)*phi**2 
-								   				+ 18*self.muSSI - 24*self.m2Sig
-												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
-						1.],
-				#EtaChi
-				'EtaChi': [lambda phi, T: (1/24)*(3*(self.kappa + 4*self.lmb - self.muSig)*phi**2 
-								   				+ 18*self.muSSI - 24*self.m2Sig
-												+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
-						1.]
-			}
+			#When N==1:
+			if N==1:
+				self.mSq = {
+					#Phi Mass
+					'Phi': [lambda phi, T: (1/24)*((9*self.kappa + 36*self.lmb - 9*self.muSig)*phi**2 
+													+ 6*self.muSSI - 24*self.m2Sig
+													+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+							1.],
+					#Eta Prime Mass
+					'Eta': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb + 3*self.muSig)*phi**2 
+													+ 2*self.muSSI - 8*self.m2Sig
+													+ (8/12)*T**2 * (8*self.kappa + 17*self.lmb)),
+							1.],
+					#X8 Mass
+					'X8': [lambda phi, T: (1/8)*((3*self.kappa + 4*self.lmb + self.muSig)*phi**2 
+													- 3*self.xi - 8*self.m2Sig
+													+ (8/12)*T**2 * (8*self.kappa + 17*self.lmb)),
+							8.],
+					#X3 Mass
+					'X3': [lambda phi, T: (1/24)*((9*self.kappa + 12*self.lmb + 3*self.muSig)*phi**2 
+													- 32*self.xi - 24*self.m2Sig
+													+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+							3.],
+					#Pi8 Mass
+					'Pi8': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb - self.muSig)*phi**2 
+													- 24*self.xi - 8*self.m2Sig
+													+ (8/12)*T**2 * (8*self.kappa + 17*self.lmb)),
+							8.],
+					#Pi3 Mass
+					'Pi3': [lambda phi, T: (1/24)*((3*self.kappa + 12*self.lmb - 3*self.muSig)*phi**2 
+													- 32*self.xi - 24*self.m2Sig
+													+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+							3.],
+					#EtaPsi
+					'EtaPsi': [lambda phi, T: (1/24)*(3*(3*self.kappa + 4*self.lmb + self.muSig)*phi**2 
+													+ 18*self.muSSI - 24*self.m2Sig
+													+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+							1.],
+					#EtaChi
+					'EtaChi': [lambda phi, T: (1/24)*(3*(self.kappa + 4*self.lmb - self.muSig)*phi**2 
+													+ 18*self.muSSI - 24*self.m2Sig
+													+ 2*T**2 * (8*self.kappa + 17*self.lmb)),
+							1.]
+				}
+			#Generic N, muSSI=!0:
+			else:
+				self.mSq = {
+					#Phi Mass
+					'Phi': [lambda phi, T: (3/8)*((self.kappa + 4*self.lmb)*phi**2) - self.m2Sig 
+													+ (self.muSig/self.N**2) * 8**((-2+self.N)/self.N) * (-4+self.N) * phi**(4/self.N-2)
+													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
+							1.],
+					#Eta Prime Mass
+					'Eta': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb)*phi**2 - 8*self.m2Sig)
+													- (self.muSig/self.N**2) * (8**((-2+self.N)/self.N) * (self.N-4) * phi**(4/self.N-2)
+													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb)),
+							1.],
+					#X15 Mass
+					'X15': [lambda phi, T: (1/8)*((3*self.kappa + 4*self.lmb)*phi**2 - 8*self.m2Sig
+													+ (self.muSig/self.N) * (8**((-2 + self.N)/self.N) * phi**(4/self.N-2))
+													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb)),
+							15.],
+					#Pi15 Mass
+					'Pi15': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb)*phi**2 - 8*self.m2Sig
+													- (self.muSig/self.N) * (8**(2-2/self.N) * phi**(4/self.N-2)))
+													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
+							15.],
+				}
 
 
 		else:
@@ -128,11 +154,14 @@ class Potential:
 		if self.F == 3:
 			return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],
 																		  			self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
-		elif self.F == 4:
+		elif self.F == 4 and self.N==1:
 			return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],
 																		  			self.mSq['X8'],self.mSq['X3'],
 																					self.mSq['Pi8'],self.mSq['Pi3'],
 																					self.mSq['EtaPsi'],self.mSq['EtaChi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
+		elif self.F == 4:
+			return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],
+																		  			self.mSq['X15'],self.mSq['X15']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
 
 		else:
 			raise NotImplemented(f"F={self.F} not implemented yet in V1T")
@@ -161,8 +190,13 @@ class Potential:
 		#Uses finite difference method to fourth order. Takes scalar h and T.
 		return (self.dVdT(phi,T-2*eps) - 8*self.dVdT(phi,T-eps) + 8*self.dVdT(phi,T+eps) - self.dVdT(phi,T+2*eps)) / (12.*eps)
 
-	def findminima(self,T,rstart=20000,rcounter=1, tolerance=None):
+
+	def fSigmaApprox(self):
+		return 2*(2*self.m2Sig)**0.5 / (self.kappa + 4*self.lmb - self.muSig)**0.5
+	def findminima(self,T,rstart=None,rcounter=1, tolerance=None):
 		#For a linear sigma model. Returns the minimum away from the origin.
+		if rstart == None:
+			rstart = self.fSigmaApprox()
 		#Roll down to rhs minimum:
 		rhs = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',tol=tolerance).x[0]
 		#Check the two rolls didn't find the same minimum:
@@ -186,6 +220,8 @@ class Potential:
 				return 1e30
 			else:
 				return None
+			
+
 
 
 	def	criticalT(self, guessIn=None,prnt=True):
@@ -195,8 +231,8 @@ class Potential:
 		scale = self.findminima(0)
 
 		#First a quick scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-		Ts_init = np.linspace(500,60000,num=500); deltaVs_init = np.array([[T, self.deltaV(T, rstart=scale)] for T in Ts_init if self.deltaV(T,rstart=scale) is not None])
-		
+		Ts_init = np.linspace(50,1000,num=500); deltaVs_init = np.array([[T, self.deltaV(T, rstart=scale)] for T in Ts_init if self.deltaV(T,rstart=scale) is not None])
+	
 		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
 		k = list(takewhile(lambda x: deltaVs_init[x,1]>0, range(len(deltaVs_init[:,0]))))
 	

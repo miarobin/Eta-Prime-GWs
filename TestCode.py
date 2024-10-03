@@ -42,9 +42,27 @@ GW_params_F4 = [[2125.2, 0.00114566, 86553.3],
                 [2238.37, 0.0872054, 1803.78],
                 [1251.95, 0.000408117, 62409.1]]
 
+#xi, muSig, lmb, kappa, m2Sig, N, F
+input_F4N = [[1, 1, 1, (500)**2],
+                        [0.1, 1, 1, (1000)**2],
+                        [0.1, 0.1, 0.1, (400)**2],
+                        [0.1, 0.5, 0.5, (900)**2]]
+
+effective_mass_F4N = {2 : [
+ [687500., 62500.5, 187501.],
+ [2.06122E6, 20408.2, 428571.],
+ [440000., 40000.1, 120000.],
+ [3.24E6, 540001., 1.08E6]
+],
+                        10 : [
+[687500., 62500., 187500.],
+ [2.06122E6, 20408.2, 428571.],
+ [440000., 40000., 120000.],
+ [3.24E6, 540000., 1.08E6]]
+}
+
 class TestPotential(unittest.TestCase):
     
-
 
     def test_F3(self, index):
         print(f"--- F = 3 Test {index} ---")
@@ -91,7 +109,6 @@ class TestPotential(unittest.TestCase):
         #Xi, muSig, lmb, kappa, m2Sig, muSSI, N, F
         V1 = Potential.Potential(*(input_F4[index][:-1]),1,4,muSSI = input_F4[index][-1])
         fSig1=V1.findminima(0)
-        print(fSig1)
         
         masses_got = [float(np.sqrt(m2(fSig1,0))) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X8'],V1.mSq['Pi8'],V1.mSq['X3'],V1.mSq['Pi3'],V1.mSq['EtaPsi'], V1.mSq['EtaChi']]]
         GW_got = GravitationalWave.gravitationalWave(V1)
@@ -124,7 +141,46 @@ class TestPotential(unittest.TestCase):
             print(ORANGE + f"--- Test {index} Passed with Accuracy Concerns ---" + RESET)
 
 
+    def testN_F4(self, index, N):
+        #To test against the Mathematica code generating effective masses for generic N.
+        print(f"--- F = 4 N = {N} Test {index} ---")
+        #Xi, muSig, lmb, kappa, m2Sig, muSSI, N, F
+        V1 = Potential.Potential(0,*(input_F4N[index]),N,4)
+        
+        def fSig1func(muSig, lmb, kappa, m2Sig):
+            return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
+            
+        fSig1=fSig1func(*input_F4N[index])
+        
+        masses_got = [float(np.sqrt(m2(fSig1,0))) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X15']]]
+        
+        #Phi, Eta, X, Pi
+        masses_expected = np.power(effective_mass_F4N[N][index],0.5)
+        #Effective Masses:
+        errMass = (np.array(masses_got) - np.array(masses_expected))/np.array(masses_expected)
+        np.testing.assert_allclose(masses_got, masses_expected, rtol=0.25, err_msg=RED + f"Error in effective masses index {index}" + RESET)
+        if not all([em<.1 for em in errMass]): print(CYAN + f"Maximum of {round(max(errMass)*100,2)}% difference in effective masses for test {index}" + RESET)     
+        else: print(GREEN + f"All tests cleared with less than 1% difference in effective masses for test {index}" + RESET)  
 
+
+    def testSymmRestoration(self, index, F):
+        print(f"--- F = {F} Symmetry Restoration Test {index} ---")
+        #Xi, muSig, lmb, kappa, m2Sig, muSSI, N, F
+        if F==4:
+            V1 = Potential.Potential(*(input_F4[index][:-1]),1,4,muSSI = input_F4[index][-1])
+            fSig0=0
+            masses_got = [float(np.sqrt(m2(fSig0,0))) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X8'],V1.mSq['Pi8'],V1.mSq['X3'],V1.mSq['Pi3'],V1.mSq['EtaPsi'], V1.mSq['EtaChi']]]
+        if F==3:
+            V1 = Potential.Potential(*(input_F3[index]),1,3)
+            fSig0=0
+            masses_got = [float(np.sqrt(m2(fSig0,0))) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X'],V1.mSq['Pi']]]
+            
+        #Effective Masses:
+        relErrMass = (np.array(masses_got) - 0)
+        np.testing.assert_allclose(masses_got, 0, rtol=0.25, err_msg=RED + f"Error in effective masses index {index}" + RESET)
+        if not all([em<.1 for em in relErrMass]): print(CYAN + f"Maximum of {round(max(relErrMass),2)} relative difference in effective masses for test {index}" + RESET)     
+
+        
 
 if __name__ == '__main__':
     unittest.main()
