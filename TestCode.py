@@ -44,22 +44,23 @@ GW_params_F4 = [[2125.2, 0.00114566, 86553.3],
 
 #xi, muSig, lmb, kappa, m2Sig, N, F
 input_F4N = [[1, 1, 1, (500)**2],
-                        [0.1, 1, 1, (1000)**2],
-                        [0.1, 0.1, 0.1, (400)**2],
-                        [0.1, 0.5, 0.5, (900)**2]]
+                        [10, 1, 1, (1000)**2],
+                        [15, 0.1, 0.1, (400)**2],
+                        [1, 2, 0.5, (900)**2]]
 
 effective_mass_F4N = {2 : [
- [687500., 62500.5, 187501.],
- [2.06122E6, 20408.2, 428571.],
- [440000., 40000.1, 120000.],
- [3.24E6, 540001., 1.08E6]
-],
+[687500., 62500.5, 187501., 62499.5],
+ [-4.E6, -2.00001E6, -2.40001E6, -2.E6],
+ [-176544., -165525., -167732., -165510.],
+ [1.944E6, 108001., 216001., 108000.]],
                         10 : [
-[687500., 62500., 187500.],
- [2.06122E6, 20408.2, 428571.],
- [440000., 40000., 120000.],
- [3.24E6, 540000., 1.08E6]]
+[687500., 62500., 187500., 62500.],
+ [-4.E6, -2.E6, -2.4E6, -2.E6],
+ [-176552., -165517., -167724., -165517.],
+ [1.944E6, 108000., 216000., 108000.]]
 }
+
+def fSig1_function(muSig, lmb, kappa, m2Sig): return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
 
 class TestPotential(unittest.TestCase):
     
@@ -140,6 +141,7 @@ class TestPotential(unittest.TestCase):
         else:
             print(ORANGE + f"--- Test {index} Passed with Accuracy Concerns ---" + RESET)
 
+            
 
     def testN_F4(self, index, N):
         #To test against the Mathematica code generating effective masses for generic N.
@@ -147,15 +149,12 @@ class TestPotential(unittest.TestCase):
         #Xi, muSig, lmb, kappa, m2Sig, muSSI, N, F
         V1 = Potential.Potential(0,*(input_F4N[index]),N,4)
         
-        def fSig1func(muSig, lmb, kappa, m2Sig):
-            return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
-            
-        fSig1=fSig1func(*input_F4N[index])
+        fSig1=fSig1_function(*input_F4N[index])
         
-        masses_got = [float(np.sqrt(m2(fSig1,0))) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X15']]]
+        masses_got = [(m2(fSig1,0)) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X8'],V1.mSq['Pi8']]]
         
         #Phi, Eta, X, Pi
-        masses_expected = np.power(effective_mass_F4N[N][index],0.5)
+        masses_expected = effective_mass_F4N[N][index]
         #Effective Masses:
         errMass = (np.array(masses_got) - np.array(masses_expected))/np.array(masses_expected)
         np.testing.assert_allclose(masses_got, masses_expected, rtol=0.25, err_msg=RED + f"Error in effective masses index {index}" + RESET)
@@ -166,20 +165,21 @@ class TestPotential(unittest.TestCase):
     def testSymmRestoration(self, index, F):
         print(f"--- F = {F} Symmetry Restoration Test {index} ---")
         #Xi, muSig, lmb, kappa, m2Sig, muSSI, N, F
+
         if F==4:
-            V1 = Potential.Potential(*(input_F4[index][:-1]),1,4,muSSI = input_F4[index][-1])
+            V1 = Potential.Potential(0,*(input_F4[index][1:-1]),1,4,muSSI = 0)
             fSig0=0
-            masses_got = [float(np.sqrt(m2(fSig0,0))) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X8'],V1.mSq['Pi8'],V1.mSq['X3'],V1.mSq['Pi3'],V1.mSq['EtaPsi'], V1.mSq['EtaChi']]]
+            masses_got = [float((m2(fSig0,0))+input_F4[index][4]) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X8'],V1.mSq['Pi8'],V1.mSq['X3'],V1.mSq['Pi3'],V1.mSq['EtaPsi'], V1.mSq['EtaChi']]]
         if F==3:
-            V1 = Potential.Potential(*(input_F3[index]),1,3)
+            V1 = Potential.Potential(0,*(input_F3[index][1:]),1,3)
             fSig0=0
-            masses_got = [float(np.sqrt(m2(fSig0,0))) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X'],V1.mSq['Pi']]]
+            masses_got = [float((m2(fSig0,0))+input_F3[index][4]) for m2, n in [V1.mSq['Phi'],V1.mSq['Eta'],V1.mSq['X'],V1.mSq['Pi']]]
             
         #Effective Masses:
-        relErrMass = (np.array(masses_got) - 0)
+        relErrMass = (np.array(masses_got))
         np.testing.assert_allclose(masses_got, 0, rtol=0.25, err_msg=RED + f"Error in effective masses index {index}" + RESET)
         if not all([em<.1 for em in relErrMass]): print(CYAN + f"Maximum of {round(max(relErrMass),2)} relative difference in effective masses for test {index}" + RESET)     
-
+        else: print(GREEN + f"All tests cleared for test {index}" + RESET)  
         
 
 if __name__ == '__main__':

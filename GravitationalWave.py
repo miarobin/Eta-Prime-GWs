@@ -39,11 +39,10 @@ def action(V,T,prnt=False):
 		
 		#Find the action & return it.
 		action = Instanton.findAction(Profile)
-		if action<0: 
-			if prnt: print("Negative Action")
+		if action < 0 and prnt:
+			print('negative action')
 			return None
-		else: 
-			return action
+		return action
 		
 	
 	#Sometimes CosmoTransitions throws these errors (not entirely sure why). Might be worth investigating these later. For now, just returning None.
@@ -64,7 +63,7 @@ def action(V,T,prnt=False):
 #Plots the potential as a function of temperature
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-500,1000,num=100),V.Vtot(np.linspace(-500,10000,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+		plt.plot(np.linspace(-5,V.fSigmaApprox()*1.25,num=100),V.Vtot(np.linspace(-5,V.fSigmaApprox()*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
 	plt.legend()
 	plt.show()
 	
@@ -80,8 +79,7 @@ def plotAs(As, Ts):
 
 #Finds an interpolated function of 3D Action/T as a function of T, and Tn if it exists.
 	#NOTE Print just shows you all of the individual broken points in detail so it can be manually fixed.
-def grid(V, tc=None, prnt=False):
-
+def grid(V, tc=None, prnt=True, plot=False):
 	#Range of T's to consider.
 	if tc==None:
 		tc = V.criticalT(prnt=prnt)
@@ -89,10 +87,10 @@ def grid(V, tc=None, prnt=False):
 		if tc == None:
 			return None, None, 1
 
-	maxT = tc*0.96
+	maxT = tc-1.5
 
 	#Set up for the scan of S3 against T:
-	stepSize = .05; bounds = []; flare = []; guess = None
+	stepSize = .2; bounds = []; flare = []; guess = None
 	#First point to find if we go up or down
 	T1 = maxT; T2 = maxT-stepSize
 	A1=action(V,T1); A2=action(V,T2)
@@ -133,7 +131,7 @@ def grid(V, tc=None, prnt=False):
 			if prnt: print(f"Aa = {Aa}, Ab = {Ab}, Ta = {Ta}, Tb = {Tb}")
 			if Ab is None:
 				#Investigate individual point.
-				if prnt: 
+				if plot: 
 					plotV(V, Ts+[Tb,tc])
 					print(f"tc = {tc}")
 					plotAs(As, Ts)
@@ -148,7 +146,7 @@ def grid(V, tc=None, prnt=False):
 					return None, None, 4
 			elif Ab<Aa:
 				#Difference in minima might be too small.
-				if prnt: 
+				if plot: 
 					plotV(V, Ts+[Tb,0,400])
 					plotAs(As+[Ab],Ts+[Tb])
 				return None,None, 5 
@@ -169,12 +167,18 @@ def grid(V, tc=None, prnt=False):
 			T1 = (140-c)/m; T2=T1-stepSize
 			
 			if T1<10 or T2<10: #Basically no way there's a PT now.
-				if prnt: plotAs(As,Ts)
+				if plot: 
+					print(f'T1 = {T1}, T2 = {T2}')
+					plotAs(As,Ts)
 				return None, None,6
 			
 			A1=action(V,T1,prnt=prnt)
 			A2=action(V,T2,prnt=prnt)
 			
+			'''if A1<0 or A2<0:
+				T1 = ((As[-1]/Ts[-1]+140)/2 - c)/m; T2=T1-stepSize
+				A1=action(V,T1,prnt=prnt)
+				A2=action(V,T2,prnt=prnt)'''
 			if prnt: print(f"A1 = {A1}, A2 = {A2}, T1 = {T1}, T2 = {T2}")
 
 		
@@ -202,7 +206,7 @@ def grid(V, tc=None, prnt=False):
 			if (A1/T1) < (A2/T2) and A1/T1>=140:	
 				#We have passed the minima of the S3/T at this point and not reached S3/T=140 so return none found
 
-				if prnt: 
+				if plot: 
 					print(f"A1/T1 = {(A1/T1)}, A2/T2 = {(A2/T2)}")
 					plotAs(As + [A1,A2],Ts + [T1,T2])
 				return None, None, 0
@@ -233,7 +237,8 @@ def grid(V, tc=None, prnt=False):
 	As = As + [action(V,t) for t in flare]
 	
 	if not all(item is not None for item in As):
-		if prnt:
+		if plot:
+			
 			plotAs([As[i] for i in range(len(Ts)) if As[i] is not None], [Ts[i] for i in range(len(Ts)) if As[i] is not None])
 			length = len(Ts)
 			Ts = [Ts[i] for i in range(length) if As[i] is not None]; As = [As[i] for i in range(length) if As[i] is not None]
@@ -378,6 +383,25 @@ if __name__ == "__main__":
 	#test.test_F4(2)
 	#test.test_F4(2)
 	
-	#test.testN_F4(0, 2)
-	test.testSymmRestoration(0,3)
+	test.testN_F4(1, 2)
+	#test.testSymmRestoration(1,3)
+	
+	#xi, muSig, lmb, kappa, m2Sig, N, F
+	V=Potential.Potential(0,*[0.2, 2, 1, 100**2],1,4)
+	
+	def fSig1_function(muSig, lmb, kappa, m2Sig): return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
+	fSig1 = fSig1_function(0.2, 2, 1, 100**2)	
+	#print(fSig1)
+	print(V.V1T(fSig1, 500))
+	print(V.mSq['Phi'][0](fSig1,10))
+	print(V.mSq['Eta'][0](fSig1,10))
+	print(V.mSq['X8'][0](fSig1,10))
+	print(V.mSq['Pi8'][0](fSig1,10))
+
+	
+
+	for T in range(300,500):
+		plt.scatter(T, V.Vtot(fSig1,T))
+	plt.show()
+	
 

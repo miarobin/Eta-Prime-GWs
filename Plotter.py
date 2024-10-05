@@ -50,38 +50,40 @@ def S3T(V,*T):
 def populate(xi, muSig, lmb, kappa, m2Sig, N, F):
 	#Lambda, Kappa, m^2_Sigma, Mu_Sig, Xi.
 	V = Potential.Potential(xi, muSig, lmb, kappa, m2Sig, N, F)
-	GravitationalWave.plotV(V,[0,10,50,100])
+	#GravitationalWave.plotV(V,[0,10,50,100])
+	massRatio = abs(V.mSq['Phi'][0](0,0)/V.mSq['Eta'][0](0,0))
 
-	Tn, grd, message = GravitationalWave.grid(V)
+
+	Tn, grd, message = GravitationalWave.grid(V,prnt=True,plot=False)
 	
 				
 	if Tn is not None:
-		alpha = GravitationalWave.alpha(V,Tn); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
-		return (Tn, alpha, betaH, vw, message)
+		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
+		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}, massRatio = {massRatio}")
+		return (Tn, alpha, betaH, massRatio, message)
 	else:
-		return (0, 0, 0, 0, message)
+		print('CT Returned None')
+		return (0, 0, 0, massRatio, message)
 	
 
 def plotDifference(data, results, Ns):
+	results = np.array(results)
 	#So you can see exactly where the points have moved to
-	markers = [".","o","v","^","<",">","1","2","3","4","8","s","p","P","*","h","H","+","x","D","d","|","-"]
-	
-	#For the colour map
-	ratios = []
-	for point in data:
-		print(point)
-		x = 4*point[4]**2*(point[3]+3*point[2])/(point[1]*(point[1] + np.sqrt(point[1]**2 + 4*point[4]**2*(point[3] + 3*point[2]))))
-		ratio = np.sqrt(3)*np.sqrt(1/(x+1))
-		ratios.append(ratio)
-
+	markers = [".","o","v","^","<",">","1","2","3","4","8","s","p","P","*","h","H","+","x","D","d","|"]
 	
 	colormap = plt.cm.plasma #or any other colormap
-	normalize = matplotlib.colors.Normalize(vmin=min(ratios), vmax=max(ratios))
-	for i in range(len(data)):
-		for N in Ns:
-			plt.scatter(results[N,i,2], results[N,i,1], c = ratios[i], alpha=1/N, marker=markers[i], cmap=colormap, norm=normalize)
+	normalize = matplotlib.colors.Normalize(vmin=min(np.ravel(results[:,:,3])), vmax=max(np.ravel(results[:,:,3])))
+	#For the colour map
+
+	for i, point in enumerate(data):
+		#x = 4*point[4]**2*(point[3]+3*point[2])/(point[1]*(point[1] + np.sqrt(point[1]**2 + 4*point[4]**2*(point[3] + 3*point[2]))))
+		#ratio = np.sqrt(3)*np.sqrt(1/(x+1))
+		for Ni,N in enumerate(Ns):
+			print(results[Ni,i])
+			plt.scatter(results[Ni,i,2], results[Ni,i,1], c = results[Ni,i,3], alpha=1/(Ni+1), marker=markers[i], cmap=colormap, norm=normalize)
 
 
+			
 	plt.xscale("log")
 	plt.yscale("log")
 	plt.colorbar()
@@ -203,27 +205,29 @@ if __name__ == "__main__":
  [1., 0.00617284, 1., 295.559]])
 	
 
-	dataF4 = dataF4[:3]
-	
-
-
+	dataF4 = dataF4[:10]
 	F = 4
 
 	Ns = [1, 2]
 	results = []
 	
+	def fSig1_function(muSig, lmb, kappa, m2Sig): return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
+
 	for N in Ns:
 		#Changing the power of the breaking term (1 is from Rachel's paper, 1/N is from Csaba's paper)
 		#, xi, muSig, lmb, kappa, m2Sig, N, F, muSSI=0
-		results_N = np.array([populate(0, row[0],row[1],row[2],row[3]**2, N=N, F=F) for row in dataF4])
+		if N == 2:
+			results_N = np.array([populate(0., row[0],row[1],row[2],row[3]**2, N=1, F=4) for row in dataF4])
+		
+		else: results_N = np.array([populate(0., row[0]*0.75,row[1],row[2],row[3]**2, N=1, F=4) for row in dataF4])
 		results.append(results_N)
 
-		column_titles = ['mu_Sigma', 'Lambda', 'Kappa', 'm^2_Sigma', 'Tn', 'Alpha', 'Beta']
+		column_titles = ['mu_Sigma', 'Lambda', 'Kappa', 'm^2_Sigma', 'Tn', 'Alpha', 'Beta', 'MassRatio']
 		# File path to save the CSV
 		file_path = f'Test_N{N}F{F}_ASBPower.csv'
-		save_arrays_to_csv(file_path, column_titles, dataF4[:,0], dataF4[:,1], dataF4[:,2], dataF4[:,3], results[:,0], results[:,1], results[:,2])
+		save_arrays_to_csv(file_path, column_titles, dataF4[:,0], dataF4[:,1], dataF4[:,2], dataF4[:,3], results_N[:,0], results_N[:,1], results_N[:,2], results_N[:,3])
 
-	plotDifference(dataF4, results)
+	plotDifference(dataF4, results, Ns)
 	
 
 
