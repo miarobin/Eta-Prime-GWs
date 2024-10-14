@@ -36,7 +36,7 @@ def S3T(V,*T):
 	zeroTmax = optimize.minimize(lambda h:-V.Vtot(h,0)/v**4, -246,method="Nelder-Mead")
 	print(zeroTmax)
 	print(f"High T Minimum: {highTmin.x[0]}; Zero T Local Max = {zeroTmax.x[0]}")
-	Tn,grd,message = GravitationalWave.grid(V,prnt=True)
+	Tn,grd,message = GravitationalWave.grid(V,prnt=True,plot=True)
 	print(f"message = {message}")
 	print(f"alpha = {GravitationalWave.alpha(V,Tn)}, Beta/H = {GravitationalWave.beta_over_H(V,Tn,grd)}, Wall Velocity = {GravitationalWave.wallVelocity(V,GravitationalWave.alpha(V,Tn), Tn)}")
 		
@@ -50,13 +50,23 @@ def S3T(V,*T):
 def populate(xi, muSig, lmb, kappa, m2Sig, N, F):
 	#Lambda, Kappa, m^2_Sigma, Mu_Sig, Xi.
 	V = Potential.Potential(xi, muSig, lmb, kappa, m2Sig, N, F)
-	#GravitationalWave.plotV(V,[0,10,50,100])
-	massRatio = abs(V.mSq['Phi'][0](0,0)/V.mSq['Eta'][0](0,0))
+	fSig = V.findminima(0) 
+	
+	if fSig is None:
+		#Plots the potential as a function of temperature
+		def plotV(V, Ts):
+			for T in Ts:
+				plt.plot(np.linspace(-5,V.fSigmaApprox()*1.25,num=100),V.Vtot(np.linspace(-5,V.fSigmaApprox()*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+			plt.legend()
+			plt.show()
+		plotV(V,[0,1000,2000])
+		return (0, 0, 0, 0, 15)
+	
+	massRatio = abs(V.mSq['Phi'][0](fSig,0)/V.mSq['Eta'][0](fSig,0))
 
 
 	Tn, grd, message = GravitationalWave.grid(V,prnt=True,plot=False)
 	
-				
 	if Tn is not None:
 		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
 		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}, massRatio = {massRatio}")
@@ -76,12 +86,10 @@ def plotDifference(data, results, Ns):
 	#For the colour map
 
 	for i, point in enumerate(data):
-		#x = 4*point[4]**2*(point[3]+3*point[2])/(point[1]*(point[1] + np.sqrt(point[1]**2 + 4*point[4]**2*(point[3] + 3*point[2]))))
-		#ratio = np.sqrt(3)*np.sqrt(1/(x+1))
-		for Ni,N in enumerate(Ns):
-			print(results[Ni,i])
-			plt.scatter(results[Ni,i,2], results[Ni,i,1], c = results[Ni,i,3], alpha=1/(Ni+1), marker=markers[i], cmap=colormap, norm=normalize)
-
+		if all([results[Ni,i,0]>0 for Ni,N in enumerate(Ns)]):
+			for Ni,N in enumerate(Ns):
+				plt.scatter(results[Ni,i,2], results[Ni,i,1], c = results[Ni,i,3], alpha=1/(Ni+1), marker=markers[-1], cmap=colormap, norm=normalize)
+			markers.pop()
 
 			
 	plt.xscale("log")
@@ -205,10 +213,10 @@ if __name__ == "__main__":
  [1., 0.00617284, 1., 295.559]])
 	
 
-	dataF4 = dataF4[:10]
-	F = 4
+	dataF4 = dataF4[:5]; F = 4
 
 	Ns = [1, 2]
+	fPi = 2000
 	results = []
 	
 	def fSig1_function(muSig, lmb, kappa, m2Sig): return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
@@ -216,10 +224,8 @@ if __name__ == "__main__":
 	for N in Ns:
 		#Changing the power of the breaking term (1 is from Rachel's paper, 1/N is from Csaba's paper)
 		#, xi, muSig, lmb, kappa, m2Sig, N, F, muSSI=0
-		if N == 2:
-			results_N = np.array([populate(0., row[0],row[1],row[2],row[3]**2, N=1, F=4) for row in dataF4])
+		results_N = np.array([populate(0., row[0]*fPi**(4-4/N),row[1],row[2],row[3]**2, N=N, F=4) for row in dataF4])
 		
-		else: results_N = np.array([populate(0., row[0]*0.75,row[1],row[2],row[3]**2, N=1, F=4) for row in dataF4])
 		results.append(results_N)
 
 		column_titles = ['mu_Sigma', 'Lambda', 'Kappa', 'm^2_Sigma', 'Tn', 'Alpha', 'Beta', 'MassRatio']

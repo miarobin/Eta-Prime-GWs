@@ -77,32 +77,12 @@ class Potential:
 													+ (self.muSig/self.N) * (8**((-2 + self.N)/self.N) * phi**(4/self.N-2))
 													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
 						12.],
-				#X3 Mass
-				'X3': [lambda phi, T: (1/8)*((3*self.kappa + 4*self.lmb)*phi**2) - self.m2Sig - (32/24)*self.xi
-													+ (self.muSig/self.N) * (8**((-2 + self.N)/self.N) * phi**(4/self.N-2))
-													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
-						3.],
 				#Pi8 Mass
 				'Pi8': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb)*phi**2 - 8*self.m2Sig
 													- (self.muSig/self.N) * (8**(2-2/self.N) * phi**(4/self.N-2)))
 													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
 						12.],
-				
-				#Pi3 Mass	
-				'Pi3': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb)*phi**2) - self.m2Sig - (32/24)*self.xi
-													- (self.muSig/self.N) * (8**(2-2/self.N) * phi**(4/self.N-2))
-													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
-						3.],
-				#EtaPsi
-				'EtaPsi': [lambda phi, T: (1/8)*((3*self.kappa + 4*self.lmb)*phi**2) - self.m2Sig
-												+ (self.muSig/self.N) * (8**((-2 + self.N)/self.N) * phi**(4/self.N-2))
-													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
-						1.],
-				#EtaChi
-				'EtaChi': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb)*phi**2) - self.m2Sig
-													- (self.muSig/self.N) * (8**(2-2/self.N) * phi**(4/self.N-2))
-													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
-						1.]
+
 				}
 
 
@@ -132,8 +112,6 @@ class Potential:
 																		  			self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
 		elif self.F == 4:
 			return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],
-#																		  			self.mSq['X8'],self.mSq['Pi3'],
-#																					self.mSq['Pi8'],self.mSq['Pi3'],
 																					self.mSq['Pi8'],self.mSq['X8']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
 		else:
 			raise NotImplemented(f"F={self.F} not implemented yet in V1T")
@@ -164,7 +142,11 @@ class Potential:
 
 
 	def fSigmaApprox(self):
-		return 2*(2*self.m2Sig)**0.5 / (self.kappa + 4*self.lmb - self.muSig)**0.5
+		if self.F==4 and self.N==1:
+			return 2*(2*self.m2Sig)**0.5 / (self.kappa + 4*self.lmb - self.muSig)**0.5
+		else:
+			return self.findminima(0,rstart=5000)
+
 	def findminima(self,T,rstart=None,rcounter=1, tolerance=None):
 		#For a linear sigma model. Returns the minimum away from the origin.
 		if rstart == None:

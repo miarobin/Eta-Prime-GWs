@@ -82,7 +82,7 @@ def plotAs(As, Ts):
 def grid(V, tc=None, prnt=True, plot=False):
 	#Range of T's to consider.
 	if tc==None:
-		tc = V.criticalT(prnt=prnt)
+		tc = V.criticalT(prnt=plot)
 		if prnt: print(f"Tc = {tc}")
 		if tc == None:
 			return None, None, 1
@@ -97,11 +97,11 @@ def grid(V, tc=None, prnt=True, plot=False):
 	if prnt: print(f"A1 = {A1}, A2 = {A2}, T1 = {T1}, T2 = {T2}")
 	if A1 is None or A2 is None:
 		if A1 is None:
-			T1+=0.5; A1=action(V,T1,prnt=prnt)
+			T1+=0.5; A1=action(V,T1,prnt=plot)
 		if A2 is None:
-			T2+=0.5; A2=action(V,T2,prnt=prnt)
+			T2+=0.5; A2=action(V,T2,prnt=plot)
 		if A1 is None or A2 is None:
-			if prnt: plotV(V, [T1,T2])
+			if plot: plotV(V, [T1,T2])
 			return None, None, 2
 	#Bank of Ts and corresponding As
 	Ts = [T1, T2]
@@ -172,13 +172,9 @@ def grid(V, tc=None, prnt=True, plot=False):
 					plotAs(As,Ts)
 				return None, None,6
 			
-			A1=action(V,T1,prnt=prnt)
-			A2=action(V,T2,prnt=prnt)
+			A1=action(V,T1,prnt=plot)
+			A2=action(V,T2,prnt=plot)
 			
-			'''if A1<0 or A2<0:
-				T1 = ((As[-1]/Ts[-1]+140)/2 - c)/m; T2=T1-stepSize
-				A1=action(V,T1,prnt=prnt)
-				A2=action(V,T2,prnt=prnt)'''
 			if prnt: print(f"A1 = {A1}, A2 = {A2}, T1 = {T1}, T2 = {T2}")
 
 		
@@ -190,11 +186,11 @@ def grid(V, tc=None, prnt=True, plot=False):
 			
 			else:
 				if A1 is None:
-					A1=action(V,T1+0.5,prnt=prnt); T1+=0.5
+					A1=action(V,T1+0.5,prnt=plot); T1+=0.5
 				if A2 is None:
-					A2=action(V,T2+0.5,prnt=prnt); T2+=0.5
+					A2=action(V,T2+0.5,prnt=plot); T2+=0.5
 				if A1 is None or A2 is None:
-					if prnt: 
+					if plot: 
 						plotV(V, Ts+[T1,T2,tc])
 						plotAs(As,Ts)
 					return None, None,7
@@ -252,9 +248,6 @@ def grid(V, tc=None, prnt=True, plot=False):
 
 	_Ts = [T for T,A in sorted(zip(Ts,As))]
 	_As = [A for T,A in sorted(zip(Ts,As))]
-	#plt.plot(np.array(_Ts), np.array(_As)/np.array(_Ts))
-	#plt.plot(np.array(_Ts), np.ones((len(_Ts)))*140)
-	#plt.show()
 
 	interpolator = interpolate.UnivariateSpline(_Ts,np.array(_As)/np.array(_Ts),k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)
 
@@ -266,21 +259,21 @@ def grid(V, tc=None, prnt=True, plot=False):
 		return None, None, 12
 	
 	if res.success and res.fun <=5:
-		if prnt: 
+		if plot: 
 			print(f"Tn = {res.x[0]}, Nruns = {len(Ts)}")
 			plotAs(As,Ts)
 		return res.x[0], interpolator, 0
 	else:
 		res = optimize.minimize(lambda T: abs(interpolator(T) - 140.), guess, bounds=bounds,method='Nelder-Mead')
 		if res.success and res.fun <=5:
-			if prnt: 
+			if plot: 
 				print(f"Tn = {res.x[0]}, Nruns = {len(Ts)}")
 				plotAs(As,Ts)
 				print(res)
 			return res.x[0], interpolator, 0
 		
 		print(res)
-		if prnt:
+		if plot:
 			plt.plot(_Ts, np.array(_As)/np.array(_Ts))
 			plt.plot(np.linspace(_Ts[0],_Ts[-1]), (interpolator(np.linspace(_Ts[0],_Ts[-1]))))
 			plt.plot(_Ts, np.ones((len(_Ts)))*140)
@@ -288,13 +281,6 @@ def grid(V, tc=None, prnt=True, plot=False):
 		return None, None, 9
 	
 	#If you reach this point something's gone totally wrong...
-
-	#T = np.linspace(T2,maxT, num=25)
-	#plt.plot(v/T, np.log(140*np.ones((25))))
-	#plt.plot(v/T, np.log(interpolator(T)))
-	#plt.xlabel(f"$v/T$")
-	#plt.ylabel(f"Log($S_3/T$)")
-	#plt.show()
 	return None,None,10
 
 			
