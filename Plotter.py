@@ -47,25 +47,29 @@ def S3T(V,*T):
 	
 	return (Tn, GravitationalWave.alpha(V,Tn), GravitationalWave.beta_over_H(V,Tn,grd), GravitationalWave.wallVelocity(V,GravitationalWave.alpha(V,Tn), Tn), message)
 
-def populate(xi, muSig, lmb, kappa, m2Sig, N, F):
+def populate(xi, muSig, lmb, kappa, m2Sig, N, F,plot=False):
 	#Lambda, Kappa, m^2_Sigma, Mu_Sig, Xi.
 	V = Potential.Potential(xi, muSig, lmb, kappa, m2Sig, N, F)
 	fSig = V.findminima(0) 
+	print(fSig)
 	
-	if fSig is None:
+	if plot:
 		#Plots the potential as a function of temperature
 		def plotV(V, Ts):
 			for T in Ts:
-				plt.plot(np.linspace(-5,V.fSigmaApprox()*1.25,num=100),V.Vtot(np.linspace(-5,V.fSigmaApprox()*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+				plt.plot(np.linspace(-5,500,num=100),V.Vtot(np.linspace(-5,500,num=100),T)-V.Vtot(0,T),label=f"T={T}")
 			plt.legend()
 			plt.show()
-		plotV(V,[0,1000,2000])
+		plotV(V,[0,100,200])
+	if fSig == None:
 		return (0, 0, 0, 0, 15)
+	
+	print(1)
 	
 	massRatio = abs(V.mSq['Phi'][0](fSig,0)/V.mSq['Eta'][0](fSig,0))
 
-
-	Tn, grd, message = GravitationalWave.grid(V,prnt=True,plot=False)
+	print(2)
+	Tn, grd, message = GravitationalWave.grid(V,prnt=True,plot=plot)
 	
 	if Tn is not None:
 		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
@@ -213,8 +217,14 @@ if __name__ == "__main__":
  [1., 0.00617284, 1., 295.559]])
 	
 
-	dataF4 = dataF4[:5]; F = 4
+	#dataF4 = dataF4[:5]; F = 4
 
+	#N=1; F=4
+	#res = [populate(0., row[0],row[1],row[2],row[3]**2, N=N, F=4,plot=False) for row in dataF4[2:3]]
+	res = populate(0,386.79**2/2,+31.51/2,-82.77/4,263.83**2, N=2, F=4, plot=True)
+	print(res)
+
+	'''
 	Ns = [1, 2]
 	fPi = 2000
 	results = []
@@ -233,7 +243,7 @@ if __name__ == "__main__":
 		file_path = f'Test_N{N}F{F}_ASBPower.csv'
 		save_arrays_to_csv(file_path, column_titles, dataF4[:,0], dataF4[:,1], dataF4[:,2], dataF4[:,3], results_N[:,0], results_N[:,1], results_N[:,2], results_N[:,3])
 
-	plotDifference(dataF4, results, Ns)
+	plotDifference(dataF4, results, Ns)'''
 	
 
 

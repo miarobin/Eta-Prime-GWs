@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize, misc, signal
 from sympy import diff
-from scipy import interpolate
+from scipy import interpolate, integrate
 from itertools import takewhile
 import os
 
@@ -64,23 +64,23 @@ class Potential:
 			self.mSq = {
 				#Phi Mass
 				'Phi': [lambda phi, T: (3/8)*((self.kappa + 4*self.lmb)*phi**2) - self.m2Sig 
-													+ (self.muSig/self.N**2) * 8**((-2+self.N)/self.N) * (-4+self.N) * phi**(4/self.N-2)
-													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
+													+ (self.muSig/self.N**2) * 8**((-2+self.N)/self.N) * (-4+self.N) * phi**(4/self.N-2),
+#													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
 						1.],
 				#Eta Prime Mass
 				'Eta': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb)*phi**2) - self.m2Sig
-													- (self.muSig/self.N**2) * 8**((-2+self.N)/self.N) * (self.N-4) * phi**(4/self.N-2)
-													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
+													- (self.muSig/self.N**2) * 8**((-2+self.N)/self.N) * (-4+self.N) * phi**(4/self.N-2),
+#													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
 						1.],
-				#X8 Mass
-				'X8': [lambda phi, T: (1/8)*((3*self.kappa + 4*self.lmb)*phi**2) - self.m2Sig
-													+ (self.muSig/self.N) * (8**((-2 + self.N)/self.N) * phi**(4/self.N-2))
-													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
+				#X Mass
+				'X': [lambda phi, T: (1/8)*((3*self.kappa + 4*self.lmb)*phi**2) - self.m2Sig
+													+ (self.muSig/self.N) * (8**((-2 + self.N)/self.N) * phi**(4/self.N-2)),
+#													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
 						12.],
-				#Pi8 Mass
-				'Pi8': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb)*phi**2 - 8*self.m2Sig
-													- (self.muSig/self.N) * (8**(2-2/self.N) * phi**(4/self.N-2)))
-													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
+				#Pi Mass
+				'Pi': [lambda phi, T: (1/8)*((self.kappa + 4*self.lmb)*phi**2) -  self.m2Sig
+													- (self.muSig/self.N) * (8**((-2 + self.N)/self.N) * phi**(4/self.N-2)),
+#													+ (1/12)*T**2 * (8*self.kappa + 17*self.lmb),
 						12.],
 
 				}
@@ -112,10 +112,45 @@ class Potential:
 																		  			self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
 		elif self.F == 4:
 			return np.reshape((np.sum([n*Jb_spline((m2(phi,T)/T**2)) for m2, n in [self.mSq['Phi'],self.mSq['Eta'],
-																					self.mSq['Pi8'],self.mSq['X8']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
+																					self.mSq['Pi'],self.mSq['X']]],axis=0))*T**4/(2*np.pi**2), phi.shape)
 		else:
 			raise NotImplemented(f"F={self.F} not implemented yet in V1T")
 		
+	def VMedium(self, phi, l, T):
+		phi = np.array(phi); l = np.array(l)
+		integrals = []
+		
+		if T==0: return 0
+		
+		if self.N == 2:
+			originalShape = np.shape(phi)
+			if phi.shape==():
+				phi=np.array([phi])
+
+			eps_P = lambda x: np.array(np.sqrt(x**2 + (3.2*phi)**2))
+	
+			if l.shape!=():
+				integrals=[]
+				for _l in l:
+					integrand = lambda x,i: x**2 * np.log(1 + 2*_l*np.exp(-eps_P(x)[i]/T) + np.exp(-2*eps_P(x)[i]/T))
+					integrals.append(np.array([-4*self.F*T*integrate.quad(lambda x: integrand(x,i), 0, np.inf)[0]/(np.pi**2) for i in range(len(phi))]))
+				return np.array(integrals)
+			
+			else:
+				integrand = lambda x,i: np.reshape(np.array(x**2 * np.log(1 + 2*l*np.exp(-eps_P(x)[i]/T) + np.exp(-2*eps_P(x)[i]/T))),phi.shape)
+				return np.reshape(np.array([-4*self.F*T*integrate.quad(lambda x: integrand(x,i), 0, np.inf)[0]/(np.pi**2) for i in range(len(phi))]),originalShape)
+
+		if self.N==3:
+			if self.F==4:
+				return 0
+
+	def VPoly(self, l, T):
+		if T == 0:
+			return 0
+		if self.N==2:
+			return -(210.5)**3 * T * (1-24*l**2 * np.exp(-858/T))
+
+
 	def V1_cutoff(self, h):
 		# One loop corrections to effective potential in cut-off regularisation scheme.
 		#MAY NOT NEED THESE YET!
@@ -124,13 +159,22 @@ class Potential:
 		return np.reshape(np.sum([n * (m2(h)**2 * (np.log(np.abs(m2(h)/m2(0)) + 1e-100) - 1.5) + 2*m2(h)*m2(0)) for m2, n in [self.mSq['W'],self.mSq['Z'],self.mSq['t'],self.mSq['h'],self.mSq['Wl'],self.mSq['Zl']]],axis=0)/(64.*np.pi**2), h.shape)
 		
 
-	def Vtot(self,phi,T):
+	def Vtot(self,phi,T, polyakov=True):
 		#This finds the total (one-loop/tree level) thermal effective potential.
 		phi = np.array(phi)
-		if self.loop:
-			return self.V(phi) + self.V1T(phi,T).real + self.V1_cutoff(phi).real
-		else:
-			return self.V(phi) + self.V1T(phi,T).real
+		
+		if polyakov:
+			gluonic = lambda l,_phi: self.VPoly(l, T) + self.VMedium(_phi, l, T)
+	
+			if phi.shape==():
+				res = optimize.minimize(lambda l: gluonic(l, phi), 0.5, bounds=[(0,1)]).x[0]
+				return self.V(phi) + self.V1T(phi,T).real + self.VPoly(res, T) + self.VMedium(phi, res, T)
+			else:
+				res = np.array([optimize.minimize(lambda l: gluonic(l, _ph), 0.5, bounds=[(0,1)]).x[0] for _ph in phi])
+				
+				return np.array([self.V(phi[i]) + self.V1T(phi[i],T).real + self.VPoly(res[i], T) + self.VMedium(phi[i], res[i], T) for i in range(len(phi))])
+		
+		return self.V(phi) + self.V1T(phi,T).real
 
 	def dVdT(self,phi,T,eps=0.001):
 		#Uses finite difference method to fourth order. Takes scalar h and T.
@@ -142,8 +186,10 @@ class Potential:
 
 
 	def fSigmaApprox(self):
-		if self.F==4 and self.N==1:
+		if self.F==4 and self.N==1 and (self.kappa + 4*self.lmb - self.muSig)>0:
 			return 2*(2*self.m2Sig)**0.5 / (self.kappa + 4*self.lmb - self.muSig)**0.5
+		elif self.F==4 and self.N>1:
+			return 2*(2*self.m2Sig)**0.5 / (self.kappa + 4*self.lmb)**0.5
 		else:
 			return self.findminima(0,rstart=5000)
 
@@ -157,7 +203,9 @@ class Potential:
 		if not res.success or res.x[0]<0.5:
 			#If so, try a new start
 			if rcounter<=4:
-				return self.findminima(T,rstart=rstart*0.9,rcounter=rcounter+1)
+				if rstart is not None:
+					return self.findminima(T,rstart=rstart*0.9,rcounter=rcounter+1)
+				else: return None
 			else:
 				return None
 		else: return res.x[0]
@@ -180,38 +228,54 @@ class Potential:
 	def	criticalT(self, guessIn=None,prnt=True):
 		#Critical temperature is when delta V is zero (i.e. both minima at the same height) THIS HAS TO BE QUITE ACCURATE!
 		
+		#Scale with which we can compare potential magnitudes (think large values of phi, V~phi^4)
 		scale = self.findminima(0)
-		#First a quick scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-		Ts_init = np.linspace(50,25000,num=500); deltaVs_init = np.array([[T, self.deltaV(T, rstart=scale)] for T in Ts_init if self.deltaV(T,rstart=scale) is not None])
+		print(3)
+		
+		#First a coarse scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
+		Ts_init = np.linspace(50,10000,num=400); deltaVs_init=[]
 
+		for T in Ts_init:
+			deltaV =  self.deltaV(T, rstart=scale)
+			if deltaV is not None and deltaV > 0: deltaVs_init.append([T,deltaV])
+			if deltaV < 0: break
+		print(deltaVs_init)
+		deltaVs_init=np.array(deltaVs_init)
+		
+		print(4)
 		if prnt:
 			for T,_ in deltaVs_init:
 				plt.scatter(self.findminima(T),T)
 				plt.scatter(0,T)
+				plt.xlabel('Delta V'); plt.ylabel('T')
 			plt.show()	
-
+		print(5)
+		#JUST taking deltaV's which are greater than zero BUT decreasing. Note the reason for this is often going further can confuse python later.
 		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
 		k = list(takewhile(lambda x: deltaVs_init[x,1]>0, range(len(deltaVs_init[:,0]))))
 
 
 		deltaVs_init=deltaVs_init[k]
+		#This is the temperature with deltaV closest to zero:
 		T_init = deltaVs_init[-1,0]
 		if prnt:
 			plt.plot(deltaVs_init[:,1], deltaVs_init[:,0])
+			plt.xlabel('Delta V'); plt.ylabel('Temperature')
 			plt.show()
 
-			print(T_init)
+			print(f"Coarse grain scan finds {T_init} being closest Delta V to 0")
 
 		def plotV(V, Ts):
 			for T in Ts:
-				plt.plot(np.linspace(-10,self.fSigmaApprox()*1.1,num=100),V.Vtot(np.linspace(-10,self.fSigmaApprox()*1.1,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+				plt.plot(np.linspace(-10,self.fSigmaApprox()*.5,num=100),V.Vtot(np.linspace(-10,self.fSigmaApprox()*.5,num=100),T)-V.Vtot(0,T),label=f"T={T}")
 				if self.findminima(T) is not None:
 					plt.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
 			plt.legend()
 			plt.show()	
+		print(6)
 	
 		#Find delta V for a finer scan of temperatures & interpolate between them. 
-		Ts = np.linspace(T_init*0.95,T_init*1.35,num=500); deltaVs = np.array([[T, self.deltaV(T, rstart=scale)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
+		Ts = np.linspace(T_init*0.95,T_init*1.35,num=100); deltaVs = np.array([[T, self.deltaV(T, rstart=scale)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
 		
 		if len(deltaVs)<5: return None #Catches if there are just not enough points to make a verdict.
 		
@@ -221,12 +285,15 @@ class Potential:
 		
 		if len(deltaVs)<5: return None #Again, catching where there are too few points.
 
-		func = interpolate.UnivariateSpline(deltaVs[:,0], abs(deltaVs[:,1]), k=3, s=0)
+		#Interpolates across the deltaVs. This will allow us to minimise later.
+		func = interpolate.UnivariateSpline(deltaVs[:,0], deltaVs[:,1], k=3, s=0)
 		if prnt:
-			plt.plot(deltaVs[:,0], func(deltaVs[:,0]))
+			plt.plot(deltaVs[:,0], abs(func(deltaVs[:,0])))
 			plt.plot(deltaVs[:,0], deltaVs[:,1],color = 'red')
+			plt.xlabel('Temperature'); plt.ylabel('DeltaV')
 			plt.show()
 		
+		#Choose a 'guess' to be slightly closer to the higher temperature range.
 		if guessIn==None:
 			guess = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.85 + min(deltaVs[:,0])
 		else: guess = guessIn
@@ -246,8 +313,6 @@ class Potential:
 				if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])		
 				return res.x[0]
 			else:
-				#if guessIn == None: return self.criticalT(guessIn = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.9 + min(deltaVs[:,0]))
-				#else: return None
 				return None
 
 	#### These are supplemental ####
@@ -326,6 +391,7 @@ def Jb_spline(X,n=0):
 		
 if __name__ == "__main__":
 	print('hello')
+	print(len(_xb))
 	result = []
 	for mT in np.linspace(0.1,0.5):
 		result.append(Jb_spline(mT))

@@ -3,7 +3,7 @@ from cosmoTransitions.tunneling1D import PotentialError
 from cosmoTransitions import helper_functions
 from functools import reduce
 import Potential
-from scipy import interpolate, optimize
+from scipy import interpolate, optimize, integrate
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
@@ -16,9 +16,8 @@ GREEN = "\033[32m" # Green color
 CYAN = "\033[36m" # Cyan color
 
 #Set g_star
-_g_star = 114
-##Important constants for the potential.
-mh = 125.18; mW = 80.385; mZ = 91.1875; mt = 173.1; mb = 4.18; v = 246.; l = mh**2/v**2
+_g_star = 106.75; MPl = 2.435E18;  
+
 
 
 #Calculate the action S3 for a given temperature T using CosmoTransitions SingleFieldInstanton class.
@@ -72,8 +71,7 @@ def plotAs(As, Ts):
 	_Ts = [T for T,A in sorted(zip(Ts,As))]
 	_As = [A for T,A in sorted(zip(Ts,As))]
 	plt.plot(_Ts, np.array(_As)/np.array(_Ts))
-	plt.plot(_Ts, np.ones((len(_Ts)))*140)
-	plt.show()
+
 
 
 
@@ -88,200 +86,105 @@ def grid(V, tc=None, prnt=True, plot=False):
 			return None, None, 1
 
 	maxT = tc-1.5
-
-	#Set up for the scan of S3 against T:
-	stepSize = .2; bounds = []; flare = []; guess = None
-	#First point to find if we go up or down
-	T1 = maxT; T2 = maxT-stepSize
-	A1=action(V,T1); A2=action(V,T2)
-	if prnt: print(f"A1 = {A1}, A2 = {A2}, T1 = {T1}, T2 = {T2}")
-	if A1 is None or A2 is None:
-		if A1 is None:
-			T1+=0.5; A1=action(V,T1,prnt=plot)
-		if A2 is None:
-			T2+=0.5; A2=action(V,T2,prnt=plot)
-		if A1 is None or A2 is None:
-			if plot: plotV(V, [T1,T2])
-			return None, None, 2
-	#Bank of Ts and corresponding As
-	Ts = [T1, T2]
-	As = [A1, A2]
 	
-	#ASCEND
-	if A1/T1<=140:
-		#A variable stepsize...
-		miniStepSize = (tc-T1)*0.05
-		
-		Aa = A1; Ta = T1
-		Ab = action(V,T1+miniStepSize); Tb = T1+miniStepSize
-		if prnt: print(f"Aa = {Aa}, Ab = {Ab}, Ta = {Ta}, Tb = {Tb}")
-		if Ab is None:
-			return None, None, 4
-		As.append(Ab); Ts.append(Tb)
-		#Ascend in temperature by small steps until we go above 140.
-		while Ab/Tb <= 140:
-			Aa = Ab; Ta = Tb
-			#Update the backstep size so we move towards Tc
-			miniStepSize=(tc-Tb)*0.1
-			#If it gets too small we're probably in trouble.?
-			if miniStepSize < 0.00001: 
-				return None, None, 3
-						
-			Ab = action(V,Tb+miniStepSize); Tb += miniStepSize
-			if prnt: print(f"Aa = {Aa}, Ab = {Ab}, Ta = {Ta}, Tb = {Tb}")
-			if Ab is None:
-				#Investigate individual point.
-				if plot: 
-					plotV(V, Ts+[Tb,tc])
-					print(f"tc = {tc}")
-					plotAs(As, Ts)
-					Ab = action(V,Tb+.5); Tb = Tb+.5
-					
-					if Ab is None:
-						return None, None, 4
-					else:
-						print(f"Ab = {Ab}, Ab/Tb = {Ab/Tb}")
-						As.append(Ab); Ts.append(Tb)
-				else:
-					return None, None, 4
-			elif Ab<Aa:
-				#Difference in minima might be too small.
-				if plot: 
-					plotV(V, Ts+[Tb,0,400])
-					plotAs(As+[Ab],Ts+[Tb])
-				return None,None, 5 
-			else:
-				As.append(Ab); Ts.append(Tb)
-					
-		#Ascending stopping criteria achieved if code exits while loop. Flare around temperature to more accurately calculate gradient.
-		bounds = [(Ta*0.99,Tb*1.01)]; guess = Ta + miniStepSize/2
-		flare = [Tb + (tc - Tb)*adj for adj in [-3,-2,-1.5,-1.1,-0.65,-0.5,-0.2,-0.1,-0.05,-0.025,-0.01,0.01,0.025,0.05] if Tb + (tc - Tb)*adj < tc] 
-		
-	
-	#DESCEND
-	elif A1/T1 >= 140 and A2/T2 >= 140: 
-	#Fixed Stepsize since we don't need to sneak this time
-		while A2/T2>=140 and A1/T1>=140:
-			#Use newton's method to descend the curve
-			m = (A1/T1 - A2/T2)/(T1-T2); c = (A2*(T1/T2) - A1*(T2/T1))/(T1-T2)
-			T1 = (140-c)/m; T2=T1-stepSize
-			
-			if T1<10 or T2<10: #Basically no way there's a PT now.
-				if plot: 
-					print(f'T1 = {T1}, T2 = {T2}')
-					plotAs(As,Ts)
-				return None, None,6
-			
-			A1=action(V,T1,prnt=plot)
-			A2=action(V,T2,prnt=plot)
-			
-			if prnt: print(f"A1 = {A1}, A2 = {A2}, T1 = {T1}, T2 = {T2}")
-
-		
-			#First check you can find an action...
-			if A1 is not None and A2 is not None:
-				#Add findings to the 'bank'
-				Ts = Ts + [T1,T2]
-				As = As + [A1,A2]
-			
-			else:
-				if A1 is None:
-					A1=action(V,T1+0.5,prnt=plot); T1+=0.5
-				if A2 is None:
-					A2=action(V,T2+0.5,prnt=plot); T2+=0.5
-				if A1 is None or A2 is None:
-					if plot: 
-						plotV(V, Ts+[T1,T2,tc])
-						plotAs(As,Ts)
-					return None, None,7
-				else:
-					Ts = Ts + [T1,T2]
-					As = As + [A1,A2]
-					if prnt: print(f"A1/T1 = {(A1/T1)}, A2/T2 = {(A2/T2)}")
-		
-			if (A1/T1) < (A2/T2) and A1/T1>=140:	
-				#We have passed the minima of the S3/T at this point and not reached S3/T=140 so return none found
-
-				if plot: 
-					print(f"A1/T1 = {(A1/T1)}, A2/T2 = {(A2/T2)}")
-					plotAs(As + [A1,A2],Ts + [T1,T2])
-				return None, None, 0
-			
-
-
-		#If we found Tc by descending, we'll want to do flare around descent values
-		flare = [T1 + adj*stepSize for adj in [-0.5,-0.75,-1.,-1.2,-2,-2.5,-3,-4,-6,-10]]
-		if A1/T1>=140 and A2/T2<=140:
-			bounds = [(T2,T1)]; guess = T2 + stepSize/2
-		else:
-			bounds = [(T1*.99,Ts[-3]*1.01)]; guess = T1 + abs(T1 - Ts[-3])/2
-		
-	elif A1/T1 >= 140 and A2/T2 <= 140: 
-		#Happened to find crossing point with our first guess
-		flare = [T1 + adj*stepSize for adj in [(tc-T1)*0.1/stepSize,(tc-T1)*0.05/stepSize,-1/3,-1/6,-0.5,-2/3,-1.5,-2,-3]]
-		bounds = [(T2,T1)]; guess = T2 + stepSize/2
-
+	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
+	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc/2, bounds=[(0,tc)], method='Nelder-Mead')
+	if minTy.success:
+		minT = minTy.x[0] #This is the point at which \phi=0 becomes a local maxima.
 	else:
-		if prnt: print(f"A1/T1 = {A1/T1}, A2/T2 = {A2/T2}")
-		return None, None, 8
+		return None, None, 2
 	
-	#For some reason T>Tc was getting through
-	As = [A for i,A in enumerate(As) if Ts[i]<tc]
-	Ts = [T for T in Ts if T < tc]
-
-	Ts = Ts + flare
-	As = As + [action(V,t) for t in flare]
+	numberOfEvaluations = 50
+	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
+	Test_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
+	for _T in Test_Ts:
+		rollingAction = action(V, _T)
+		if rollingAction is not None and rollingAction>1:
+			minT = _T
+			break
+	#FINE SAMPLE. The interesting stuff is usually happening near minT, hence the 'log'.
+	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations)**2; As = []; Ts = []
+	for _T in Test_Ts:
+		rollingAction = action(V, _T)
+		if rollingAction is not None:
+			As.append(rollingAction)
+			Ts.append(_T)
+			if prnt: print(f'Temperature {_T}, Action {rollingAction}, S/T = {rollingAction/_T}')
 	
-	if not all(item is not None for item in As):
-		if plot:
-			
-			plotAs([As[i] for i in range(len(Ts)) if As[i] is not None], [Ts[i] for i in range(len(Ts)) if As[i] is not None])
-			length = len(Ts)
-			Ts = [Ts[i] for i in range(length) if As[i] is not None]; As = [As[i] for i in range(length) if As[i] is not None]
-			
-		else:
-			Ts = [T for i,T in enumerate(Ts) if As[i] is not None]
-			As = [A for A in As if A is not None]
-			
-			if len(As)<5:
-				return None, None, 11
 
-	_Ts = [T for T,A in sorted(zip(Ts,As))]
-	_As = [A for T,A in sorted(zip(Ts,As))]
+	if len(As)==0:
+		return None, None, 3
+	if len(As)<3:
+		print (RED + "Definite precision loss. Use a smaller stepsize." + RESET)
+		return None, None, 4
+	if len(As)<10:
+		print (RED + "Possible precision loss. Use a smaller stepsize." + RESET)
 
-	interpolator = interpolate.UnivariateSpline(_Ts,np.array(_As)/np.array(_Ts),k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)
+	minT = min(Ts) #Update minimum T in bounds ect.
 
-	if prnt: print(f"Bounds = {bounds}, guess = {guess}")
+	Ts = [T for T,A in sorted(zip(Ts,As))]
+	As = [A for T,A in sorted(zip(Ts,As))]
+
+
+	#Previous interpolator just interpolates S_3/T but new interpolator interpolates the integrand of eq 3.10 of 2309.16755.
+	Ts = np.array(Ts); As = np.array(As)
+	b = 12*np.pi* (30/(_g_star*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
+	Integrand = lambda T: np.array([(1/Ts[i])**2 * (As[i]/Ts[i])**(3/2) * np.exp(-As[i]/Ts[i] + 4*np.log(MPl)) * (1/T - 1/Ts[i])**3 if T<Ts[i] else 0 for i in range(len(Ts))])
+
+	Is = [b*integrate.trapezoid(Integrand(T), Ts) for T in Ts]
+	_Is = np.array([I for I, T, A in zip(Is,Ts,As) if I<100])
+	_Ts = np.array([T for I, T, A in zip(Is,Ts,As) if I<100])
+	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<100])
+	
+	if max(_Is)<0.34:
+		return None, None, 5
+
+	interpolator = interpolate.Akima1DInterpolator(_Ts,_Is)
+	#NOTE ERROR HERE FROM NOT BEING ABLE TO INTEGRATE ALL THE WAY TO TC!! Should be small from exponential suppression.
+
+	moreTs = min(_Ts)+(max(_Ts)-min(_Ts))*np.linspace(0, 1,num=500)**2
+
+	if prnt:
+		plt.plot(moreTs, [interpolator(_T) for _T in moreTs])
+		plt.plot(_Ts, _Is)
+		plt.xlabel('Temperature'); plt.ylabel('I(T)')
+		plt.show()
+		
 	res = 0
 	try:
-		res = optimize.minimize(lambda T: abs(interpolator(T) - 140.), guess, bounds=bounds,method='L-BFGS-B',tol=1e-2)
+		narrowRegion = [T for T in moreTs if 0.1<interpolator(T)<1]
+		res = optimize.minimize(lambda T: abs(interpolator(T) - 0.34), (narrowRegion[0]+narrowRegion[-1])/2, bounds=[(min(narrowRegion), max(narrowRegion))],method='L-BFGS-B',tol=1e-3)
 	except ValueError:
-		return None, None, 12
+		return None, None, 6
 	
-	if res.success and res.fun <=5:
+	if res.success and res.fun <=0.1:
 		if plot: 
-			print(f"Tn = {res.x[0]}, Nruns = {len(Ts)}")
-			plotAs(As,Ts)
-		return res.x[0], interpolator, 0
+			print(f"Tn = {res.x[0]}, Minimisation method L-BFGS-B")
+			print(res)
+
+		return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), 0
 	else:
-		res = optimize.minimize(lambda T: abs(interpolator(T) - 140.), guess, bounds=bounds,method='Nelder-Mead')
-		if res.success and res.fun <=5:
+		res = optimize.minimize(lambda T: abs(interpolator(T) - 0.34), (narrowRegion[0]+narrowRegion[-1])/2, bounds=[(min(narrowRegion), max(narrowRegion))],method='Nelder-Mead',tol=1e-3)
+		if res.success and res.fun <=0.1:
 			if plot: 
-				print(f"Tn = {res.x[0]}, Nruns = {len(Ts)}")
-				plotAs(As,Ts)
+				print(f"Tn = {res.x[0]}, Minimisation method Nelder-Mead")
 				print(res)
-			return res.x[0], interpolator, 0
+				plt.plot(_Ts, [interpolator(_T) for _T in _Ts])
+				plt.xlabel('Temperature'); plt.ylabel('I(T)')
+				plt.show()
+
+			#Need to return Tn, S_3/T and success error message.
+			return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), 0
 		
 		print(res)
 		if plot:
 			plt.plot(_Ts, np.array(_As)/np.array(_Ts))
-			plt.plot(np.linspace(_Ts[0],_Ts[-1]), (interpolator(np.linspace(_Ts[0],_Ts[-1]))))
-			plt.plot(_Ts, np.ones((len(_Ts)))*140)
+			plt.plot(np.linspace(_Ts[0],_Ts[-1]), (interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)(np.linspace(_Ts[0],_Ts[-1]))))
 			plt.show()
-		return None, None, 9
+		return None, None, 7
 	
 	#If you reach this point something's gone totally wrong...
-	return None,None,10
+	return None,None,8
 
 			
 	

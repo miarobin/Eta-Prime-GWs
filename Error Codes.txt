@@ -1,0 +1,11 @@
+ERROR MESSAGE MEANINGS:
+
+1 : Cannot find a critical temperature.
+2 : Cannot find where \phi=0 swaps from local minima to maxima.
+3 : All tested actions are 0
+4 : Less than 3 tested actions are found. May need to decrease stepsize.
+5 : No I found greater than 0.34 therefore no transition <--- This is fine BTW, just no transition before BBN. I think.
+6 : ValueError trying to find I(T)=0.34.
+7 : Could not find a nucleation temperature. Somehow.
+8 : Should never happen. Somehow evaded all 'if's'
+15 : Potential does not have 3 real solutions.
