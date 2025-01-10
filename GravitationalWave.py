@@ -2,7 +2,7 @@ from cosmoTransitions.tunneling1D import SingleFieldInstanton
 from cosmoTransitions.tunneling1D import PotentialError
 from cosmoTransitions import helper_functions
 from functools import reduce
-import Potential
+import Potential2
 from scipy import interpolate, optimize, integrate
 import numpy as np
 import matplotlib.pyplot as plt
@@ -85,28 +85,32 @@ def grid(V, tc=None, prnt=True, plot=False):
 		if tc == None:
 			return None, None, 1
 
-	maxT = tc-1.5
+	maxT = tc*.99
+	
 	
 	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
 	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc/2, bounds=[(0,tc)], method='Nelder-Mead')
-	if minTy.success:
-		minT = minTy.x[0] #This is the point at which \phi=0 becomes a local maxima.
+	if minTy.fun/V.fSigma()**4<1:
+		minT = max(minTy.x[0],maxT*.85) #This is the point at which \phi=0 becomes a local maxima.
 	else:
 		return None, None, 2
+	print(f'maximum T = {maxT}, minimum T = {minT}')
 	
-	numberOfEvaluations = 50
+	
+	numberOfEvaluations = 100
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
 	Test_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for _T in Test_Ts:
 		rollingAction = action(V, _T)
-		if rollingAction is not None and rollingAction>1:
+		if rollingAction is not None and rollingAction>50 and rollingAction/_T>75:
 			minT = _T
 			break
+	print(f'minT={minT}')
 	#FINE SAMPLE. The interesting stuff is usually happening near minT, hence the 'log'.
 	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations)**2; As = []; Ts = []
 	for _T in Test_Ts:
 		rollingAction = action(V, _T)
-		if rollingAction is not None:
+		if rollingAction is not None and rollingAction>0:
 			As.append(rollingAction)
 			Ts.append(_T)
 			if prnt: print(f'Temperature {_T}, Action {rollingAction}, S/T = {rollingAction/_T}')
@@ -122,21 +126,43 @@ def grid(V, tc=None, prnt=True, plot=False):
 
 	minT = min(Ts) #Update minimum T in bounds ect.
 
+	print(len(Ts))
+	print(len(As))
+
 	Ts = [T for T,A in sorted(zip(Ts,As))]
 	As = [A for T,A in sorted(zip(Ts,As))]
+	
+	_Ts = [T for T,A in zip(Ts,As) if A>0]
+	_As = [A for T,A in zip(Ts,As) if A>0]
+	As=_As
+	Ts=_Ts
+
 
 
 	#Previous interpolator just interpolates S_3/T but new interpolator interpolates the integrand of eq 3.10 of 2309.16755.
 	Ts = np.array(Ts); As = np.array(As)
+
 	b = 12*np.pi* (30/(_g_star*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
 	Integrand = lambda T: np.array([(1/Ts[i])**2 * (As[i]/Ts[i])**(3/2) * np.exp(-As[i]/Ts[i] + 4*np.log(MPl)) * (1/T - 1/Ts[i])**3 if T<Ts[i] else 0 for i in range(len(Ts))])
 
+
 	Is = [b*integrate.trapezoid(Integrand(T), Ts) for T in Ts]
+	
 	_Is = np.array([I for I, T, A in zip(Is,Ts,As) if I<100])
 	_Ts = np.array([T for I, T, A in zip(Is,Ts,As) if I<100])
 	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<100])
 	
+
+	
 	if max(_Is)<0.34:
+		print(_Is)
+		if prnt:
+			plt.plot(_Ts, _As)
+			plt.xlabel('Temperature'); plt.ylabel('A(T)')
+			plt.show()
+			plt.plot(_Ts, _Is)
+			plt.xlabel('Temperature'); plt.ylabel('I(T)')
+			plt.show()
 		return None, None, 5
 
 	interpolator = interpolate.Akima1DInterpolator(_Ts,_Is)
@@ -276,7 +302,7 @@ if __name__ == "__main__":
 	#test.testSymmRestoration(1,3)
 	
 	#xi, muSig, lmb, kappa, m2Sig, N, F
-	V=Potential.Potential(0,*[0.2, 2, 1, 100**2],1,4)
+	V=Potential2.Potential(0,*[0.2, 2, 1, 100**2],1,4)
 	
 	def fSig1_function(muSig, lmb, kappa, m2Sig): return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
 	fSig1 = fSig1_function(0.2, 2, 1, 100**2)	
