@@ -111,12 +111,15 @@ class Potential:
         if self.CsakiTerm:
             frac = self.F/self.N
             if abs(frac - np.round(frac)) > 0.0001:
-                raise NonLinear(f"Choice of N gives non-linear Lagrangian.")
+                raise NonLinear(f"Choice of N = {self.N} and F = {self.F} gives non-linear Lagrangian.")
             
         ##GLUONIC FITS
         data = np.genfromtxt(f'GridDataF{self.F}N{self.N}Corrected.csv', delimiter=',', dtype=float, skip_header=1)
         #self.linear = interpolate.LinearNDInterpolator(data[:,0:2],data[:,2])
-        self.linear = interpolate.SmoothBivariateSpline(data[:,0],data[:,1],data[:,2]/1e10, kx=1,ky=1)
+        self.num = round(len(data)/2)
+        self.T_switch = data[self.num,0]
+        self.linear_small = interpolate.SmoothBivariateSpline(data[:self.num,0],data[:self.num,1],data[:self.num,2]/1e7, kx=4,ky=3)
+        self.linear_large = interpolate.SmoothBivariateSpline(data[self.num:,0],data[self.num:,1],data[self.num:,2]/1e10, kx=4,ky=3)
         self.nearest = interpolate.NearestNDInterpolator(data[:,0:2],data[:,2])
         
 
@@ -152,18 +155,42 @@ class Potential:
         else:
             raise NotImplemented(f"F/N={self.F/self.detPow} not implemented yet in mSq")
 	
-    def _Vg(self, T,sig):
-        sig = np.array(sig); sig = np.abs(sig)
 
-        if sig.shape is not ():
-            return np.reshape(np.array([self.linear.ev(T,1000)*1e10 if s>1000 else self.linear.ev(T,s)*1e10 for s in sig]),sig.shape)
+    def _Vg(self, T, sig):
+        # Check if input1 or input2 are single numbers (scalars)
+        if np.ndim(T) == 0:
+            T = [T]  # Treat as a vector of one element
+        if np.ndim(sig) == 0:
+            sig = [sig]  # Treat as a vector of one element
 
-
+        # Convert inputs to numpy arrays for easier handling
+        vector1 = np.array(T)
+        vector2 = np.array(sig)
+        
+        # Create a matrix to store the results
+        matrix = np.zeros((len(vector1), len(vector2)))
+        
+        # Loop through each element of vector1 and vector2, applying the function
+        for i, a in enumerate(vector1):
+            for j, b in enumerate(vector2):
+                matrix[i, j] = self._Vg_f(a, b)
+    
+        return np.array(matrix)
+            
+    def _Vg_f(self, T, sig):
+        sig = abs(sig)
+        if T<90:
+            return 0
+        if T<self.T_switch:
+            if sig>1000:
+                return self.linear_small.ev(T,1000)*1e7 
+            else:
+                return self.linear_small.ev(T,sig)*1e7
         else:
             if sig>1000:
-                return self.linear.ev(T,1000)*1e10 
+                return self.linear_large.ev(T,1000)*1e10
             else:
-                return self.linear.ev(T,sig)*1e10 
+                return self.linear_large.ev(T,sig)*1e10
             
             
 		
@@ -232,15 +259,15 @@ class Potential:
     def findminima(self,T,rstart=None,rcounter=1, tolerance=None):
         #For a linear sigma model. Returns the minimum away from the origin.
         if rstart == None:
-            rstart = self.fSigma()
+            rstart = self.fSigma()*.75
         #Roll down to rhs minimum:
-        res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',tol=tolerance,bounds=[(0,self.fSigma()*1.1)])
+        res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',tol=tolerance,bounds=[(.5+rcounter*2,self.fSigma()*1.05)])
         #Check the two rolls didn't find the same minimum:
-        if not res.success or res.x[0]<0.5:
+        if not res.success or res.x[0]<1+rcounter*2:
             #If so, try a new start
             if rcounter<=4:
                 if rstart is not None:
-                    return self.findminima(T,rstart=rstart*0.9,rcounter=rcounter+1)
+                    return self.findminima(T,rstart=rstart*0.8,rcounter=rcounter+1)
                 else: return None
             else:
                 return None
@@ -268,7 +295,7 @@ class Potential:
         scale = self.fSigma()
 		
         #First a coarse scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-        Ts_init = np.linspace(100,1000,num=400); deltaVs_init=[]
+        Ts_init = np.linspace(90,700,num=400); deltaVs_init=[]
 
         for T in Ts_init:
             deltaV =  self.deltaV(T, rstart=scale)
@@ -285,6 +312,9 @@ class Potential:
                 plt.xlabel('Delta V'); plt.ylabel('T')
             plt.show()	
 
+        if len(deltaVs_init)<3:
+            print('Course scan finds nothing')
+            return None
         #JUST taking deltaV's which are greater than zero BUT decreasing. Note the reason for this is often going further can confuse python later.
         j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
         k = list(takewhile(lambda x: deltaVs_init[x,1]>0, range(len(deltaVs_init[:,0]))))
@@ -309,12 +339,13 @@ class Potential:
 
 	
 		#Find delta V for a finer scan of temperatures & interpolate between them. 
-        Ts = np.linspace(T_init*0.95,T_init*1.35,num=100); deltaVs = np.array([[T, self.deltaV(T, rstart=scale*.8)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
+        Ts = np.linspace(T_init-10,T_init+10,num=150); deltaVs = np.array([[T, self.deltaV(T, rstart=scale*.8)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
 		
         if len(deltaVs)<5: return None #Catches if there are just not enough points to make a verdict.
 		
 		
         #Ensure each deltaV is decreasing with increasing T.
+        deltaVs = deltaVs[deltaVs[:, 1]!=None]
         j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs[:,1])))[x]<=0, range(len(deltaVs[:,0])))); deltaVs=deltaVs[j]
 		
         if len(deltaVs)<5: return None #Again, catching where there are too few points.

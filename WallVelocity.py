@@ -2,7 +2,7 @@ from cosmoTransitions.tunneling1D import SingleFieldInstanton
 from cosmoTransitions.tunneling1D import PotentialError
 from cosmoTransitions import helper_functions
 from functools import reduce
-import Potential, GravitationalWave
+import Potential2, GravitationalWave
 from scipy import interpolate, optimize
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,11 +11,7 @@ import csv
 from scipy.integrate import solve_ivp ,simps
 from scipy.optimize import root_scalar
 
-#Calculate g_star
-data_array = np.loadtxt('gstar_data.dat')
-Ts = data_array[:,0]
-g_stars = data_array[:,1]
-_g_star = interpolate.interp1d(Ts, g_stars)
+
 ##Important constants for the potential.
 mh = 125.18; mW = 80.385; mZ = 91.1875; mt = 173.1; mb = 4.18; v = 246.; l = mh**2/v**2
 
@@ -42,9 +38,9 @@ def wallVelocity(V, alpha, Tn):
 def alpha(V, Tn, cb2):
     minima = V.findminima(Tn)
     thetaBar = lambda h,T: -T*V.dVdT(h,T)+V.Vtot(h,T) + V.Vtot(h,T)/cb2
-    DThetaBar = thetaBar(minima[0],Tn) - thetaBar(minima[1],Tn)
+    DThetaBar = thetaBar(0,Tn) - thetaBar(minima,Tn)
 	
-    symEnthalpy = - Tn * V.dVdT(minima[0],Tn)
+    symEnthalpy = - Tn * V.dVdT(0,Tn)
     return DThetaBar/( 3 * symEnthalpy )
     
 
@@ -156,33 +152,35 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
         for row in transposed_arrays:
             writer.writerow(row)
 
-def readAndEdit(filename, g4, beta):
+def readAndEdit(filename, N, F, CsakiTerm):
     delimiter = ','
     #Read into a numpy array the edited data.
-    data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=2, dtype=None))
+    data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
-    Eps = []; Deltas = []; Tns = []; Alphas = []; Betas = []; Vws = []; Messages = []
+    m2s = []; cs = []; lss = []; las = []; Tns = []; Alphas = []; Betas = []; MassRatios = []; Vws = np.zeros(len(data))
     for item in data:
-        Eps.append(item[0]); Deltas.append(item[1]); Tns.append(item[2]); Alphas.append(item[3]); Betas.append(item[4]); Vws.append(item[5]); Messages.append(item[6])
+        m2s.append(item[0]); cs.append(item[1]); lss.append(item[2]); las.append(item[3]); Tns.append(item[4]); Alphas.append(item[5]); Betas.append(item[6]); MassRatios.append(item[7])
 
-    Eps = np.array(Eps); Deltas = np.array(Deltas); Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas); Vws = np.array(Vws)
+    m2s = np.array(m2s); cs = np.array(cs); lss = np.array(lss); las = np.array(las); Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas); MassRatios = np.array(MassRatios)
 
-    for i in range(len(Eps)):
+    for i in range(len(m2s)):
         if Tns[i]>1:
-            V = Potential.Potential(Eps[i],g4,Potential.gammaa(Eps[i],g4,Deltas[i]),beta,higgs_corr=True,loop=True)
+            V = Potential2.Potential(m2s[i], cs[i], lss[i], las[i], N, F, CsakiTerm)
             minima = V.findminima(Tns[i])
-            psiN = V.dVdT(minima[1],Tns[i])/V.dVdT(minima[0],Tns[i])
-            cb2 = V.dVdT(minima[1],Tns[i])/(Tns[i]*V.d2VdT2(minima[1],Tns[i]))
-            cs2 = V.dVdT(minima[0],Tns[i])/(Tns[i]*V.d2VdT2(minima[0],Tns[i]))
+            psiN = V.dVdT(minima,Tns[i])/V.dVdT(0,Tns[i])
+            cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
+            cs2 = V.dVdT(0,Tns[i])/(Tns[i]*V.d2VdT2(0,Tns[i]))
             alp = alpha(V, Tns[i], cb2)
             Vws[i] = find_vw(alp,cb2,cs2,psiN)
                 #Vws[i] = wallVelocity(V, alp, Tns[i])
-            print(rf'$\epsilon$ = {Eps[i]}, $\delta$ = {Deltas[i]}')
+            print(rf'$m^2$ = {m2s[i]}, $c$ = {cs[i]}, $\lambda_\sigma$ = {lss[i]}, $\lambda_a$ = {las[i]}')
             print(rf'$c_s^2$ = {cs2}, $c_b^2$ = {cb2}')
             print(rf'$\Psi$_N$ = {psiN}, $\alpha$ = {alp}, Vw = {Vws[i]}')
             
-    
-    save_arrays_to_csv('EditedScans/newvwsmalleps_g4_1.6_beta_0.32.csv',['Epsilon', 'Delta', 'Tn', 'Alpha', 'Beta', 'Vw', 'Message'],Eps, Deltas, Tns, Alphas, Betas, Vws, Messages)
+    if CsakiTerm:
+        save_arrays_to_csv(f'VwJor_N{N}F{F}_Csaki.csv',['m2', 'c', 'ls', 'la', 'Tn', 'Alpha', 'Beta', 'Vw', 'Mass Ratio'], m2s, cs, lss, las, Tns, Alphas, Betas, Vws, MassRatios)
+    else:
+        save_arrays_to_csv(f'VwJor_N{N}F{F}_Normal.csv',['m2', 'c', 'ls', 'la', 'Tn', 'Alpha', 'Beta', 'Vw', 'Mass Ratio'], m2s, cs, lss, las, Tns, Alphas, Betas, Vws, MassRatios)
 
 if __name__ == "__main__":
     '''
@@ -207,6 +205,6 @@ if __name__ == "__main__":
     print(f'Numerical Vw = {find_vw(alp,1/3,1/3,psiN)}')
     '''
     
-    readAndEdit('EditedScans/smalleps_g4_1.6_beta_0.32.csv', 1.6, np.sqrt(0.1))
+    readAndEdit('Test_N3F6_Normal.csv', 3, 6, False)
 
 

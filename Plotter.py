@@ -60,22 +60,20 @@ def populate(mSq, c, lambdas, lambdaa, N, F,plot=False, CsakiTerm=False):
 				plt.plot(np.linspace(-5,fSig*1.2,num=300),V.Vtot(np.linspace(-5,fSig*1.2,num=300),T)-V.Vtot(0,T),label=f"T={T}")
 			plt.legend()
 			plt.show()
-		plotV(V,[0,400,450,470,480,500,550,600])
+		plotV(V,[0,100,150,200,225,250,400,450,500,510,fSig])
 	if fSig == None:
 		return (0, 0, 0, 0, 15)
 	
-	
-	massRatio = abs(V.mSq['Sig'][0](fSig,0)/V.mSq['Eta'][0](fSig,0))
 
 	Tn, grd, message = GravitationalWave.grid(V,prnt=True,plot=plot)
 	
 	if Tn is not None:
 		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
-		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}, massRatio = {massRatio}")
-		return (Tn, alpha, betaH, massRatio, message)
+		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}")
+		return (Tn, alpha, betaH, 1, message, V.mSq['Sig'][0](fSig), V.mSq['Eta'][0](fSig), V.mSq['X'][0](fSig), V.mSq['Pi'][0](fSig))
 	else:
-		print('CT Returned None')
-		return (0, 0, 0, massRatio, message)
+		print(f'CT Returned None with message {message}')
+		return (0, 0, 0, 1, message, V.mSq['Sig'][0](fSig), V.mSq['Eta'][0](fSig), V.mSq['X'][0](fSig), V.mSq['Pi'][0](fSig))
 	
 
 def plotDifference(resC, resN):
@@ -83,33 +81,87 @@ def plotDifference(resC, resN):
 	markers = [".","o","v","^","<",">","1","2","3","4","8","s","p","P","*","h","H","+","x","D","d","|"]
 	
 	colormap = plt.cm.plasma #or any other colormap
-	normalize = matplotlib.colors.Normalize(vmin=min(np.ravel(resC[:,3]+resN[:,3])), vmax=max(np.ravel(resC[:,3]+resN[:,3])))
+	normalize = matplotlib.colors.Normalize(vmin=min(np.ravel(resC[:,5]+resN[:,5])), vmax=max(np.ravel(resC[:,5]+resN[:,5])))
 	#For the colour map
 
 	for i in range(len(resC)):
-		if resC[i,2] is not 0:
-			plt.scatter(resC[i,2], resC[i,1], c = resC[i,3], alpha=1/(2), marker=markers[-1], cmap=colormap, norm=normalize)
-		if resN[i,2] is not 0:
-			plt.scatter(resN[i,2], resN[i,1], c = resN[i,3], alpha=1/(1), marker=markers[-1], cmap=colormap, norm=normalize)
+		if resC[i,2]!=0 and resN[i,2]!=0:
+			plt.scatter(resC[i,2], resC[i,1], c = resC[i,5], alpha=1/(2), marker=markers[-1], cmap=colormap, norm=normalize)
+			plt.scatter(resN[i,2], resN[i,1], c = resN[i,5], alpha=1/(1), marker=markers[-1], cmap=colormap, norm=normalize)
 		markers.pop()
 
 			
 	plt.xscale("log")
 	plt.yscale("log")
-	plt.colorbar()
+	plt.colorbar(label=f'$m^2_\sigma$')
 	plt.xlabel(f'beta/H')
 	plt.ylabel(f'alpha')
 	plt.show()
+	
+def populateN(mSq, c, lambdas, lambdaa, N, F):
+	return populate(mSq, c, lambdas, lambdaa, N, F, CsakiTerm=False, plot=False)
+def populateC(mSq, c, lambdas, lambdaa, N, F):
+	return populate(mSq, c, lambdas, lambdaa, N, F, CsakiTerm=True, plot=False)
+
+
+def parallelScan(m2Sig,m2Eta,m2Pi,m2X, N, F):
+	#MAKE THE ARRAY
+	
+	data = []
+	for i in m2Sig:
+		for j in m2Eta:
+			for k in m2X:
+				for l in m2Pi:
+					data.append([i,j,k,l,N,F])
+					
+	C_data = []; N_data = []
+	for i in range(len(data)):
+		point = data[i]
+		inputsC = [*Potential2.masses_to_lagrangian_Csaki(*point),N,F]
+		inputsN = [*Potential2.masses_to_lagrangian_Normal(*point),N,F]
+		if (inputsC[0] is not None) and (inputsN[0] is not None):
+			C_data.append(inputsC)
+			N_data.append(inputsN)
+			
+	
+	C_data = C_data[:30]
+	N_data = N_data[:30]
+	
+
+        
+	#Multithreading with 16 cores.
+	with Pool(8) as p:
+		resN = p.starmap(populateN, N_data)
+		resC = p.starmap(populateC, C_data)
+	
+	#MAKE THE FILE WRITER
+	#Column Titles
+	N_data = np.array(N_data); C_data = np.array(C_data); resN=np.array(resN); resC=np.array(resC)
+	column_titles = ['m2', 'c', 'lambda_sigma', 'lambda_a', 'Tn', 'Alpha', 'Beta', 'Vw','m2Sig','m2Eta','m2Pi','m2X']
+	# File path to save the CSV
+	file_path = f'Test_N{3}F{6}_Normal.csv'
+	save_arrays_to_csv(file_path, column_titles, N_data[:,0], N_data[:,1], N_data[:,2], N_data[:,3], 
+												resN[:,0], resN[:,1], resN[:,2], resN[:,3], resN[:,4], resN[:,6], resN[:,7], resN[:,8])
+	file_path = f'Test_N{3}F{6}_Csaki.csv'
+	save_arrays_to_csv(file_path, column_titles, C_data[:,0], C_data[:,1], C_data[:,2], C_data[:,3], 
+												resC[:,0], resC[:,1], resC[:,2], resC[:,3], resC[:,4], resC[:,6], resC[:,7], resC[:,8])
+
+
+	plotDifference(resC, resN)
 
 	
 if __name__ == "__main__":
 	print('hello')
 	
 	N=3; F=6
-	m2Sig = np.linspace(10E3, 2*10E5, num=10)
+	m2Sig = np.linspace(10E3/np.sqrt(3), 2*10E4, num=15)
 	m2Eta = np.linspace(10E3, 2*10E4, num=10)
 	m2X = np.linspace(8*10E2,10E4, num=10)
 	m2Pi = np.linspace(8*10E2,10E4, num=10)
+	
+	parallelScan(m2Sig,m2Eta,m2X,m2Pi,3,6)
+	
+	'''
 
 	data = []
 	for i in m2Sig:
@@ -128,8 +180,8 @@ if __name__ == "__main__":
 			N_data.append(inputsN)
 			
 	
-	C_data = C_data[:10]
-	N_data = N_data[:10]
+	C_data = C_data[:20]
+	N_data = N_data[:20]
 
 
 	
@@ -158,7 +210,7 @@ if __name__ == "__main__":
 	save_arrays_to_csv(file_path, column_titles, C_data[:,0], C_data[:,1], C_data[:,2], C_data[:,3], resC[:,0], resC[:,1], resC[:,2], resC[:,3])
 
 
-	plotDifference(resC, resN)
+	plotDifference(resC, resN)'''
 
 
 	

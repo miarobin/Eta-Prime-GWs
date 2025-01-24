@@ -21,15 +21,23 @@ _g_star = 106.75; MPl = 2.435E18;
 
 
 #Calculate the action S3 for a given temperature T using CosmoTransitions SingleFieldInstanton class.
-def action(V,T,prnt=False):
+def action(V,T,prnt=True):
 	#First find & classify the true & false minima
 	vT = V.findminima(T)
 	
 	#If rhs is none at this point it means there's only one minima. Return action as None.
-	if vT == None: return None
+	if vT == None: 
+		print('No vT found')
+		return None
 	
 	true_min = min([0,vT], key=lambda phi: V.Vtot(phi,T))
 	false_min = max([0,vT], key=lambda phi: V.Vtot(phi,T))
+	
+
+	if false_min > true_min:
+		if prnt:
+			print('Attempting to calculate tunnelling in the wrong direction.')
+		return None
 
 	try:
 		#Initialise instanton in CosmoTransitions.
@@ -41,6 +49,9 @@ def action(V,T,prnt=False):
 		if action < 0 and prnt:
 			print('negative action')
 			return None
+		elif action < 0:
+			return None
+		
 		return action
 		
 	
@@ -85,11 +96,11 @@ def grid(V, tc=None, prnt=True, plot=False):
 		if tc == None:
 			return None, None, 1
 
-	maxT = tc*.99
+	maxT = tc-0.2
 	
 	
 	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
-	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc/2, bounds=[(0,tc)], method='Nelder-Mead')
+	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc*(2/3), bounds=[(tc*(1/2),maxT-1)], method='Nelder-Mead')
 	if minTy.fun/V.fSigma()**4<1:
 		minT = max(minTy.x[0],maxT*.85) #This is the point at which \phi=0 becomes a local maxima.
 	else:
@@ -97,17 +108,20 @@ def grid(V, tc=None, prnt=True, plot=False):
 	print(f'maximum T = {maxT}, minimum T = {minT}')
 	
 	
-	numberOfEvaluations = 100
+	numberOfEvaluations = 150
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
 	Test_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for _T in Test_Ts:
 		rollingAction = action(V, _T)
-		if rollingAction is not None and rollingAction>50 and rollingAction/_T>75:
-			minT = _T
+		if rollingAction is not None and rollingAction>50 and rollingAction/_T>50:
+			if _T< maxT:
+				minT = _T
 			break
 	print(f'minT={minT}')
-	#FINE SAMPLE. The interesting stuff is usually happening near minT, hence the 'log'.
-	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations)**2; As = []; Ts = []
+	#FINE SAMPLE. The interesting stuff is usually happening near minT, hence the 'square'.
+	#Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations)**2; As = []; Ts = []
+	#Trying out without the square.
+	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations); As = []; Ts = []
 	for _T in Test_Ts:
 		rollingAction = action(V, _T)
 		if rollingAction is not None and rollingAction>0:
@@ -156,7 +170,7 @@ def grid(V, tc=None, prnt=True, plot=False):
 	
 	if max(_Is)<0.34:
 		print(_Is)
-		if prnt:
+		if plot:
 			plt.plot(_Ts, _As)
 			plt.xlabel('Temperature'); plt.ylabel('A(T)')
 			plt.show()
@@ -170,7 +184,7 @@ def grid(V, tc=None, prnt=True, plot=False):
 
 	moreTs = min(_Ts)+(max(_Ts)-min(_Ts))*np.linspace(0, 1,num=500)**2
 
-	if prnt:
+	if plot:
 		plt.plot(moreTs, [interpolator(_T) for _T in moreTs])
 		plt.plot(_Ts, _Is)
 		plt.xlabel('Temperature'); plt.ylabel('I(T)')
