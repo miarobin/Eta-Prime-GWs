@@ -8,8 +8,152 @@ from itertools import takewhile
 import os
 from mpl_toolkits.mplot3d import Axes3D
 
-#FOR A LINEAR POTENTIAL (i.e. a symmetric and a non-symmetric phase)
+'''
+    This file does the following:
+    1. Converts physical particle masses to Lagrangian parameters in "masses_to_lagrangian_Csaki" and "masses_to_lagrangian_Normal". See appendix D of the draft.
+    
+        masses_to_lagrangian_Csaki/masses_to_lagrangian_Normal: 
+        INPUTS:  (_m2Sig, _m2Eta, _m2X, _m2Pi, N, F)
+                (float, float, float, float, int, int)
+        OUTPUTS: (m2, c, ls, la)
+        RAISES: NotImplemented (as each N, F case must be handcoded)
+        
+    2. Creates a 'Potential' class, which has the following properties:
+    
+        Potential:
+        INPUTS: m2, c, lambdas, lambdaa, N, F, CsakiTerm
+                (float, float, float, float, int, int, bool)
+        ADDITIONAL PROPERTIES:  detPow, mSq
+                                (float, dictionary)
+        RAISES: NonLinear (If F/N is not integer)
+                                
+    3. A number of functions construct the potential. These are:
+        a. "V". The tree level potential as a function of sigma.
+        
+            V:
+            INPUTS: (sigma)
+                    (np.array)
+            OUTPUTS: V_tree
+                    (np.array)
+                    
+            "V1T". The one-loop thermal correction to the potential. Uses the interpolated, full, thermal function from CosmoTransitions "Jb_spline".
+            
+            V1T:
+            INPUTS: (sigma, T)
+                    (np.array, np.array)
+            OUTPUTS: V_thermal,one-loop
+                    (np.array)
+                    
+                    
+        b. "_Vg" and helper function "_Vg_f". 
+            "_Vg_f" samples the interpolated gluonic potentials 'linear_small' at small sigma and 'linear_large' at large sigma for 
+            single values of sigma and T. Beyond sigma = GLUONIC_CUTOFF, the potential is assumed constant. 
+            "_Vg" extends this to deal with array inputs.
+            
+            _Vg:
+            INPUTS: (sig, T)
+                    (np.array, np.array)
+            OUTPUTS: V_gluonic
+                    (np.array)
+            RAISES: NotImplemented (as each N, F case must be individually set)
+            _Vg_f:
+            INPUTS: (sig, T)
+                    (float, float)
+            OUTPUTS: V_gluonic
+                    (float)
+            RAISES: NotImplemented (as each N, F case must be individually set)
+            
+            "VGluonic" is a wrapper function for "_Vg" with VGluonic(T=0)=0.
+            VGluoic:
+            INPUTS: (sig, T)
+                    (float, float)
+            OUTPUTS: V_gluonic
+                    (float)
+            RAISES: NotImplemented (as each N, F case must be individually set)
+        
+        c. "Vtot" sums the contributions from "V", "V1T" and "VGluonic" if "polyakov" is True.
+        
+            Vtot:
+            INPUTS (sig, T, polyakov=True)
+                    (np.array, np.array, bool)
+            OUTPUTS V_total
+                    (np.array)
+                    
+    4. A bunch of properties of the potential which we'll need later.
+        a. "dVdT" derivative of "Vtot" with respect to T. Formula: https://en.wikipedia.org/wiki/Five-point_stencil
+            and "d2VdT2" second derivative of "Vtot" with respect to T. Formula: https://en.wikipedia.org/wiki/Five-point_stencil
+            
+            dVdT:
+            INPUTS (sig,T,eps=0.001)
+                    (np.array, np.array, float)
+            OUTPUTS dV/dT
+                    (np.array)
+                    
+            d2VdT2:
+            INPUTS (sig,T,eps=0.001)
+                    (np.array, np.array, float)
+            OUTPUTS d2V/dT2
+                    (np.array)
+            
+        b. "fSigma" is the analytic solution to the zero-temperature minimum of the tree level potential.
+            
+            fSigma:
+            INPUTS ()
+            OUTPUTS fSigma
+                    (float)
+            RAISES: NotImplemented (as each N, F case must be handcoded)
+            
+        c. "findMinimum" finds the minimum (if it exists) at sigma>0. Returns None if the second minimum does not exist. Uses Nelder-Mead minimisation.
+            rstart sets the starting value for the minimisation algorithm, default is the result of "fSigms" and rcounter is a recursive mechanism for bringing the start value closer to sigma=0.
+        
+            findMinimum:
+            INPUTS (T,rstart=None,rcounter=1)
+                    (float, float, int)
+            OUTPUTS minima OR None
+                    (float)
+                    
+        d. "criticalT" finds the critical temperature of the potential. Returns None if it does not exist (i.e. second order phase transition).
+            guessIn allows you to input a guess for the critical temperature and prnt plots a bunch of intermediary checks. See code for detailed explanation.
+        
+            criticalT:
+            INPUTS (guessIn=None,prnt=True)
+                    (float, bool)
+            OUTPUTS criticalT OR None
+                    (float)
+                    
+    5. "Jb_spline" is a spline interpolation of the bosonic thermal function, taken from CosmoTransitions code as it didn't work properly for some reason.
+        NB X=(m/T)^2 where m is the effective mass at a particular sigma. https://github.com/clwainwright/CosmoTransitions/blob/master/cosmoTransitions/finiteT.py
+    
+        Jb_spline:
+        INPUTS (X,n=0)
+                (np.array, int)
+        OUTPUTS Jb
+                (np.array)
+                                
+        
+    VARIABLE DICTIONARY:
+        > sigma (float) = order parameter for the phase transition,
+        > T (float) = temperature,
+        
+        > _m2Sig (float) = squared mass of the sigma particle,
+        > _m2Eta (float) = squared mass of the eta prime particle,
+        > etc
+        > mSq (dict) = {Particle name (string), effective mass squared (lambda function (sigma, T) -> float), number of degrees of freedom (int)}
+        
+        
+        > N (int) = number of colours,
+        > F (int) = number of flavours,
+        
+        > CsakiTerm (bool) = True if this is for the Csaki case, False if the normal case.
+        > detPow (int) = Power of the chiral symmetry breaking determinant term. Modified in the Csaki/Normal case as per Eq 8 in the draft.
+        
+        > m2, c, ls/lambdas, la/lambdaa (float) = Lagrangian parameters. See Eq 4 of 2309.16755.
+        
+'''
+#Vacuum expectation value for chiral symmetry breaking.
 FPI = 600
+#Maximum value of sigma for Martha's interpolator.
+GLUONIC_CUTOFF = 1000
 
 class NotImplemented(Exception):
     pass
@@ -21,27 +165,8 @@ class InvalidPotential(Exception):
 #CONVERT between physical inputs and Lagrangian parameters
 
 def masses_to_lagrangian_Csaki(_m2Sig, _m2Eta, _m2X, _m2Pi, N, F):
-    if int(round(N/F))==1:
-        #Not Valid
-        '''
-        m2 = (3*_m2Eta - _m2Sig)/2
-        c = (_m2Eta - _m2Pi) * F * FPI
-        ls = (_m2Sig - _m2Eta)/FPI**2
-        la = (_m2X + _m2Pi - 2*_m2Eta)/FPI**2
-
-        #CHECKS:
-        if m2<0:
-            print('Point is Invalid as m2<0')
-            return (None,None,None,None)
-        if ls<0 or la<0:
-            print(r'Point is Invalid as $\lambda_\sigma$<0')
-            return (None,None,None,None)
-        if (-8 * F**4 * m2**3 + 27 * c**2 * ls)<0:
-            print("Invalid point as only one real solution to potential")
-            return (None,None,None,None)
-            '''
-
-    elif int(round(F/N))==2:
+    
+    if int(round(F/N))==2:
         #From Mathematica SigmaVev.nb. 
         c = F**2 * (_m2Eta + _m2Pi)/(F**2 - F + 2)
         m2 = (_m2Sig + _m2Eta)/2 - c
@@ -120,7 +245,7 @@ class Potential:
         self.T_switch = data[self.num,0]
         self.linear_small = interpolate.SmoothBivariateSpline(data[:self.num,0],data[:self.num,1],data[:self.num,2]/1e7, kx=4,ky=3)
         self.linear_large = interpolate.SmoothBivariateSpline(data[self.num:,0],data[self.num:,1],data[self.num:,2]/1e10, kx=4,ky=3)
-        self.nearest = interpolate.NearestNDInterpolator(data[:,0:2],data[:,2])
+  
         
 
         #Field dependent masses for fermions & bosons, their derivative wrt h (twice) and their respective DoF
@@ -155,44 +280,6 @@ class Potential:
         else:
             raise NotImplemented(f"F/N={self.F/self.detPow} not implemented yet in mSq")
 	
-
-    def _Vg(self, T, sig):
-        # Check if input1 or input2 are single numbers (scalars)
-        if np.ndim(T) == 0:
-            T = [T]  # Treat as a vector of one element
-        if np.ndim(sig) == 0:
-            sig = [sig]  # Treat as a vector of one element
-
-        # Convert inputs to numpy arrays for easier handling
-        vector1 = np.array(T)
-        vector2 = np.array(sig)
-        
-        # Create a matrix to store the results
-        matrix = np.zeros((len(vector1), len(vector2)))
-        
-        # Loop through each element of vector1 and vector2, applying the function
-        for i, a in enumerate(vector1):
-            for j, b in enumerate(vector2):
-                matrix[i, j] = self._Vg_f(a, b)
-    
-        return np.array(matrix)
-            
-    def _Vg_f(self, T, sig):
-        sig = abs(sig)
-        if T<90:
-            return 0
-        if T<self.T_switch:
-            if sig>1000:
-                return self.linear_small.ev(T,1000)*1e7 
-            else:
-                return self.linear_small.ev(T,sig)*1e7
-        else:
-            if sig>1000:
-                return self.linear_large.ev(T,1000)*1e10
-            else:
-                return self.linear_large.ev(T,sig)*1e10
-            
-            
 		
     def V(self,sig): 
         ##The tree level, zero temperature potential.
@@ -209,11 +296,50 @@ class Potential:
                                                                                 self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
 
 
+
+    def _Vg(self, sig, T):
+        # Check if input1 or input2 are single numbers (scalars)
+        if np.ndim(T) == 0:
+            T = [T]  # Treat as a vector of one element
+        if np.ndim(sig) == 0:
+            sig = [sig]  # Treat as a vector of one element
+
+        # Convert inputs to numpy arrays for easier handling
+        vector1 = np.array(sig)
+        vector2 = np.array(T)
+        
+        # Create a matrix to store the results
+        matrix = np.zeros((len(vector1), len(vector2)))
+        
+        # Loop through each element of vector1 and vector2, applying the function
+        for i, a in enumerate(vector1):
+            for j, b in enumerate(vector2):
+                matrix[i, j] = self._Vg_f(a, b)
+    
+        return np.array(matrix)
+            
+    def _Vg_f(self, sig, T):
+        sig = abs(sig)
+        if T<90:
+            return 0
+        if T<self.T_switch:
+            if sig>1000:
+                return self.linear_small.ev(T,GLUONIC_CUTOFF)*1e7 
+            else:
+                return self.linear_small.ev(T,sig)*1e7
+        else:
+            if sig>1000:
+                return self.linear_large.ev(T,GLUONIC_CUTOFF)*1e10
+            else:
+                return self.linear_large.ev(T,sig)*1e10
+            
+            
+
     def VGluonic(self, sig, T):
         sig = np.array(sig)
         if T==0:
             return np.zeros(sig.shape)
-        return np.reshape(self._Vg(T,sig),sig.shape)
+        return np.reshape(self._Vg(sig, T),sig.shape)
 	
 
     def Vtot(self,sig,T, polyakov=True):
@@ -227,11 +353,11 @@ class Potential:
             return self.V(sig) + self.V1T(sig,T).real
 
     def dVdT(self,sig,T,eps=0.001):
-    #Uses finite difference method to fourth order. Takes scalar h and T.
+    #Uses finite difference method to fourth order. Takes scalar sigma and T.
         return (self.Vtot(sig,T-2*eps) - 8*self.Vtot(sig,T-eps) + 8*self.Vtot(sig,T+eps) - self.Vtot(sig,T+2*eps)) / (12.*eps)
 			
     def d2VdT2(self,sig,T,eps=0.001):
-        #Uses finite difference method to fourth order. Takes scalar h and T.
+        #Uses finite difference method to fourth order. Takes scalar sigma and T.
         return (self.dVdT(sig,T-2*eps) - 8*self.dVdT(sig,T-eps) + 8*self.dVdT(sig,T+eps) - self.dVdT(sig,T+2*eps)) / (12.*eps)
 
     def fSigma(self):
@@ -256,12 +382,12 @@ class Potential:
         else:
             raise NotImplemented(f"F/N={self.F/self.detPow} not implemented yet in fSigma")
 
-    def findminima(self,T,rstart=None,rcounter=1, tolerance=None):
+    def findminima(self,T,rstart=None,rcounter=1):
         #For a linear sigma model. Returns the minimum away from the origin.
         if rstart == None:
             rstart = self.fSigma()*.75
         #Roll down to rhs minimum:
-        res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',tol=tolerance,bounds=[(.5+rcounter*2,self.fSigma()*1.05)])
+        res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',bounds=[(.5+rcounter*2,self.fSigma()*1.05)])
         #Check the two rolls didn't find the same minimum:
         if not res.success or res.x[0]<1+rcounter*2:
             #If so, try a new start
@@ -422,35 +548,6 @@ def Jb_spline(X,n=0):
 
 		
 if __name__ == "__main__":
-    fig = plt.figure()
-    
-    #ax = fig.add_subplot(projection='3d')
-    data = np.genfromtxt(f'gridDataF3N3Corrected.csv', delimiter=',', dtype=float, skip_header=1)
-    _Vg = interpolate.LinearNDInterpolator(data[:,0:2],data[:,2])
-    Ts = np.linspace(5,1000,num=10)
-    sigs = np.linspace(0,1000,num=10)
-    x2,y2 = np.meshgrid(Ts,sigs)
-    _Vg2 = interpolate.SmoothBivariateSpline(x2.flatten(), y2.flatten(),_Vg(x2.flatten(),y2.flatten()),kx=1,ky=1,s=5000)
- 
-
-    sigs = np.linspace(0,1000,num=600)
-    
-    plt.plot(sigs, _Vg(471,sigs).flatten(),color='red')
-    plt.plot(sigs, _Vg2.ev(471,sigs).flatten(),color='blue')
-
-    print(data[4747:4847,0])
-    plt.plot(np.arange(0,1000,10), data[4747:4847,2],color='green')
-    #x2,y2 = np.meshgrid(Ts,sigs)
-    #ax.plot_trisurf(x2.flatten(), y2.flatten(),_Vg(x2.flatten(),y2.flatten()), linewidth=0, antialiased=False)
-   
-    #ax.plot_trisurf(data[:,0],data[:,1],data[:,2], linewidth=0, antialiased=False)
-    plt.show()
-    '''
-    data2 = np.genfromtxt(f'Gridsigmastep5.csv', delimiter=',', dtype=float, skip_header=1)
-    
-    plt.plot(data2[:,1],data2[:,2])
-    plt.xlabel(r'$\sigma$')
-    plt.ylabel('V')
-    plt.show()'''
+    print('hello world')
     
 
