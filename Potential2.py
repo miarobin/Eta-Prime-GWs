@@ -149,6 +149,9 @@ from mpl_toolkits.mplot3d import Axes3D
         
         > m2, c, ls/lambdas, la/lambdaa (float) = Lagrangian parameters. See Eq 4 of 2309.16755.
         
+        > Tn, alpha, betaH, vW = Parameters to describe the gravitational wave.
+        > message = Error message code from running GravitationalWave.grid, see "Error Codes.txt" for what each code means.
+        
 '''
 #Vacuum expectation value for chiral symmetry breaking.
 FPI = 600
