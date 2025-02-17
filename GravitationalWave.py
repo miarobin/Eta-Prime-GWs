@@ -73,7 +73,7 @@ def action(V,T,prnt=True):
 #Plots the potential as a function of temperature
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-5,V.fSigmaApprox()*1.25,num=100),V.Vtot(np.linspace(-5,V.fSigmaApprox()*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+		plt.plot(np.linspace(-5,V.fSigma()*1.25,num=100),V.Vtot(np.linspace(-5,V.fSigma()*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
 	plt.legend()
 	plt.show()
 	
@@ -94,17 +94,20 @@ def grid(V, tc=None, prnt=True, plot=False):
 		tc = V.criticalT(prnt=plot)
 		if prnt: print(f"Tc = {tc}")
 		if tc == None:
-			return None, None, 1
+			#Message 1: tc fails.
+			return None, None, None, 1
 
+	#Maximum temperature of the action scan. CT fails if T is too close to tc.
 	maxT = tc-0.2
 	
 	
 	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
 	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc*(2/3), bounds=[(tc*(1/2),maxT-1)], method='Nelder-Mead')
 	if minTy.fun/V.fSigma()**4<1:
-		minT = max(minTy.x[0],maxT*.85) #This is the point at which \phi=0 becomes a local maxima.
+		#Sometimes minTy is a terrible estimate so manually setting a minimum. 
+		minT = max(minTy.x[0],maxT*.85) 
 	else:
-		return None, None, 2
+		return None, None, tc, 2
 	print(f'maximum T = {maxT}, minimum T = {minT}')
 	
 	
@@ -113,14 +116,14 @@ def grid(V, tc=None, prnt=True, plot=False):
 	Test_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for _T in Test_Ts:
 		rollingAction = action(V, _T)
+		#Checking it's a sensible result (NB without these conditions it's an absolute numerical disaster.
 		if rollingAction is not None and rollingAction>50 and rollingAction/_T>50:
 			if _T< maxT:
 				minT = _T
 			break
 	print(f'minT={minT}')
-	#FINE SAMPLE. The interesting stuff is usually happening near minT, hence the 'square'.
-	#Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations)**2; As = []; Ts = []
-	#Trying out without the square.
+	
+	#FINE SAMPLE.
 	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations); As = []; Ts = []
 	for _T in Test_Ts:
 		rollingAction = action(V, _T)
@@ -131,17 +134,14 @@ def grid(V, tc=None, prnt=True, plot=False):
 	
 
 	if len(As)==0:
-		return None, None, 3
+		return None, None, tc, 3
 	if len(As)<3:
 		print (RED + "Definite precision loss. Use a smaller stepsize." + RESET)
-		return None, None, 4
+		return None, None, tc, 4
 	if len(As)<10:
 		print (RED + "Possible precision loss. Use a smaller stepsize." + RESET)
 
 	minT = min(Ts) #Update minimum T in bounds ect.
-
-	print(len(Ts))
-	print(len(As))
 
 	Ts = [T for T,A in sorted(zip(Ts,As))]
 	As = [A for T,A in sorted(zip(Ts,As))]
@@ -167,7 +167,7 @@ def grid(V, tc=None, prnt=True, plot=False):
 	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<100])
 	
 
-	
+	#Either no nucleation or Ts have started to high.
 	if max(_Is)<0.34:
 		print(_Is)
 		if plot:
@@ -177,7 +177,7 @@ def grid(V, tc=None, prnt=True, plot=False):
 			plt.plot(_Ts, _Is)
 			plt.xlabel('Temperature'); plt.ylabel('I(T)')
 			plt.show()
-		return None, None, 5
+		return None, None, tc, 5
 
 	interpolator = interpolate.Akima1DInterpolator(_Ts,_Is)
 	#NOTE ERROR HERE FROM NOT BEING ABLE TO INTEGRATE ALL THE WAY TO TC!! Should be small from exponential suppression.
@@ -195,14 +195,14 @@ def grid(V, tc=None, prnt=True, plot=False):
 		narrowRegion = [T for T in moreTs if 0.1<interpolator(T)<1]
 		res = optimize.minimize(lambda T: abs(interpolator(T) - 0.34), (narrowRegion[0]+narrowRegion[-1])/2, bounds=[(min(narrowRegion), max(narrowRegion))],method='L-BFGS-B',tol=1e-3)
 	except ValueError:
-		return None, None, 6
+		return None, None, tc, 6
 	
 	if res.success and res.fun <=0.1:
 		if plot: 
 			print(f"Tn = {res.x[0]}, Minimisation method L-BFGS-B")
 			print(res)
 
-		return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), 0
+		return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), tc, 0
 	else:
 		res = optimize.minimize(lambda T: abs(interpolator(T) - 0.34), (narrowRegion[0]+narrowRegion[-1])/2, bounds=[(min(narrowRegion), max(narrowRegion))],method='Nelder-Mead',tol=1e-3)
 		if res.success and res.fun <=0.1:
@@ -214,17 +214,17 @@ def grid(V, tc=None, prnt=True, plot=False):
 				plt.show()
 
 			#Need to return Tn, S_3/T and success error message.
-			return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), 0
+			return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), tc, 0
 		
 		print(res)
 		if plot:
 			plt.plot(_Ts, np.array(_As)/np.array(_Ts))
 			plt.plot(np.linspace(_Ts[0],_Ts[-1]), (interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)(np.linspace(_Ts[0],_Ts[-1]))))
 			plt.show()
-		return None, None, 7
+		return None, None, tc, 7
 	
 	#If you reach this point something's gone totally wrong...
-	return None,None,8
+	return None,None, tc, 8
 
 			
 	

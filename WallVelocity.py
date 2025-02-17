@@ -12,8 +12,29 @@ from scipy.integrate import solve_ivp ,simps
 from scipy.optimize import root_scalar
 
 
-##Important constants for the potential.
-mh = 125.18; mW = 80.385; mZ = 91.1875; mt = 173.1; mb = 4.18; v = 246.; l = mh**2/v**2
+'''Computes the Bubble Wall Velocity. The first functions are taken from the code snippet in https://arxiv.org/abs/2303.10171
+
+The two additional functions I have written are:
+	1. "save_arrays_to_csv" is a generic function for saving data as a csv array.
+
+	    save_arrays_to_csv: 
+        INPUTS:  (file_path, column_titles, *arrays)
+                (string, array, arrays)
+        OUTPUTS: Nothing
+    
+    2. "readAndEdit" which reads a data file 'filename.csv' which contains Lagrangian parameters:
+        ['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma','lambda_a','Tc'] with the GW signal 
+        parameters for N colours and F flavours. 
+         
+        The bubble wall velocity is then calculated using the functions from the paper 2303.10171 and added to a new 
+        csv file.
+        
+        readAndEdit:
+        INPUTS: (filename, N, F, CsakiTerm)
+                (string, int, int, bool)
+        OUTPUTS: Nothing.
+    
+    '''
 
 
 def wallVelocity(V, alpha, Tn):
@@ -157,12 +178,21 @@ def readAndEdit(filename, N, F, CsakiTerm):
     #Read into a numpy array the edited data.
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
-    m2s = []; cs = []; lss = []; las = []; Tns = []; Alphas = []; Betas = []; MassRatios = []; Vws = np.zeros(len(data))
+    #Empty arrays to store the needed potential parameters from 'data'.
+    m2Sigs = []; m2Etas = []; m2Xs = []; fPIs = []; m2s = []; cs = []; lss = []; las = []; Tcs = []; Tns = []; Alphas = []; Betas = []; Vws = np.zeros(len(data))
     for item in data:
-        m2s.append(item[0]); cs.append(item[1]); lss.append(item[2]); las.append(item[3]); Tns.append(item[4]); Alphas.append(item[5]); Betas.append(item[6]); MassRatios.append(item[7])
+        #Zero T particle masses
+        m2Sigs.append(item[0]); m2Etas.append(item[1]); m2Xs.append(item[2]); fPIs.append(item[3]); 
+        #Potential Parameters
+        m2s.append(item[4]); cs.append(item[5]); lss.append(item[6]); las.append(item[7]); Tcs.append(item[8]); 
+        #GW Parameters
+        Tns.append(item[9]); Alphas.append(item[10]); Betas.append(item[11])
 
-    m2s = np.array(m2s); cs = np.array(cs); lss = np.array(lss); las = np.array(las); Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas); MassRatios = np.array(MassRatios)
+    m2Sigs = np.array(m2Sigs); m2Etas = np.array(m2Etas); m2Xs = np.array(m2Xs); fPIs = np.array(fPIs)
+    m2s = np.array(m2s); cs = np.array(cs); lss = np.array(lss); las = np.array(las); Tcs=np.array(Tcs)
+    Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas)
 
+    #Scanning over each row in 'data' and calculating new Vw.
     for i in range(len(m2s)):
         if Tns[i]>1:
             V = Potential2.Potential(m2s[i], cs[i], lss[i], las[i], N, F, CsakiTerm)
@@ -173,14 +203,21 @@ def readAndEdit(filename, N, F, CsakiTerm):
             alp = alpha(V, Tns[i], cb2)
             Vws[i] = find_vw(alp,cb2,cs2,psiN)
                 #Vws[i] = wallVelocity(V, alp, Tns[i])
+            #Potential Parameters
             print(rf'$m^2$ = {m2s[i]}, $c$ = {cs[i]}, $\lambda_\sigma$ = {lss[i]}, $\lambda_a$ = {las[i]}')
+            #Sound speeds
             print(rf'$c_s^2$ = {cs2}, $c_b^2$ = {cb2}')
+            #GW Parameters
             print(rf'$\Psi$_N$ = {psiN}, $\alpha$ = {alp}, Vw = {Vws[i]}')
             
     if CsakiTerm:
-        save_arrays_to_csv(f'VwJor_N{N}F{F}_Csaki.csv',['m2', 'c', 'ls', 'la', 'Tn', 'Alpha', 'Beta', 'Vw', 'Mass Ratio'], m2s, cs, lss, las, Tns, Alphas, Betas, Vws, MassRatios)
+        save_arrays_to_csv(f'VwJor_N{N}F{F}_Csaki.csv',
+                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw'], 
+                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
     else:
-        save_arrays_to_csv(f'VwJor_N{N}F{F}_Normal.csv',['m2', 'c', 'ls', 'la', 'Tn', 'Alpha', 'Beta', 'Vw', 'Mass Ratio'], m2s, cs, lss, las, Tns, Alphas, Betas, Vws, MassRatios)
+        save_arrays_to_csv(f'VwJor_N{N}F{F}_Normal.csv',
+                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw'], 
+                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
 
 if __name__ == "__main__":
     '''

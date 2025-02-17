@@ -60,6 +60,11 @@ from multiprocessing import Pool
 	NOTE The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
 '''
 
+def plotV(V, Ts):
+	for T in Ts:
+		plt.plot(np.linspace(-5,V.fSigma()*1.25,num=100),V.Vtot(np.linspace(-5,V.fSigma()*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+
+
 def save_arrays_to_csv(file_path, column_titles, *arrays):
     # Transpose the arrays to align them by columns
     transposed_arrays = np.array(list(zip(*arrays)))
@@ -76,10 +81,10 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
             writer.writerow(row)
 
 
-def populate(mSq, c, lambdas, lambdaa, N, F,plot=False, CsakiTerm=False):
+def populate(mSq, c, lambdas, lambdaa, N, F, CsakiTerm, Polyakov=True, plot=False):
 	
 	#Building the potential...
-	V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, CsakiTerm=CsakiTerm)
+	V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, CsakiTerm, Polyakov=Polyakov)
 	
 	#Calculating the zero temperature, tree level, analytic minimum.
 	fSig = V.fSigma()
@@ -99,13 +104,13 @@ def populate(mSq, c, lambdas, lambdaa, N, F,plot=False, CsakiTerm=False):
 		
 	if fSig == None:
 		#If fSig does not exist, then the potential does not have enough solutions for a tunneling. Return None.
-		return (0, 0, 0, 0, 15)
+		return (0, 0, 0, 0, 0, 15)
 	
 	#Grid function computes:
 	#	a) Nucleation temperature Tn,
 	#	b) An interpolated function grd of action over temperature w/ temperature, 
 	#	c) and an error code.
-	Tn, grd, message = GravitationalWave.grid(V,prnt=True,plot=plot)
+	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot)
 	
 	if Tn is not None:
 		#Bubbles nucleate before BBN! Yay!
@@ -115,14 +120,14 @@ def populate(mSq, c, lambdas, lambdaa, N, F,plot=False, CsakiTerm=False):
 		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}")
 		
 		#Returning wave parameters and zero-temperature particle masses.
-		return (Tn, alpha, betaH, 1, message, V.mSq['Sig'][0](fSig), V.mSq['Eta'][0](fSig), V.mSq['X'][0](fSig), V.mSq['Pi'][0](fSig))
+		return (Tn, alpha, betaH, 1, tc, message)
 	
 	else:
 		#If Tn is none, bubbles do not nucleate in time.
 		print(f'CT Returned None with message {message}')
 		
 		#Returns the failure state, the associated failure code, and the associated zero-temperature particle masses.
-		return (0, 0, 0, 0, message, V.mSq['Sig'][0](fSig), V.mSq['Eta'][0](fSig), V.mSq['X'][0](fSig), V.mSq['Pi'][0](fSig))
+		return (0, 0, 0, 0, tc, message)
 	
 
 def plotDifference(resC, resN):
@@ -153,72 +158,166 @@ def plotDifference(resC, resN):
 	plt.ylabel(f'alpha')
 	plt.show()
 	
-def populateN(mSq, c, ls, la, N, F):
+def populateN(mSq, c, ls, la, N, F, Polyakov=True):
 	#Wrapper function for normal case.
-	return populate(mSq, c, ls, la, N, F, CsakiTerm=False, plot=False)
-def populateC(mSq, c, ls, la, N, F):
+	return populate(mSq, c, ls, la, N, F, False, Polyakov=Polyakov, plot=False)
+def populateC(mSq, c, ls, la, N, F, Polyakov=False):
 	#Wrapper for the Csaki case.
-	return populate(mSq, c, ls, la, N, F, CsakiTerm=True, plot=False)
+	return populate(mSq, c, ls, la, N, F, True, Polyakov=Polyakov, plot=False)
 
 
 
-def parallelScan(m2Sig,m2Eta,m2Pi,m2X, N, F):
+def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 	
 	#MAKE THE ARRAY
+	data = []
+	for i in m2Sig:
+		for j in m2Eta:
+			for k in m2X:
+				for l in fPI:
+					if k>j and k>i:
+						data.append([i,j,k,l,N,F])
+	#Arrays to store the Lagrangian inputs
+	C_LInputs = []; N_LInputs = []
+	#Arrays to store the zero-temperature masses
+	C_Masses = []; N_Masses = []
+	for i in range(len(data)):
+		point = data[i]
+		#Calculating the Lagrangian inputs. See appendix D of draft.
+		C_Linput = [*Potential2.masses_to_lagrangian_Csaki(*point),N,F]
+		N_Linput = [*Potential2.masses_to_lagrangian_Normal(*point),N,F]
+		#Only keeping point if BOTH Csaki and Normal are valid. <---- May want to change this later.
+		if (C_Linput[0] is not None) and (N_Linput[0] is not None):
+			C_LInputs.append(C_Linput)
+			N_LInputs.append(N_Linput)
+			C_Masses.append(point)
+			N_Masses.append(point)
+			
+	#Cropping the data for now.
+	crop=20
+	C_LInputs=C_LInputs[:crop]
+	N_LInputs=N_LInputs[:crop]
+	C_Masses=C_Masses[:crop]
+	N_Masses=N_Masses[:crop]
+	
+        
+	#Multithreading with X cores.
+	with Pool(1) as p:
+		#Populating the result arrays.
+		resN = p.starmap(populateN, N_LInputs)
+		resC = p.starmap(populateC, C_LInputs)
+	
+	#MAKE THE FILE WRITER
+	#Column Titles
+	N_LInputs = np.array(N_LInputs); C_LInputs = np.array(C_LInputs); C_Masses=np.array(C_Masses); N_Masses=np.array(N_Masses); resN=np.array(resN); resC=np.array(resC)
+	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw']
+	# File path to save the CSV
+	file_path = f'Test_N{N}F{F}_Normal.csv'
+	save_arrays_to_csv(file_path, column_titles, 
+					N_Masses[:,0],N_Masses[:,1],N_Masses[:,2],N_Masses[:,3],
+					N_LInputs[:,0],N_LInputs[:,1],N_LInputs[:,2],N_LInputs[:,3],
+					resN[:,3],resN[:,0],resN[:,1],resN[:,2]
+					)
+	file_path = f'Test_N{N}F{F}_Csaki.csv'
+	save_arrays_to_csv(file_path, column_titles, 
+					C_Masses[:,0],C_Masses[:,1],C_Masses[:,2],C_Masses[:,3],
+					C_LInputs[:,0],C_LInputs[:,1],C_LInputs[:,2],C_LInputs[:,3],
+					resC[:,3],resC[:,0],resC[:,1],resC[:,2]
+					)
+
+	plotDifference(resC, resN)
+	
+def getTcs(m2Sig,m2Eta,m2X, fPI, N, F):
 	
 	data = []
 	for i in m2Sig:
 		for j in m2Eta:
 			for k in m2X:
-				for l in m2Pi:
-					data.append([i,j,k,l,N,F])
-					
-	C_data = []; N_data = []
-	for i in range(len(data)):
-		point = data[i]
-		#Calculating the Lagrangian inputs. See appendix D of draft.
-		inputsC = [*Potential2.masses_to_lagrangian_Csaki(*point),N,F]
-		inputsN = [*Potential2.masses_to_lagrangian_Normal(*point),N,F]
-		if (inputsC[0] is not None) and (inputsN[0] is not None):
-			C_data.append(inputsC)
-			N_data.append(inputsN)
+				for l in fPI:
+					if k>i:
+						data.append([i,j,k,l,N,F])
+
+	data = data[:20]
+	
+	resCsaki = []; resNormal = []
+	for point in data:	
+		try:
+			#Csaki Term
+			VCsaki=Potential2.Potential(*Potential2.masses_to_lagrangian_Csaki(*point),N,F,True,Polyakov=False)
+			tcCsaki = VCsaki.criticalT(prnt=False)
 			
-	#Cropping the data for now.
-	C_data = C_data[:30]
-	N_data = N_data[:30]
-	
+			if tcCsaki is not None:
+				orderCsaki = 1 if VCsaki.findminima(tcCsaki) else 2
+			else: orderCsaki = 0
+			
+			resCsaki.append([*Potential2.masses_to_lagrangian_Csaki(*point)]+ [tcCsaki, orderCsaki])
+			print(f'Csaki: Tc={tcCsaki}, fPi={point[3]}, Transition Order = {orderCsaki}')
+			
+		except (Potential2.InvalidPotential):
+			print('Csaki term threw invalid potential.')
+			tcCsaki=None
+			resCsaki.append([*Potential2.masses_to_lagrangian_Csaki(*point)]+ [None, 0])
+				
+		try:
+			#Normal Term
+			VNormal=Potential2.Potential(*Potential2.masses_to_lagrangian_Normal(*point),N,F,False,Polyakov=False)
+			tcNormal = VNormal.criticalT(prnt=False)
+			
+			if tcNormal is not None:
+				orderNormal = 1 if VNormal.findminima(tcNormal) else 2
+			else: orderNormal = 0
+			
 
-        
-	#Multithreading with X cores.
-	with Pool(8) as p:
-		#Populating the result arrays.
-		resN = p.starmap(populateN, N_data)
-		resC = p.starmap(populateC, C_data)
-	
-	#MAKE THE FILE WRITER
-	#Column Titles
-	N_data = np.array(N_data); C_data = np.array(C_data); resN=np.array(resN); resC=np.array(resC)
-	column_titles = ['m2', 'c', 'lambda_sigma', 'lambda_a', 'Tn', 'Alpha', 'Beta', 'Vw','m2Sig','m2Eta','m2Pi','m2X']
-	# File path to save the CSV
-	file_path = f'Test_N{N}F{F}_Normal.csv'
-	save_arrays_to_csv(file_path, column_titles, N_data[:,0], N_data[:,1], N_data[:,2], N_data[:,3], 
-												resN[:,0], resN[:,1], resN[:,2], resN[:,3], resN[:,4], resN[:,6], resN[:,7], resN[:,8])
-	file_path = f'Test_N{N}F{F}_Csaki.csv'
-	save_arrays_to_csv(file_path, column_titles, C_data[:,0], C_data[:,1], C_data[:,2], C_data[:,3], 
-												resC[:,0], resC[:,1], resC[:,2], resC[:,3], resC[:,4], resC[:,6], resC[:,7], resC[:,8])
+			resNormal.append([*Potential2.masses_to_lagrangian_Normal(*point)] + [tcNormal, orderNormal])
+			print(f'Normal: Tc={tcNormal}, fPi={point[3]}, Transition Order = {orderNormal}')
+					
+		except (Potential2.InvalidPotential):
+			print('Normal term threw invalid potential.')
+			tcNormal=None
+			resNormal.append([*Potential2.masses_to_lagrangian_Normal(*point)] + [None, 0])
+
+		plot=False
+		if tcCsaki != None and plot:
+			plotV(VCsaki, [0,tcCsaki,point[3]])
+			plt.plot(np.linspace(-5,VCsaki.fSigma()*1.25,num=100),VCsaki.VIm(np.linspace(-5,VCsaki.fSigma()*1.25,num=100),tcCsaki)-VCsaki.VIm(0,tcCsaki),label=f"Csaki at Tc Imaginary")
+			plt.title('Csaki')
+			plt.legend()
+			plt.show()
+			
+
+		if tcNormal != None and plot:
+			plotV(VNormal, [0,tcNormal,point[3]])
+			plt.plot(np.linspace(-5,VNormal.fSigma()*1.25,num=100),VNormal.VIm(np.linspace(-5,VNormal.fSigma()*1.25,num=100),tcNormal)-VNormal.VIm(0,tcNormal),label=f"Normal at Tc Imaginary")
+			plt.title('Normal')
+			plt.legend()
+			plt.show()
 
 
-	plotDifference(resC, resN)
+		
+	data = np.array(data); resCsaki = np.array(resCsaki); resNormal = np.array(resNormal)
+	save_arrays_to_csv(f'TcCsaki_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a', 'Tc','FirstOrder'], 
+					data[:,0], data[:,1], data[:,2], data[:,3], resCsaki[:,0], resCsaki[:,1], resCsaki[:,2], resCsaki[:,3], resCsaki[:,4], resCsaki[:,5])
+
+	save_arrays_to_csv(f'TcNormal_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a','Tc','FirstOrder'], 
+					data[:,0], data[:,1], data[:,2], data[:,3], resNormal[:,0], resNormal[:,1], resNormal[:,2], resNormal[:,3], resNormal[:,4], resNormal[:,5])
 
 	
 if __name__ == "__main__":
 	print('hello')
 	
+
 	N=3; F=6
 	#See appendix D of draft for why I've chosen these!
-	m2Sig = np.linspace(10E3/np.sqrt(3), 2*10E4, num=15)
-	m2Eta = np.linspace(10E3, 2*10E4, num=10)
-	m2X = np.linspace(8*10E2,10E4, num=10)
-	m2Pi = np.linspace(8*10E2,10E4, num=10)
+	#T0 = 1000 GeV
+	#Tc = 1000/\sqrt(3) GeV
+
+
+	m2Sig = np.linspace(1E6, 1E8/np.sqrt(2), num=5)
+	m2Eta = np.linspace(1E6, 1E8, num=5)
 	
-	parallelScan(m2Sig,m2Eta,m2X,m2Pi,3,6)
+	fPi = np.linspace(1E4, 1E5, num=4)
+	m2X = np.linspace(1E8/np.sqrt(2), 1E8, num=4)
+	
+	getTcs(m2Sig,m2Eta,m2X, fPi, N, F)
+	
+	#parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)

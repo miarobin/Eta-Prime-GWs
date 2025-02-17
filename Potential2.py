@@ -71,10 +71,10 @@ from mpl_toolkits.mplot3d import Axes3D
                     (float)
             RAISES: NotImplemented (as each N, F case must be individually set)
         
-        c. "Vtot" sums the contributions from "V", "V1T" and "VGluonic" if "polyakov" is True.
+        c. "Vtot" sums the contributions from "V", "V1T" and "VGluonic" if "Polyakov" is True.
         
             Vtot:
-            INPUTS (sig, T, polyakov=True)
+            INPUTS (sig, T)
                     (np.array, np.array, bool)
             OUTPUTS V_total
                     (np.array)
@@ -143,6 +143,7 @@ from mpl_toolkits.mplot3d import Axes3D
         
         > N (int) = number of colours,
         > F (int) = number of flavours,
+        > Polyakov (bool) = include Polyakov corrections.
         
         > CsakiTerm (bool) = True if this is for the Csaki case, False if the normal case.
         > detPow (int) = Power of the chiral symmetry breaking determinant term. Modified in the Csaki/Normal case as per Eq 8 in the draft.
@@ -153,8 +154,7 @@ from mpl_toolkits.mplot3d import Axes3D
         > message = Error message code from running GravitationalWave.grid, see "Error Codes.txt" for what each code means.
         
 '''
-#Vacuum expectation value for chiral symmetry breaking.
-FPI = 600
+
 #Maximum value of sigma for Martha's interpolator.
 GLUONIC_CUTOFF = 1000
 
@@ -167,58 +167,126 @@ class InvalidPotential(Exception):
 
 #CONVERT between physical inputs and Lagrangian parameters
 
-def masses_to_lagrangian_Csaki(_m2Sig, _m2Eta, _m2X, _m2Pi, N, F):
+def masses_to_lagrangian_Csaki(_m2Sig, _m2Eta, _m2X, fPI, N, F):
+    #See appendix D in draft for these formulae.
+    if F/N<2:
+        raise NonLinear(f"Lagrangian is non-linear with F={F} and N={N}.")    
+
+    m2 = (_m2Sig/2) - (_m2Eta/2)*(N/F)*(4-F/N)
+    c = _m2Eta*N**2 * fPI**(2-F/N)
+    ls = (_m2Sig - _m2Eta*(N/F)*(2-F/N))/fPI**2
+    la = (_m2X - _m2Eta*(N/F)*(N+1))/fPI**2
+    
+    #UNITARITY BOUNDS AND EFT EXPANSION
+    if int(round(F/N))<4:
+        if np.abs(ls + la*F**2*(F**2-2))>8*np.pi/3:
+            print(f'Point is Invalid as unitarity is violated')
+            return (None,None,None,None)
+        if np.abs(c*fPI**(F/N-4))>4*np.pi:
+            print(f'Point is Invalid as EFT expansion does not appear to converge')
+            return (None,None,None,None)
+        
+    #CHECKS
+    V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F/N)/F**2 + ls*sigma**4/8
+    dV = lambda sigma: -m2*sigma - c*sigma**(F/N-1)/(F*N) + ls*sigma**3/2
+    ddV = lambda sigma: -m2 - c*(F/N-1)*sigma**(F/N-2)/(F*N) + 3*ls*sigma**2/2
     
     if int(round(F/N))==2:
-        #From Mathematica SigmaVev.nb. 
-        c = F**2 * (_m2Eta + _m2Pi)/(F**2 - F + 2)
-        m2 = (_m2Sig + _m2Eta)/2 - c
-        frac_la_ls = ( _m2X - c*(1/2 + 1/F) ) / (2*m2 + c)
-        ls = 2*(F*m2 + c*N)/(F*FPI**2)
-        
-        la = frac_la_ls * ls
-        
         #CHECKS
-        if (m2 + c)<0:
-            print('Point is Invalid as squared term is less than 0')
-            return (None,None,None,None)
         if ls<0:
             print(f'Point is Invalid as $\lambda_\sigma$<0')
             return (None,None,None,None)
+    
         
     else:
         raise NotImplemented(f"F/N={F/N} not implemented yet in masses_to_lagrangian function")
-
     
+
+
+    if V(fPI)>V(0):
+        print(f'Point is Invalid as symmetric point is true minimum')
+        return (None,None,None,None)
+    if dV(fPI)>fPI:
+        print(dV(fPI))
+        print(f'Point is Invalid as fPI = {fPI} does not minimize potential')
+        plt.title('Csaki')
+        plt.plot(np.arange(0,2*fPI),V(np.arange(0,2*fPI)),label='V')
+        plt.plot(np.arange(0,2*fPI),dV(np.arange(0,2*fPI)),label='dV')
+        plt.legend()
+        plt.show()
+        return (None,None,None,None)
+    if ddV(fPI)<0:
+        print(f'Point is Invalid as fPI is not minimum')
+        return (None,None,None,None)
     
     return (m2, c, ls, la)
 
-def masses_to_lagrangian_Normal(_m2Sig, _m2Eta, _m2X, _m2Pi, N, F):
-    if F == 6:
-        c = (_m2Eta-_m2Pi)/FPI**4 
-        ls = (_m2Sig-_m2Eta)/FPI**2 + 5*c*FPI**2/3
-        m2 = -((_m2Sig + _m2Eta)/2 - ls*FPI**2)
-        la = (_m2X - _m2Pi)/FPI**2 - c*FPI**2/3
+def masses_to_lagrangian_Normal(_m2Sig, _m2Eta, _m2X, fPI, N, F):
+    #See appendix D in draft for these formulae.
+    m2 = (_m2Sig/2) - (_m2Eta/2)*(1/F)*(4-F)
+    c = _m2Eta * fPI**(2-F)
+    ls = (_m2Sig - _m2Eta*(1/F)*(2-F))/fPI**2
+    la = (_m2X - _m2Eta*(1/F)*(2))/fPI**2
+
+    #UNITARITY BOUNDS AND EFT EXPANSION
+    if int(round(F))<4:
+        if np.abs(ls + la*F**2*(F**2-2))>8*np.pi/3:
+            print(f'Point is Invalid as unitarity is violated')
+            return (None,None,None,None)
+        if np.abs(c*fPI**(F-4))>4*np.pi:
+            print(f'Point is Invalid as EFT expansion does not appear to converge')
+            return (None,None,None,None)
 
     #CHECKS
-        if m2<0:
-            print('Point is Invalid as mass term is less than 0')
+    V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F)/F**2 + ls*sigma**4/8
+    dV = lambda sigma: -m2*sigma - c*sigma**(F-1)/(F) + ls*sigma**3/2
+    ddV = lambda sigma: -m2 - c*(F-1)*sigma**(F-2)/(F) + 3*ls*sigma**2/2
+    if F==2:
+        if ls<0:
+            print(f'Point is Invalid as highest power term is negative')
             return (None,None,None,None)
-        if c>0:
-            print(f'Point is Invalid as sixth power term is negative')
+        
+    elif F==3:
+        if ls<0:
+            print(f'Point is Invalid as highest power term is negative')
             return (None,None,None,None)
-        if (-3*ls + np.sqrt(-24*c*m2+9*ls**2)) <0:
-            print(f'Point is Invalid as vev is imaginary (CHECK - OTHER VEVs EXIST)')
+        
+    elif F==4:
+        if ls-c<0:
+            print(f'Point is Invalid as highest power term is negative')
             return (None,None,None,None)
+        
+    #elif F>4:
+    #    if dV(2*np.pi*fPI)<0:
+    #        print(f'Point is Invalid as potential is unbounded')
+    #        return (None,None,None,None)
 
-    else:
-        raise NotImplemented(f"F/N={F/N} not implemented yet in masses_to_lagrangian function")
+    #else:
+    #    raise NotImplemented(f"F/N={F/N} not implemented yet in masses_to_lagrangian function")
+
+
+
+
+    if V(fPI)>V(0):
+        print(f'Point is Invalid as symmetric point is true minimum')
+        return (None,None,None,None)
+    if round(dV(fPI))>fPI:
+        print(dV(fPI))
+        print(f'Point is Invalid as fPI = {fPI} does not minimize potential')
+        plt.title('Normal')
+        plt.plot(np.arange(0,2*fPI),V(np.arange(0,2*fPI)),label='V')
+        plt.plot(np.arange(0,2*fPI),dV(np.arange(0,2*fPI)),label='dV')
+        plt.legend()
+        plt.show()
+        return (None,None,None,None)
+    if ddV(fPI)<0:
+        print(f'Point is Invalid as fPI is not minimum')
+        return (None,None,None,None)
 
     return (m2, c, ls, la)
 
 class Potential:
-
-    def __init__(self, m2, c, lambdas, lambdaa, N, F, CsakiTerm):
+    def __init__(self, m2, c, lambdas, lambdaa, N, F, CsakiTerm, Polyakov=True):
 		#All the parameters needed to construct the potential.
         self.m2 = m2
         self.c = c
@@ -227,6 +295,10 @@ class Potential:
         self.N = N
         self.F = F
         self.CsakiTerm = CsakiTerm
+        self.Polyakov = Polyakov
+        
+        if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:
+            raise InvalidPotential('Input parameter is None')
         
         
         if not CsakiTerm:
@@ -251,10 +323,11 @@ class Potential:
   
         
 
-        #Field dependent masses for fermions & bosons, their derivative wrt h (twice) and their respective DoF
+        #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
+        #                                            and their respective DoF]}
         if self.F/self.detPow>=2:
             self.mSq = {
-                #Sig Mass	
+                #Sigma Mass	
                 'Sig': [lambda sig, T: - self.m2 
 						- self.c / (self.F * self.detPow) * ( self.F/self.detPow - 1 ) * sig**(self.F/self.detPow - 2)
 						+ (3/2) * self.lambdas * sig ** 2,
@@ -276,6 +349,7 @@ class Potential:
 						self.F**2 - 1]
 						}
 
+        #Checking validity of the potential.
         elif self.F/self.detPow<2:
             raise InvalidPotential("F/N is too small. Diverging effective masses.")
 
@@ -291,12 +365,14 @@ class Potential:
 
 
     def V1T(self,sig,T):
+        #Setting to zero at T=0 GeV to avoid any computational divergences.
         sig = np.array(sig)
         if T==0:
             return np.zeros(sig.shape)
 
+        #One-loop, thermal correction to the potential. See https://arxiv.org/pdf/hep-ph/9901312 eq. 212
         return np.reshape((np.sum([n*Jb_spline((m2(sig,T)/T**2)) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
-                                                                                self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
+                                                                        self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
 
 
 
@@ -322,16 +398,23 @@ class Potential:
         return np.array(matrix)
             
     def _Vg_f(self, sig, T):
+        #Forcing the sigma to be a radial-type coordinate.
         sig = abs(sig)
+        
+        #The interpolator does a terrible job at these low temperatures. For now, just set to zero as PT usually not at such low temperature.
         if T<90:
             return 0
+        
+        #T_switch is temperature for switching between 'small' temperatures & 'large'.
         if T<self.T_switch:
-            if sig>1000:
+            #Set the V_gluonic contribution to be constant after a large value of sigma where Martha's code has cut off: GLUONIC_CUTOFF.
+            if sig>GLUONIC_CUTOFF:
+                #NOTE we have to rescale the interpolating function.
                 return self.linear_small.ev(T,GLUONIC_CUTOFF)*1e7 
             else:
                 return self.linear_small.ev(T,sig)*1e7
         else:
-            if sig>1000:
+            if sig>GLUONIC_CUTOFF:
                 return self.linear_large.ev(T,GLUONIC_CUTOFF)*1e10
             else:
                 return self.linear_large.ev(T,sig)*1e10
@@ -339,31 +422,51 @@ class Potential:
             
 
     def VGluonic(self, sig, T):
+        #Wrapper function for _Vg.
         sig = np.array(sig)
+        #Avoiding any computational issues with the zero temperature limit.
         if T==0:
             return np.zeros(sig.shape)
         return np.reshape(self._Vg(sig, T),sig.shape)
 	
 
-    def Vtot(self,sig,T, polyakov=True):
+    def Vtot(self,sig,T):
     #This finds the total (one-loop/tree level) thermal effective potential.
         sig = np.array(sig)
               
-        if polyakov:
+        if self.Polyakov:
             return self.VGluonic(sig, T) + self.V(sig) + self.V1T(sig,T).real
 	
         else:
+            #Ignoring Polyakov loops.
             return self.V(sig) + self.V1T(sig,T).real
+
+    def VIm(self,sig,T):
+        #This finds the inaginary part of the effective potential.
+        #Setting to zero at T=0 GeV to avoid any computational divergences.
+        sig = np.array(sig)
+        if T==0:
+            return np.zeros(sig.shape)
+
+        #One-loop, thermal correction to the potential, using CosmoTransitions Exact Function.
+        return np.reshape((np.sum([n*fT.Jb_exact2((m2(sig,T)/T**2)) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
+                                                                        self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape).imag
+
+
+
 
     def dVdT(self,sig,T,eps=0.001):
     #Uses finite difference method to fourth order. Takes scalar sigma and T.
         return (self.Vtot(sig,T-2*eps) - 8*self.Vtot(sig,T-eps) + 8*self.Vtot(sig,T+eps) - self.Vtot(sig,T+2*eps)) / (12.*eps)
-			
+
+
     def d2VdT2(self,sig,T,eps=0.001):
         #Uses finite difference method to fourth order. Takes scalar sigma and T.
         return (self.dVdT(sig,T-2*eps) - 8*self.dVdT(sig,T-eps) + 8*self.dVdT(sig,T+eps) - self.dVdT(sig,T+2*eps)) / (12.*eps)
 
+
     def fSigma(self):
+        #Analytic formula for zero-temp vev depends on power of the determinant term detPow. See Mathematica notebook SigmaVev.nb for formulae.
         if self.F/self.detPow == 1:
             x = 9 * self.c * self.F**4 * self.lambdas**2 + np.sqrt(3)*np.sqrt( abs(self.F**8 * self.lambdas**3 * (-8 * self.F**4 *self.m2**3 + 27*self.c**2*self.lambdas)) )
             return np.real((2 * 3**(1/3) * self.F**4 * self.m2 * self.lambdas + x**(2/3)) / (3**(2/3)*self.F**2*self.lambdas * x**(1/3)))
@@ -385,30 +488,37 @@ class Potential:
         else:
             raise NotImplemented(f"F/N={self.F/self.detPow} not implemented yet in fSigma")
 
+
     def findminima(self,T,rstart=None,rcounter=1):
-        #For a linear sigma model. Returns the minimum away from the origin.
+        #For a linear sigma model. Returns the minimum away from the origin if it exists, else None.
         if rstart == None:
             rstart = self.fSigma()*.75
-        #Roll down to rhs minimum:
+        #Roll down to minimum from the RHS:
         res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',bounds=[(.5+rcounter*2,self.fSigma()*1.05)])
-        #Check the two rolls didn't find the same minimum:
+        #Now check to see if the algorithm succeeded
         if not res.success or res.x[0]<1+rcounter*2:
-            #If so, try a new start
-            if rcounter<=4:
+            #If so, try a new start closer to the axis to avoid overshooting.
+            if rcounter<=5:
                 if rstart is not None:
+                    #Closer to axis by 20%.
                     return self.findminima(T,rstart=rstart*0.8,rcounter=rcounter+1)
                 else: return None
             else:
                 return None
+        #Check the roll didn't find the zero sigma minimum.
+        elif res.x[0]<10:
+            return None
         else: return res.x[0]
 
     def deltaV(self,T, rstart=None, num_res=None):
         #Finds the difference between the symmetric and broken minima.
+        ##POSITIVE IF SIGMA = 0 IS FALSE MINIMUM/STATIONARY POINT; NEGATIVE IF SIGMA = 0 IS TRUE MINIMUM; NONE IF ONLY ONE MINIMA AT SIGMA = 0.
         if rstart is not None: vT = self.findminima(T, rstart=rstart)
         else: vT = self.findminima(T)
         if vT is not None:
             return + self.Vtot(0, T) - self.Vtot(vT, T)
         else:
+            #In case you want a numerical result.
             if num_res:
                 return 1e30
             else:
@@ -424,13 +534,16 @@ class Potential:
         scale = self.fSigma()
 		
         #First a coarse scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-        Ts_init = np.linspace(90,700,num=400); deltaVs_init=[]
+        Ts_init = np.linspace(75,scale,num=400); deltaVs_init=[]
 
         for T in Ts_init:
+            #Computing the difference between symmetric and broken minima.
             deltaV =  self.deltaV(T, rstart=scale)
+            
+            #Basically starting from low T and increasing until deltaV flips signs (i.e. minima have crossed eachother)
             if deltaV is not None and deltaV > 0: deltaVs_init.append([T,deltaV])
             if deltaV is not None and deltaV < 0: break
-        print(deltaVs_init)
+
         deltaVs_init=np.array(deltaVs_init)
 		
 
@@ -442,7 +555,7 @@ class Potential:
             plt.show()	
 
         if len(deltaVs_init)<3:
-            print('Course scan finds nothing')
+            print('Coarse scan finds nothing')
             return None
         #JUST taking deltaV's which are greater than zero BUT decreasing. Note the reason for this is often going further can confuse python later.
         j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
@@ -460,7 +573,7 @@ class Potential:
 
         def plotV(V, Ts):
             for T in Ts:
-                plt.plot(np.linspace(-10,self.fSigma()*.75,num=100),V.Vtot(np.linspace(-10,self.fSigma()*.75,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+                plt.plot(np.linspace(-10,self.fSigma()*.25,num=100),V.Vtot(np.linspace(-10,self.fSigma()*.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
                 if self.findminima(T) is not None:
                     plt.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
             plt.legend()
@@ -510,10 +623,11 @@ class Potential:
                 return None
 
     def imaginary(self,sig,T):
-        return (self.V1T(sig,T)).imag + (self.V1_cutoff(sig)).imag
+        #Imaginary part of the 1 loop potential
+        return (self.V1T(sig,T)).imag
     def real(self,sig,T):
-        return self.V(sig) + (self.V1T(sig,T)).real + (self.V1_cutoff(sig)).real
-
+        #Real part of the 1 loop potential
+        return self.V(sig) + (self.V1T(sig,T)).real
 
 
 
@@ -552,5 +666,5 @@ def Jb_spline(X,n=0):
 		
 if __name__ == "__main__":
     print('hello world')
-    
+
 
