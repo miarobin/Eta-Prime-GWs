@@ -237,10 +237,11 @@ def getTcs(m2Sig,m2Eta,m2X, fPI, N, F):
 					if k>i:
 						data.append([i,j,k,l,N,F])
 
-	data = data[:20]
+	data=np.array(data)
+	data = data[np.array(np.random.randint(0, high=len(data),size=20))]
 	
 	resCsaki = []; resNormal = []
-	for point in data:	
+	for point in data:
 		try:
 			#Csaki Term
 			VCsaki=Potential2.Potential(*Potential2.masses_to_lagrangian_Csaki(*point),N,F,True,Polyakov=False)

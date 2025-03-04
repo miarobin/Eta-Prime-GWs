@@ -179,7 +179,10 @@ def masses_to_lagrangian_Csaki(_m2Sig, _m2Eta, _m2X, fPI, N, F):
     
     #UNITARITY BOUNDS AND EFT EXPANSION
     if int(round(F/N))<4:
-        if np.abs(ls + la*F**2*(F**2-2))>8*np.pi/3:
+        if np.abs(3*ls + 3*la*(F-2)**2/(F-1)+c*fPI**(F/N-4)*((F-3)(F-2)+((N-1)/N)*F*(F-1))/(8*N*(F*(F-1))))>16*np.pi:
+            print(f'Point is Invalid as unitarity is violated')
+            return (None,None,None,None)
+        if np.abs(3*ls-c*fPI**(F/N-4)*((F-3*N)*(F-2*N)*(F-N)/(F*N**4)))>16*np.pi:
             print(f'Point is Invalid as unitarity is violated')
             return (None,None,None,None)
         if np.abs(c*fPI**(F/N-4))>4*np.pi:
@@ -230,12 +233,17 @@ def masses_to_lagrangian_Normal(_m2Sig, _m2Eta, _m2X, fPI, N, F):
 
     #UNITARITY BOUNDS AND EFT EXPANSION
     if int(round(F))<4:
-        if np.abs(ls + la*F**2*(F**2-2))>8*np.pi/3:
+        if np.abs(ls + la*(F-2)**2/(F-1))>16*np.pi/3:
             print(f'Point is Invalid as unitarity is violated')
             return (None,None,None,None)
+        if np.abs(ls)>16*np.pi/3:
+            print(f'Point is Invalid as unitarity is violated')
+            return (None,None,None,None)
+        #Is this a fair restriction crew?
         if np.abs(c*fPI**(F-4))>4*np.pi:
             print(f'Point is Invalid as EFT expansion does not appear to converge')
             return (None,None,None,None)
+        
 
     #CHECKS
     V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F)/F**2 + ls*sigma**4/8
