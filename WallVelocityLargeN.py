@@ -12,7 +12,8 @@ from scipy.integrate import solve_ivp ,simps
 from scipy.optimize import root_scalar
 
 
-'''Computes the Bubble Wall Velocity. The first functions are taken from the code snippet in https://arxiv.org/abs/2303.10171
+'''Computes the Bubble Wall Velocity in large N limit from https://arxiv.org/pdf/2312.09964. 
+The first functions are taken from the code snippet in https://arxiv.org/abs/2303.10171.
 
 The two additional functions I have written are:
 	1. "save_arrays_to_csv" is a generic function for saving data as a csv array.
@@ -33,66 +34,67 @@ The two additional functions I have written are:
         INPUTS: (filename, N, F, CsakiTerm)
                 (string, int, int, bool)
         OUTPUTS: Nothing.
+        
+    3. "find_alphaN" which computes the quantity \alpha(T_n) from eq. 19 of 2303.10171, noting that \bar\theta(T_n)_{broken}~1/N^2~0.
+        Note N^2 is the number of degrees of freedom in the high enthalpy/symmetric phase. Adjust as needed.
+
+        find_alphaN:
+        INPUTS: (Tc, Tn, cb2, N)
+                (float, float, float, int)
+                
+        OUTPUTS: alN
+                (float)
     
+    NOTE:
+        
+    > I have modified the functions "get_vp" to align with 2312.09964. 
+    > I have also written a function to calculate alN from the template model named "find_alphaN". 
+    > I have also set PsiN=0 as-per the same paper (although one has to see oneself that this scales with 1/N^2).
+
     '''
-###### GLOBAL VARIABLES ######
-N=30
-
-def wallVelocity(V, alpha, Tn):
-    #Jouget velocity.
-    vJ = (1/np.sqrt(3)) * (1 + np.sqrt(3*alpha**2 + 2*alpha))/(1+alpha)
-
-    lhs, rhs = V.findminima(Tn)
-    psi = V.dVdT(rhs,Tn)/V.dVdT(lhs,Tn)
-    print(f'psi = {psi}')
-
-    a = 0.2233; b = 1.704; p = -3.433
-    smallV = np.sqrt(np.abs(0.5*(3*alpha + psi - 1)/(2-3*psi+psi**3)))
-    bigV = vJ*(1-a*(1-psi)**b/alpha)
-
-    if alpha > max((1-psi)/3, 0):
-        vw = (np.abs(smallV)**p + np.abs(bigV)**p)**(1/p)
-        if vw < vJ: return vw
-        else: return 0
-    else:
-        return 0
-
-def alpha(V, Tn, cb2):
-    minima = V.findminima(Tn)
-    thetaBar = lambda h,T: -T*V.dVdT(h,T)+V.Vtot(h,T) + V.Vtot(h,T)/cb2
-    DThetaBar = thetaBar(0,Tn) - thetaBar(minima,Tn)
-	
-    symEnthalpy = - Tn * V.dVdT(0,Tn)
-    return DThetaBar/( 3 * symEnthalpy )
     
+###### GLOBAL VARIABLES ######
+#None.
 
+def find_alphaN(Tc, Tn, cb2, N):
+    mu = 1+1/cb2
+    V= - N**2 * Tc**(4-mu) * Tn**mu * (1/(mu-1)) + N**2 * Tc**4 / (mu-1)
+    dVdT = - N**2 * Tc**(4-mu) * Tn**(mu-1) * (mu/(mu-1))    
+
+    thetaBar = -Tn*dVdT+V + V/cb2
+    DThetaBar = thetaBar
+	
+    symEnthalpy = - Tn * dVdT
+    return DThetaBar/( 3 * symEnthalpy +1e-10)
+
+def find_psiN():
+    return 0 #Scales as 1/N**2.
 
 def find_vJ(alN, cb2):
     return np.sqrt(cb2)*(1+np.sqrt(3*alN*(1-cb2+3*cb2*alN)))/(1+3*cb2*alN)
 
-def get_vp(vm, al, cb2, branch=-1):
-    disc = vm**4-2*cb2*vm**2*(1-6*al)+cb2**2*(1-12*vm**2*al*(1-3*al))
-    return 0.5*(cb2+vm**2+branch*np.sqrt(disc))/(vm+3*cb2*vm*al)
+def get_vp():
+    return 0
 
 def w_from_alpha(al,alN,nu,mu):
     return (abs((1-3*alN)*mu-nu)+1e-100)/(abs((1-3*al)*mu-nu)+1e-100)
 
-def eqWall(al,alN,vm,nu,mu,psiN,solution=-1):
-    vp = get_vp(vm,al,1/(nu-1),solution)
+def eqWall(al,alN,vm,nu,mu,solution=-1):
+    vp = get_vp()
     ga2m,ga2p= 1/(1-vm**2),1/(1-vp**2)
-    psi = psiN*w_from_alpha(al,alN,nu,mu)**(nu/mu-1)
+    psi = 0
     return vp*vm*al/(1-(nu-1)*vp*vm)-(1-3*al-(ga2p/ga2m)**(nu/2)*psi)/(3*nu)
 
-def solve_alpha(vw,alN,cb2,cs2,psiN): 
+def solve_alpha(vw,alN,cb2,cs2): 
     nu,mu = 1+1/cb2,1+1/cs2
     vm = min(np.sqrt(cb2),vw)
     vp_max = min(cs2/vw,vw)
     al_min = max((vm-vp_max)*(cb2-vm*vp_max)/(3*cb2*vm*(1-vp_max**2)),(mu-nu) /(3*mu))
     al_max = 1/3
     branch = -1
-    if eqWall(al_min,alN,vm,nu,mu,psiN)*eqWall(al_max,alN,vm,nu,mu,psiN)>0:
+    if eqWall(al_min,alN,vm,nu,mu)*eqWall(al_max,alN,vm,nu,mu)>0:
         branch = 1
-    sol = root_scalar(eqWall,(alN,vm,nu,mu,psiN,branch),bracket=(al_min,
+    sol = root_scalar(eqWall,(alN,vm,nu,mu,branch),bracket=(al_min,
     al_max),rtol=1e-10,xtol=1e-10) 
     if not sol.converged:
         print("WARNING: desired precision not reached in ’solve_alpha’") 
@@ -119,11 +121,11 @@ def integrate_plasma(v0,vw,w0,c2,shock_wave=True):
         print("WARNING: desired precision not reached in ’integrate_plasma’") 
     return sol
 
-def shooting(vw,alN,cb2,cs2,psiN):
+def shooting(vw,alN,cb2,cs2):
     nu,mu = 1+1/cb2,1+1/cs2
     vm = min(np.sqrt(cb2),vw)
-    al = solve_alpha(vw, alN, cb2, cs2, psiN) 
-    vp = get_vp(vm, al, cb2)
+    al = solve_alpha(vw, alN, cb2, cs2) 
+    vp = get_vp()
     wp = w_from_alpha(al, alN, nu, mu)
     sol = integrate_plasma((vw-vp)/(1-vw*vp), vw, wp, cs2) 
     vp_sw = sol.y[0,-1]
@@ -131,20 +133,20 @@ def shooting(vw,alN,cb2,cs2,psiN):
     wm_sw = sol.y[1,-1]
     return vp_sw/vm_sw - ((mu-1)*wm_sw+1)/((mu-1)+wm_sw)
 
-def find_vw(alN,cb2,cs2,psiN):
+
+def find_vw(alN,cb2,cs2):
     nu,mu = 1+1/cb2,1+1/cs2
     vJ = find_vJ(alN, cb2)
-    if alN < (1-psiN)/3 or alN <= (mu-nu)/(3*mu):
+    if alN < 1/3 or alN <= (mu-nu)/(3*mu):
         print('alN too small')
         return 0
-    if alN > max_al(cb2,cs2,psiN,100) or shooting(vJ,alN,cb2,cs2,psiN) < 0:
+    if alN > max_al(cb2,cs2,100) or shooting(vJ,alN,cb2,cs2) < 0:
         print('alN too large')
         return 1
-    sol = root_scalar(shooting ,(alN,cb2,cs2,psiN),bracket=[1e-3,vJ],rtol=1e-10,xtol=1e-10)
+    sol = root_scalar(shooting ,(alN,cb2,cs2),bracket=[1e-3,vJ],rtol=1e-10,xtol=1e-10)
     return sol.root
 
-
-def max_al(cb2,cs2,psiN,upper_limit=1): 
+def max_al(cb2,cs2,upper_limit=1): 
     nu,mu = 1+1/cb2,1+1/cs2
     vm = np.sqrt(cb2)
     def func(alN):
@@ -152,12 +154,25 @@ def max_al(cb2,cs2,psiN,upper_limit=1):
         vp = cs2/vw
         ga2p,ga2m = 1/(1-vp**2),1/(1-vm**2)
         wp = (vp+vw-vw*mu)/(vp+vw-vp*mu)
-        psi = psiN*wp**(nu/mu-1)
+        psi = 0
         al = (mu-nu)/(3*mu)+(alN-(mu-nu)/(3*mu))/wp
         return vp*vm*al/(1-(nu-1)*vp*vm)-(1-3*al-(ga2p/ga2m)**(nu/2)*psi)/(3*nu)
     if func(upper_limit) < 0: return upper_limit
-    sol = root_scalar(func,bracket=((1-psiN)/3,upper_limit),rtol=1e-10,xtol=1e-10)
+    sol = root_scalar(func,bracket=(1/3,upper_limit),rtol=1e-10,xtol=1e-10)
     return sol.root
+
+
+def testAgainstVdV():
+    #Plotting Fig3 from 2312.09964.
+    Tc=1000; cb2=1/3; cs2=1/3; vws=[]; N=30
+    for Tn in range(0,1000):
+        alN=find_alphaN(Tc, Tn, cb2,N)
+        vws.append(find_vw(alN,cb2,cs2))
+        
+    plt.plot(np.array(range(0,1000))/Tc,vws)
+    plt.xlabel(rf"$T/T_c$")
+    plt.ylabel(rf"$v_w$")
+    plt.show()
 
 def save_arrays_to_csv(file_path, column_titles, *arrays):
     # Transpose the arrays to align them by columns
@@ -199,17 +214,19 @@ def readAndEdit(filename, N, F, CsakiTerm):
             V = Potential2.Potential(m2s[i], cs[i], lss[i], las[i], N, F, CsakiTerm)
             minima = V.findminima(Tns[i])
             psiN = V.dVdT(minima,Tns[i])/V.dVdT(0,Tns[i])
-            cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
+            
             cs2 = V.dVdT(0,Tns[i])/(Tns[i]*V.d2VdT2(0,Tns[i]))
-            alp = alpha(V, Tns[i], cb2)
-            Vws[i] = find_vw(alp,cb2,cs2,psiN)
-                #Vws[i] = wallVelocity(V, alp, Tns[i])
+            cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
+            alN = find_alphaN(V.criticalT(), Tns[i], cb2, N)
+            
+            Vws[i] = find_vw(alN,cb2,cs2)
+
             #Potential Parameters
             print(rf'$m^2$ = {m2s[i]}, $c$ = {cs[i]}, $\lambda_\sigma$ = {lss[i]}, $\lambda_a$ = {las[i]}')
-            #Sound speeds
-            print(rf'$c_s^2$ = {cs2}, $c_b^2$ = {cb2}')
+            #Sound speed
+            print(rf'$c_{{\text{{sound,sym}}}}^2$ = {cs2}, $c_{{\text{{sound,b}}}}^2$ = {cb2}')
             #GW Parameters
-            print(rf'$\Psi$_N$ = {psiN}, $\alpha$ = {alp}, Vw = {Vws[i]}')
+            print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, Vw = {Vws[i]}')
             
     if CsakiTerm:
         save_arrays_to_csv(f'VwJor_N{N}F{F}_Csaki.csv',
@@ -221,28 +238,8 @@ def readAndEdit(filename, N, F, CsakiTerm):
                             m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
 
 if __name__ == "__main__":
-    '''
-    eps = 0.045; g4 = 1.6; delta = -0.1; beta = np.sqrt(0.1)
-    print(f"$\gamma_a$ = {Potential.gammaa(eps,g4,delta)}")
-    #The Potential Object.
-    V = Potential.Potential(eps,g4,Potential.gammaa(eps,g4,delta),beta,higgs_corr=True,loop=True)
-
-    Tn, _, message = GravitationalWave.grid(V)
-    print(f'Tn = {Tn} and message = {message}')
-    alp = alpha(V, Tn, 1/np.sqrt(3))
-    vw = wallVelocity(V,alp,Tn)
-    print(f'new alpha = {alp}, formula vw = {vw}')
     
-
-    oldalp = GravitationalWave.alpha(V, Tn)
-    oldvw = GravitationalWave.wallVelocity(V, oldalp, Tn)
-    print(f'old alpha = {oldalp}, vw = {oldvw}')
-    
-    minima = V.findminima(Tn)
-    psiN = V.dVdT(minima[1],Tn)/V.dVdT(minima[0],Tn)
-    print(f'Numerical Vw = {find_vw(alp,1/3,1/3,psiN)}')
-    '''
-    
-    readAndEdit('Test_N3F6_Normal.csv', 3, 6, False)
+    #readAndEdit('Test_N3F6_Normal.csv', 3, 6, False)
+    testAgainstVdV()
 
 
