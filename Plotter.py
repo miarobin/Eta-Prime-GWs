@@ -17,38 +17,38 @@ from multiprocessing import Pool
                 (string, array, arrays)
         OUTPUTS: Nothing
 		
-	2. "populate" is a function to generate gravitational wave data from a single set of potential parameters. The input CsakiTerm can be used to
-		change the potential to a Csaki-style potential. 
+	2. "populate" is a function to generate gravitational wave data from a single set of potential parameters. The input detPow can be used to
+		change the potential to a modified potential from https://arxiv.org/abs/2307.04809. 
 		Returns (0,0,0,0, (error code), 0, 0, 0, 0) if no phase transition. NB the 0's are used to avoid crashes later on.
 	
 		populate:
-		INPUTS: (mSq, c, lambdas, lambdaa, N, F,plot=False, CsakiTerm=False)
-				(float, float, float, float, int, int, bool, bool)
+		INPUTS: (mSq, c, lambdas, lambdaa, N, F, detPow, plot=False)
+				(float, float, float, float, int, int, float, bool)
 		OUTPUT: (Tn, alpha, betaH, vW, message, _m2Sig, _m2Eta, _m2Pi, _m2X)
 				(float, float, float, float, int, float, float, float, float)
 				
-	3. "plotDifference" allows you to see, for the Csaki (half-transparency) and normal (full-transparency) cases, 
+	3. "plotDifference" allows you to see, for the large N (half-transparency) and normal (full-transparency) cases, 
 		the difference in GW data for cases with the same zero-temp masses. These are indicated by having the same marker. 
 		However, this function can only handle up to 22 data points or it does not have enough markers.
 		
-		TLDR CSAKI IS HALF TRANSPARENCY; NORMAL IS FULL TRANSPARENCY. CAN ONLY HANDLE 22 DATA POINTS.
+		TLDR large N IS HALF TRANSPARENCY; NORMAL IS FULL TRANSPARENCY. CAN ONLY HANDLE 22 DATA POINTS.
 		
 		plotDifference:
-		INPUTS: (resC, resN)
+		INPUTS: (reslN, resN)
 				(np.array, np.array)
 		
 				
-	4. "populateN" and "populateC" are wrapper functions for "populate" for the normal and Csaki case respectively.
+	4. "populateN" and "populatelN" are wrapper functions for "populate" for the normal and large N case respectively. Does not allow "plot" in populate.
 	
-		populateN/C:
-		INPUTS: (mSq, c, lambdas, lambdaa, N, F,plot=False, CsakiTerm=False/True)
+		populateN/ln:
+		INPUTS: (mSq, c, lambdas, lambdaa, N, F, detPow, polyakov=False)
 				(float, float, float, float, int, int, bool, bool)
 		OUTPUT: (Tn, alpha, betaH, vW, message, _m2Sig, _m2Eta, _m2Pi, _m2X)
 				(float, float, float, float, int, float, float, float, float)
 				
 	5. "parallelScan" is a function to perform a parallelised scan over a set of zero-temp particle masses:
-			a Loops over each array sequentially and builds a new list of valid Lagrangian inputs. These are stored in C_data and N_data.
-			b Runs populateN and populateC over the N_data and C_data arrays respectively, in parallel over, say, 8, cores.
+			a Loops over each array sequentially and builds a new list of valid Lagrangian inputs. These are stored in lN_data and N_data.
+			b Runs populateN and populateC over the N_data and lN_data arrays respectively, in parallel over, say, 8, cores.
 			c Stores the run results in two csv arrays. 
 			d Attempts to run plotDifference (though note that if there are more than 22 non-zero data points this will crash.
 		
@@ -56,6 +56,11 @@ from multiprocessing import Pool
 		INPUTS: (m2Sig, m2Eta, m2Pi, m2X, N, F)
 				(np.array, np.array, np.array, np.array, int, int)
 				
+	6. "getTcs" does something.
+	
+		getTcs:
+		INPUTS (m2Sig, m2Eta, m2X, fPI, N, F)
+				(np.array, np.array, np.array, np.array, int, int)
 		
 	NOTE The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
 '''
@@ -81,10 +86,10 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
             writer.writerow(row)
 
 
-def populate(mSq, c, lambdas, lambdaa, N, F, CsakiTerm, Polyakov=True, plot=False):
+def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 	
 	#Building the potential...
-	V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, CsakiTerm, Polyakov=Polyakov)
+	V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov)
 	
 	#Calculating the zero temperature, tree level, analytic minimum.
 	fSig = V.fSigma()
@@ -130,20 +135,20 @@ def populate(mSq, c, lambdas, lambdaa, N, F, CsakiTerm, Polyakov=True, plot=Fals
 		return (0, 0, 0, 0, tc, message)
 	
 
-def plotDifference(resC, resN):
+def plotDifference(reslN, resN):
 
 	#Fixed list of markers to track each set of zero-temp masses.
 	markers = [".","o","v","^","<",">","1","2","3","4","8","s","p","P","*","h","H","+","x","D","d","|"]
 	
 	colormap = plt.cm.plasma 
 	#normalising the colour map to between the min and max values of _mSig
-	normalize = matplotlib.colors.Normalize(vmin=min(np.ravel(resC[:,5]+resN[:,5])), vmax=max(np.ravel(resC[:,5]+resN[:,5])))
+	normalize = matplotlib.colors.Normalize(vmin=min(np.ravel(reslN[:,5]+resN[:,5])), vmax=max(np.ravel(reslN[:,5]+resN[:,5])))
 	
 
-	for i in range(len(resC)):
-		if resC[i,2]!=0 and resN[i,2]!=0:
-			#Csaki term has half-transparency.
-			plt.scatter(resC[i,2], resC[i,1], c = resC[i,5], alpha=1/(2), marker=markers[-1], cmap=colormap, norm=normalize)
+	for i in range(len(reslN)):
+		if reslN[i,2]!=0 and resN[i,2]!=0:
+			#large N term has half-transparency.
+			plt.scatter(reslN[i,2], reslN[i,1], c = reslN[i,5], alpha=1/(2), marker=markers[-1], cmap=colormap, norm=normalize)
 			#Normal term has full-transparency.
 			plt.scatter(resN[i,2], resN[i,1], c = resN[i,5], alpha=1/(1), marker=markers[-1], cmap=colormap, norm=normalize)
 			
@@ -160,10 +165,12 @@ def plotDifference(resC, resN):
 	
 def populateN(mSq, c, ls, la, N, F, Polyakov=True):
 	#Wrapper function for normal case.
-	return populate(mSq, c, ls, la, N, F, False, Polyakov=Polyakov, plot=False)
-def populateC(mSq, c, ls, la, N, F, Polyakov=False):
-	#Wrapper for the Csaki case.
-	return populate(mSq, c, ls, la, N, F, True, Polyakov=Polyakov, plot=False)
+	detPow = Potential2.get_detPow(N,F,"normal")
+	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=False)
+def populatelN(mSq, c, ls, la, N, F, Polyakov=False):
+	#Wrapper for the largeN case.
+	detPow = Potential2.get_detPow(N,F,"largeN")
+	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=False)
 
 
 
@@ -178,26 +185,26 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 					if k>j and k>i:
 						data.append([i,j,k,l,N,F])
 	#Arrays to store the Lagrangian inputs
-	C_LInputs = []; N_LInputs = []
+	lN_LInputs = []; N_LInputs = []
 	#Arrays to store the zero-temperature masses
-	C_Masses = []; N_Masses = []
+	lN_Masses = []; N_Masses = []
 	for i in range(len(data)):
 		point = data[i]
 		#Calculating the Lagrangian inputs. See appendix D of draft.
-		C_Linput = [*Potential2.masses_to_lagrangian_Csaki(*point),N,F]
-		N_Linput = [*Potential2.masses_to_lagrangian_Normal(*point),N,F]
-		#Only keeping point if BOTH Csaki and Normal are valid. <---- May want to change this later.
-		if (C_Linput[0] is not None) and (N_Linput[0] is not None):
-			C_LInputs.append(C_Linput)
+		lN_Linput = [*Potential2.masses_to_lagrangian(*point),N,F,"largeN"]
+		N_Linput = [*Potential2.masses_to_lagrangian(*point),N,F,"normal"]
+		#Only keeping point if BOTH largeN and Normal are valid. <---- May want to change this later.
+		if (lN_Linput[0] is not None) and (N_Linput[0] is not None):
+			lN_LInputs.append(lN_Linput)
 			N_LInputs.append(N_Linput)
-			C_Masses.append(point)
+			lN_Masses.append(point)
 			N_Masses.append(point)
 			
 	#Cropping the data for now.
 	crop=20
-	C_LInputs=C_LInputs[:crop]
+	lN_LInputs=lN_LInputs[:crop]
 	N_LInputs=N_LInputs[:crop]
-	C_Masses=C_Masses[:crop]
+	lN_Masses=lN_Masses[:crop]
 	N_Masses=N_Masses[:crop]
 	
         
@@ -205,11 +212,11 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 	with Pool(1) as p:
 		#Populating the result arrays.
 		resN = p.starmap(populateN, N_LInputs)
-		resC = p.starmap(populateC, C_LInputs)
+		reslN = p.starmap(populateC, lN_LInputs)
 	
 	#MAKE THE FILE WRITER
 	#Column Titles
-	N_LInputs = np.array(N_LInputs); C_LInputs = np.array(C_LInputs); C_Masses=np.array(C_Masses); N_Masses=np.array(N_Masses); resN=np.array(resN); resC=np.array(resC)
+	N_LInputs = np.array(N_LInputs); lN_LInputs = np.array(lN_LInputs); lN_Masses=np.array(lN_Masses); N_Masses=np.array(N_Masses); resN=np.array(resN); reslN=np.array(reslN)
 	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw']
 	# File path to save the CSV
 	file_path = f'Test_N{N}F{F}_Normal.csv'
@@ -218,17 +225,17 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 					N_LInputs[:,0],N_LInputs[:,1],N_LInputs[:,2],N_LInputs[:,3],
 					resN[:,3],resN[:,0],resN[:,1],resN[:,2]
 					)
-	file_path = f'Test_N{N}F{F}_Csaki.csv'
+	file_path = f'Test_N{N}F{F}_largeN.csv'
 	save_arrays_to_csv(file_path, column_titles, 
-					C_Masses[:,0],C_Masses[:,1],C_Masses[:,2],C_Masses[:,3],
-					C_LInputs[:,0],C_LInputs[:,1],C_LInputs[:,2],C_LInputs[:,3],
-					resC[:,3],resC[:,0],resC[:,1],resC[:,2]
+					lN_Masses[:,0],lN_Masses[:,1],lN_Masses[:,2],lN_Masses[:,3],
+					lN_LInputs[:,0],lN_LInputs[:,1],lN_LInputs[:,2],lN_LInputs[:,3],
+					reslN[:,3],reslN[:,0],reslN[:,1],reslN[:,2]
 					)
 
-	plotDifference(resC, resN)
+	plotDifference(reslN, resN)
 	
-def getTcs(m2Sig,m2Eta,m2X, fPI, N, F):
-	
+def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F):
+	#Gets critical temperature associated with ChiralPT NOT incl. confinement.
 	data = []
 	for i in m2Sig:
 		for j in m2Eta:
@@ -238,30 +245,32 @@ def getTcs(m2Sig,m2Eta,m2X, fPI, N, F):
 						data.append([i,j,k,l,N,F])
 
 	data=np.array(data)
-	data = data[np.array(np.random.randint(0, high=len(data),size=20))]
+	data = data[np.array(np.random.randint(0, high=len(data),size=30))]
 	
-	resCsaki = []; resNormal = []
+	reslN = []; resNormal = []
 	for point in data:
 		try:
-			#Csaki Term
-			VCsaki=Potential2.Potential(*Potential2.masses_to_lagrangian_Csaki(*point),N,F,True,Polyakov=False)
-			tcCsaki = VCsaki.criticalT(prnt=False)
+			#largeN Term
+			detPowlN = Potential2.get_detPow(N,F,"largeN")
+			VlN=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,"largeN"),N,F,detPowlN,Polyakov=False)
+			tclN = VlN.criticalT(prnt=False)
 			
-			if tcCsaki is not None:
-				orderCsaki = 1 if VCsaki.findminima(tcCsaki) else 2
-			else: orderCsaki = 0
+			if tclN is not None:
+				orderlN = 1 if VlN.findminima(tclN) else 2
+			else: orderlN = 0
 			
-			resCsaki.append([*Potential2.masses_to_lagrangian_Csaki(*point)]+ [tcCsaki, orderCsaki])
-			print(f'Csaki: Tc={tcCsaki}, fPi={point[3]}, Transition Order = {orderCsaki}')
+			reslN.append([*Potential2.masses_to_lagrangian(*point, "largeN")]+ [tclN, orderlN])
+			print(f'Large N: Tc={tclN}, fPi={point[3]}, Transition Order = {orderlN}')
 			
 		except (Potential2.InvalidPotential):
-			print('Csaki term threw invalid potential.')
-			tcCsaki=None
-			resCsaki.append([*Potential2.masses_to_lagrangian_Csaki(*point)]+ [None, 0])
+			print('Large N term threw invalid potential.')
+			tclN=None
+			reslN.append([*Potential2.masses_to_lagrangian(*point, "largeN")]+ [None, 0])
 				
 		try:
 			#Normal Term
-			VNormal=Potential2.Potential(*Potential2.masses_to_lagrangian_Normal(*point),N,F,False,Polyakov=False)
+			detPowN=Potential2.get_detPow(N,F,"normal")
+			VNormal=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,"normal"),N,F,detPowN,Polyakov=False)
 			tcNormal = VNormal.criticalT(prnt=False)
 			
 			if tcNormal is not None:
@@ -269,19 +278,19 @@ def getTcs(m2Sig,m2Eta,m2X, fPI, N, F):
 			else: orderNormal = 0
 			
 
-			resNormal.append([*Potential2.masses_to_lagrangian_Normal(*point)] + [tcNormal, orderNormal])
+			resNormal.append([*Potential2.masses_to_lagrangian(*point,"normal")] + [tcNormal, orderNormal])
 			print(f'Normal: Tc={tcNormal}, fPi={point[3]}, Transition Order = {orderNormal}')
 					
 		except (Potential2.InvalidPotential):
 			print('Normal term threw invalid potential.')
 			tcNormal=None
-			resNormal.append([*Potential2.masses_to_lagrangian_Normal(*point)] + [None, 0])
+			resNormal.append([*Potential2.masses_to_lagrangian(*point,"normal")] + [None, 0])
 
 		plot=False
-		if tcCsaki != None and plot:
-			plotV(VCsaki, [0,tcCsaki,point[3]])
-			plt.plot(np.linspace(-5,VCsaki.fSigma()*1.25,num=100),VCsaki.VIm(np.linspace(-5,VCsaki.fSigma()*1.25,num=100),tcCsaki)-VCsaki.VIm(0,tcCsaki),label=f"Csaki at Tc Imaginary")
-			plt.title('Csaki')
+		if tclN != None and plot:
+			plotV(VlN, [0,tclN,point[3]])
+			plt.plot(np.linspace(-5,VlN.fSigma()*1.25,num=100),VlN.VIm(np.linspace(-5,VlN.fSigma()*1.25,num=100),tclN)-VlN.VIm(0,tclN),label=f"Large N at Tc Imaginary")
+			plt.title('largeN')
 			plt.legend()
 			plt.show()
 			
@@ -295,11 +304,11 @@ def getTcs(m2Sig,m2Eta,m2X, fPI, N, F):
 
 
 		
-	data = np.array(data); resCsaki = np.array(resCsaki); resNormal = np.array(resNormal)
-	save_arrays_to_csv(f'TcCsaki_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a', 'Tc','FirstOrder'], 
-					data[:,0], data[:,1], data[:,2], data[:,3], resCsaki[:,0], resCsaki[:,1], resCsaki[:,2], resCsaki[:,3], resCsaki[:,4], resCsaki[:,5])
+	data = np.array(data); reslN = np.array(reslN); resNormal = np.array(resNormal)
+	save_arrays_to_csv(f'TclN_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a', 'Tc','TransitionOrder'], 
+					data[:,0], data[:,1], data[:,2], data[:,3], reslN[:,0], reslN[:,1], reslN[:,2], reslN[:,3], reslN[:,4], reslN[:,5])
 
-	save_arrays_to_csv(f'TcNormal_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a','Tc','FirstOrder'], 
+	save_arrays_to_csv(f'TcNormal_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a','Tc','TransitionOrder'], 
 					data[:,0], data[:,1], data[:,2], data[:,3], resNormal[:,0], resNormal[:,1], resNormal[:,2], resNormal[:,3], resNormal[:,4], resNormal[:,5])
 
 	
@@ -313,11 +322,11 @@ if __name__ == "__main__":
 	#Tc = 1000/\sqrt(3) GeV
 
 
-	m2Sig = np.linspace(1E6, 1E8/np.sqrt(2), num=5)
-	m2Eta = np.linspace(1E6, 1E8, num=5)
+	m2Sig = np.linspace(1E6, 1E8/np.sqrt(2), num=10)
+	m2Eta = np.linspace(1E6, 1E8, num=10)
 	
-	fPi = np.linspace(1E4, 1E5, num=4)
-	m2X = np.linspace(1E8/np.sqrt(2), 1E8, num=4)
+	fPi = np.linspace(1E3, 1E5, num=10)
+	m2X = np.linspace(1E8/np.sqrt(2), 2*1E8, num=10)
 	
 	getTcs(m2Sig,m2Eta,m2X, fPi, N, F)
 	

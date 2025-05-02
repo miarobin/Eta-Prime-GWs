@@ -31,8 +31,8 @@ The two additional functions I have written are:
         csv file.
         
         readAndEdit:
-        INPUTS: (filename, N, F, CsakiTerm)
-                (string, int, int, bool)
+        INPUTS: (filename, N, F, termType)
+                (string, int, int, String)
         OUTPUTS: Nothing.
         
     3. "find_alphaN" which computes the quantity \alpha(T_n) from eq. 19 of 2303.10171, noting that \bar\theta(T_n)_{broken}~1/N^2~0.
@@ -189,7 +189,7 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
         for row in transposed_arrays:
             writer.writerow(row)
 
-def readAndEdit(filename, N, F, CsakiTerm):
+def readAndEdit(filename, N, F, termType):
     delimiter = ','
     #Read into a numpy array the edited data.
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
@@ -211,7 +211,8 @@ def readAndEdit(filename, N, F, CsakiTerm):
     #Scanning over each row in 'data' and calculating new Vw.
     for i in range(len(m2s)):
         if Tns[i]>1:
-            V = Potential2.Potential(m2s[i], cs[i], lss[i], las[i], N, F, CsakiTerm)
+            detPow = Potential2.get_detPow(N,F,termType)
+            V = Potential2.Potential(m2s[i], cs[i], lss[i], las[i], N, F, detPow)
             minima = V.findminima(Tns[i])
             psiN = V.dVdT(minima,Tns[i])/V.dVdT(0,Tns[i])
             
@@ -228,12 +229,7 @@ def readAndEdit(filename, N, F, CsakiTerm):
             #GW Parameters
             print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, Vw = {Vws[i]}')
             
-    if CsakiTerm:
-        save_arrays_to_csv(f'VwJor_N{N}F{F}_Csaki.csv',
-                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw'], 
-                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
-    else:
-        save_arrays_to_csv(f'VwJor_N{N}F{F}_Normal.csv',
+    save_arrays_to_csv(f'VwJor_N{N}F{F}_{termType}.csv',
                            ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw'], 
                             m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
 

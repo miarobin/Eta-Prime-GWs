@@ -10,6 +10,20 @@ from mpl_toolkits.mplot3d import Axes3D
 
 '''
     This file does the following:
+    0. "get_detPow" takes a combination of number of flavours F, number of colours N and termType to produce the power
+        on the determinant term ~-2c fPI^{pF-2} (det(\sigma)^p+det(\sigma^\dagger)^p), i.e. detPow = p.
+        
+        termType can be one of three options:
+            "normal" -> detPow=1
+            "largeN" -> detPow=1/N
+            "AMSB" -> detPow=1/(F-N)            
+    
+        get_detPow:
+        INPUTS: (N, F, termType)
+                (int, int, String)
+        OUTPUTS: (detPow)
+                (float)
+    
     1. Converts physical particle masses to Lagrangian parameters in "masses_to_lagrangian_Csaki" and "masses_to_lagrangian_Normal". See appendix D of the draft.
     
         masses_to_lagrangian_Csaki/masses_to_lagrangian_Normal: 
@@ -146,7 +160,7 @@ from mpl_toolkits.mplot3d import Axes3D
         > Polyakov (bool) = include Polyakov corrections.
         
         > CsakiTerm (bool) = True if this is for the Csaki case, False if the normal case.
-        > detPow (int) = Power of the chiral symmetry breaking determinant term. Modified in the Csaki/Normal case as per Eq 8 in the draft.
+        > detPow (float) = Power of the chiral symmetry breaking determinant term. Modified in the Normal/Large N/AMSB case as per the draft.
         
         > m2, c, ls/lambdas, la/lambdaa (float) = Lagrangian parameters. See Eq 4 of 2309.16755.
         
@@ -167,43 +181,66 @@ class InvalidPotential(Exception):
 
 #CONVERT between physical inputs and Lagrangian parameters
 
-def masses_to_lagrangian_Csaki(_m2Sig, _m2Eta, _m2X, fPI, N, F):
-    #See appendix D in draft for these formulae.
-    if F/N<2:
-        raise NonLinear(f"Lagrangian is non-linear with F={F} and N={N}.")    
+def get_detPow(N, F, termType):
+    if termType=='Normal':
+        return 1
+    elif termType=="largeN":
+        return 1/N
+    elif termType=="AMSB":
+        return 1/(F-N)
+    
+    else:
+        raise InvalidPotential("Check what have you written as termType. It's wrong.")
 
-    m2 = (_m2Sig/2) - (_m2Eta/2)*(N/F)*(4-F/N)
-    c = _m2Eta*N**2 * fPI**(2-F/N)
-    ls = (_m2Sig - _m2Eta*(N/F)*(2-F/N))/fPI**2
-    la = (_m2X - _m2Eta*(N/F)*(N+1))/fPI**2
+def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
+    #See appendix D in draft for these formulae.
+    if F*detPow<2 or abs(F*detPow-int(F*detPow))>0.001:
+        raise NonLinear(f"Lagrangian is non-linear with F={F}, N={N} and detPow={detPow}.")    
+
+    m2 = (_m2Sig/2) - (_m2Eta/2)*(1/(F*detPow))*(4-F*detPow)
+    c = _m2Eta*N**2 * fPI**(2-F*detPow)
+    ls = (_m2Sig - _m2Eta*(1/(F*detPow))*(2-F*detPow))/fPI**2
+    la = (_m2X - _m2Eta*(1/(F*detPow))*(1/(detPow)+1))/fPI**2
     
     #UNITARITY BOUNDS AND EFT EXPANSION
-    if int(round(F/N))<4:
-        if np.abs(3*ls + 3*la*(F-2)**2/(F-1)+c*fPI**(F/N-4)*((F-3)(F-2)+((N-1)/N)*F*(F-1))/(8*N*(F*(F-1))))>16*np.pi:
+    if int(round(F*detPow))<4:
+        if np.abs(3*ls)>16*np.pi:
             print(f'Point is Invalid as unitarity is violated')
             return (None,None,None,None)
-        if np.abs(3*ls-c*fPI**(F/N-4)*((F-3*N)*(F-2*N)*(F-N)/(F*N**4)))>16*np.pi:
+        if np.abs(ls+2*la)>16*np.pi:
             print(f'Point is Invalid as unitarity is violated')
             return (None,None,None,None)
-        if np.abs(c*fPI**(F/N-4))>4*np.pi:
+        #Not sure this is true!
+        if np.abs(c*fPI**(F*detPow-4))>4*4*np.pi:
+            print(f'Point is Invalid as EFT expansion does not appear to converge')
+            return (None,None,None,None)
+        
+    if int(round(F*detPow))>=4:
+        if np.abs(3*ls-c*fPI**(F*detPow-4)*(F-3/detPow)*(F-2/detPow)*(F-1/detPow)/(F*detPow**(-4)))>16*np.pi:
+            print(f'Point is Invalid as unitarity is violated')
+            return (None,None,None,None)
+        if np.abs(ls+2*la- 2*c*fPI**(F*detPow-4)*3*(F-2/detPow)/(detPow**(-3)*F**2))>16*np.pi:
+            print(f'Point is Invalid as unitarity is violated')
+            return (None,None,None,None)
+        if np.abs(ls-2*c*fPI**(F*detPow-4)*F*detPow*(2-detPow))>16*np.pi/3:
+            print(f'Point is Invalid as unitarity is violated')
+            return (None,None,None,None)
+        #Not sure this is true!
+        if np.abs(c*fPI**(F*detPow-4))>4*4*np.pi:
             print(f'Point is Invalid as EFT expansion does not appear to converge')
             return (None,None,None,None)
         
     #CHECKS
-    V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F/N)/F**2 + ls*sigma**4/8
-    dV = lambda sigma: -m2*sigma - c*sigma**(F/N-1)/(F*N) + ls*sigma**3/2
-    ddV = lambda sigma: -m2 - c*(F/N-1)*sigma**(F/N-2)/(F*N) + 3*ls*sigma**2/2
+    V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F*detPow)/F**2 + ls*sigma**4/8
+    dV = lambda sigma: -m2*sigma - c*detPow*sigma**(F*detPow-1)/F + ls*sigma**3/2
+    ddV = lambda sigma: -m2 - c*detPow*(F*detPow-1)*sigma**(F*detPow-2)/F + 3*ls*sigma**2/2
     
-    if int(round(F/N))==2:
+    if int(round(F*detPow))==2:
         #CHECKS
         if ls<0:
             print(f'Point is Invalid as $\lambda_\sigma$<0')
             return (None,None,None,None)
-    
-        
-    else:
-        raise NotImplemented(f"F/N={F/N} not implemented yet in masses_to_lagrangian function")
-    
+
 
 
     if V(fPI)>V(0):
@@ -224,77 +261,9 @@ def masses_to_lagrangian_Csaki(_m2Sig, _m2Eta, _m2X, fPI, N, F):
     
     return (m2, c, ls, la)
 
-def masses_to_lagrangian_Normal(_m2Sig, _m2Eta, _m2X, fPI, N, F):
-    #See appendix D in draft for these formulae.
-    m2 = (_m2Sig/2) - (_m2Eta/2)*(1/F)*(4-F)
-    c = _m2Eta * fPI**(2-F)
-    ls = (_m2Sig - _m2Eta*(1/F)*(2-F))/fPI**2
-    la = (_m2X - _m2Eta*(1/F)*(2))/fPI**2
-
-    #UNITARITY BOUNDS AND EFT EXPANSION
-    if int(round(F))<4:
-        if np.abs(ls + la*(F-2)**2/(F-1))>16*np.pi/3:
-            print(f'Point is Invalid as unitarity is violated')
-            return (None,None,None,None)
-        if np.abs(ls)>16*np.pi/3:
-            print(f'Point is Invalid as unitarity is violated')
-            return (None,None,None,None)
-        #Is this a fair restriction crew?
-        if np.abs(c*fPI**(F-4))>4*np.pi:
-            print(f'Point is Invalid as EFT expansion does not appear to converge')
-            return (None,None,None,None)
-        
-
-    #CHECKS
-    V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F)/F**2 + ls*sigma**4/8
-    dV = lambda sigma: -m2*sigma - c*sigma**(F-1)/(F) + ls*sigma**3/2
-    ddV = lambda sigma: -m2 - c*(F-1)*sigma**(F-2)/(F) + 3*ls*sigma**2/2
-    if F==2:
-        if ls<0:
-            print(f'Point is Invalid as highest power term is negative')
-            return (None,None,None,None)
-        
-    elif F==3:
-        if ls<0:
-            print(f'Point is Invalid as highest power term is negative')
-            return (None,None,None,None)
-        
-    elif F==4:
-        if ls-c<0:
-            print(f'Point is Invalid as highest power term is negative')
-            return (None,None,None,None)
-        
-    #elif F>4:
-    #    if dV(2*np.pi*fPI)<0:
-    #        print(f'Point is Invalid as potential is unbounded')
-    #        return (None,None,None,None)
-
-    #else:
-    #    raise NotImplemented(f"F/N={F/N} not implemented yet in masses_to_lagrangian function")
-
-
-
-
-    if V(fPI)>V(0):
-        print(f'Point is Invalid as symmetric point is true minimum')
-        return (None,None,None,None)
-    if round(dV(fPI))>fPI:
-        print(dV(fPI))
-        print(f'Point is Invalid as fPI = {fPI} does not minimize potential')
-        plt.title('Normal')
-        plt.plot(np.arange(0,2*fPI),V(np.arange(0,2*fPI)),label='V')
-        plt.plot(np.arange(0,2*fPI),dV(np.arange(0,2*fPI)),label='dV')
-        plt.legend()
-        plt.show()
-        return (None,None,None,None)
-    if ddV(fPI)<0:
-        print(f'Point is Invalid as fPI is not minimum')
-        return (None,None,None,None)
-
-    return (m2, c, ls, la)
 
 class Potential:
-    def __init__(self, m2, c, lambdas, lambdaa, N, F, CsakiTerm, Polyakov=True):
+    def __init__(self, m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True):
 		#All the parameters needed to construct the potential.
         self.m2 = m2
         self.c = c
@@ -302,24 +271,17 @@ class Potential:
         self.lambdaa = lambdaa
         self.N = N
         self.F = F
-        self.CsakiTerm = CsakiTerm
+        self.detPow = detPow
         self.Polyakov = Polyakov
         
         if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:
             raise InvalidPotential('Input parameter is None')
         
-        
-        if not CsakiTerm:
-            self.detPow = 1 
-        if CsakiTerm:
-            self.detPow = N
 
         
 		#Checking to make sure the Lagrangian is linear.
-        if self.CsakiTerm:
-            frac = self.F/self.N
-            if abs(frac - np.round(frac)) > 0.0001:
-                raise NonLinear(f"Choice of N = {self.N} and F = {self.F} gives non-linear Lagrangian.")
+        if abs(self.F*self.detPow-np.round(self.F*self.detPow)) > 0.0001:
+            raise NonLinear(f"Choice of N = {self.N}, F = {self.F}, detPow = {detPow} gives non-linear Lagrangian.")
             
         ##GLUONIC FITS
         data = np.genfromtxt(f'GridDataF{self.F}N{self.N}Corrected.csv', delimiter=',', dtype=float, skip_header=1)
@@ -333,43 +295,43 @@ class Potential:
 
         #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
         #                                            and their respective DoF]}
-        if self.F/self.detPow>=2:
+        if self.F*self.detPow>=2:
             self.mSq = {
                 #Sigma Mass	
                 'Sig': [lambda sig, T: - self.m2 
-						- self.c / (self.F * self.detPow) * ( self.F/self.detPow - 1 ) * sig**(self.F/self.detPow - 2)
+						- self.c * self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
 						+ (3/2) * self.lambdas * sig ** 2,
                         1.],
 				#Eta Prime Mass
                 'Eta': [lambda sig, T: - self.m2 
-						+ self.c / (self.F * self.detPow) * ( self.F/self.detPow - 1 ) * sig**(self.F/self.detPow - 2)
+						+ self.c *self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
 						+ (1/2) * self.lambdas * sig ** 2,
                         1.],
 				#X Mass
 				'X': [lambda sig, T: - self.m2 
-						+ self.c / self.F * sig**(self.F/self.detPow - 2)
+						+ self.c / self.F * sig**(self.F*self.detPow - 2)
 						+ (1/2) * self.lambdas * sig ** 2,
 						self.F**2 - 1],
 				#Pi Mass
 				'Pi': [lambda sig, T: - self.m2 
-						- self.c / self.F * sig**(self.F/self.detPow - 2)
+						- self.c / self.F * sig**(self.F*self.detPow - 2)
 						+ (1/2) * (self.lambdas + self.lambdaa) * sig ** 2,
 						self.F**2 - 1]
 						}
 
         #Checking validity of the potential.
-        elif self.F/self.detPow<2:
-            raise InvalidPotential("F/N is too small. Diverging effective masses.")
+        elif self.F*self.detPow<2:
+            raise InvalidPotential("F*detPow is too small. Diverging effective masses.")
 
 
         else:
-            raise NotImplemented(f"F/N={self.F/self.detPow} not implemented yet in mSq")
+            raise NotImplemented(f"F*detPow={self.F*self.detPow} not implemented yet in mSq")
 	
 		
     def V(self,sig): 
         ##The tree level, zero temperature potential.
         sig = np.array(sig)	
-        return - self.m2 * sig**2/2 - (self.c/self.F**2) * sig**(self.F/self.detPow) + (self.lambdas/8) * sig**4
+        return - self.m2 * sig**2/2 - (self.c/self.F**2) * sig**(self.F*self.detPow) + (self.lambdas/8) * sig**4
 
 
     def V1T(self,sig,T):
@@ -474,27 +436,28 @@ class Potential:
 
 
     def fSigma(self):
+        #CHECK THIS IS CORRECT!
         #Analytic formula for zero-temp vev depends on power of the determinant term detPow. See Mathematica notebook SigmaVev.nb for formulae.
-        if self.F/self.detPow == 1:
+        if int(self.F*self.detPow) == 1:
             x = 9 * self.c * self.F**4 * self.lambdas**2 + np.sqrt(3)*np.sqrt( abs(self.F**8 * self.lambdas**3 * (-8 * self.F**4 *self.m2**3 + 27*self.c**2*self.lambdas)) )
             return np.real((2 * 3**(1/3) * self.F**4 * self.m2 * self.lambdas + x**(2/3)) / (3**(2/3)*self.F**2*self.lambdas * x**(1/3)))
 		
-        elif self.F/self.detPow == 2:
-            return 2 * np.sqrt(self.F*self.m2 + self.c*self.detPow)/np.sqrt(self.F*self.lambdas)
+        elif int(self.F*self.detPow) == 2:
+            return 2 * np.sqrt(self.F*self.m2 + self.c1/self.detPow)/np.sqrt(self.F*self.lambdas)
 		
-        elif self.F/self.detPow == 3:
-            return (self.c*self.detPow + np.sqrt(self.c**2*self.detPow**2 + 2*self.F**2*self.m2*self.lambdas)/(self.F*self.lambdas))
+        elif int(self.F*self.detPow) == 3:
+            return (self.c/self.detPow + np.sqrt(self.c**2/self.detPow**2 + 2*self.F**2*self.m2*self.lambdas)/(self.F*self.lambdas))
 		
-        elif self.F/self.detPow == 4:
-            if self.lambdas - 4*self.c*self.detPow/self.F > 0:
-                return 2*np.sqrt(self.m) / np.sqrt(self.lambdas - 4*self.c*self.detPow/self.F)
+        elif int(self.F*self.detPow) == 4:
+            if self.lambdas - 4*self.c/(self.detPow*self.F) > 0:
+                return 2*np.sqrt(self.m) / np.sqrt(self.lambdas - 4*self.c/(self.detPow*self.F))
             else:
                 raise InvalidPotential(f"Unbounded potential for F={self.F}")
         
-        elif self.F/self.detPow == 6:
+        elif int(self.F*self.detPow) == 6:
             return np.sqrt( - (-3*self.lambdas + np.sqrt(-24*self.c*self.m2 + 9*self.lambdas**2))/(2*self.c))
         else:
-            raise NotImplemented(f"F/N={self.F/self.detPow} not implemented yet in fSigma")
+            raise NotImplemented(f"F*detPow={int(self.F*self.detPow)} not implemented yet in fSigma")
 
 
     def findminima(self,T,rstart=None,rcounter=1):

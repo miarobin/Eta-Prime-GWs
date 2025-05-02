@@ -27,7 +27,7 @@ plt.rcParams["font.size"]= 11
 
 
 
-def plotDifference(resC, resN):
+def plotDifference(reslN, resN):
     #So you can see exactly where the points have moved to
     markers = [".","o","v","^","<",">","1","2","3","4","8","s","p","P","*","h","H","+","x","D","d","|"]
 	
@@ -36,10 +36,10 @@ def plotDifference(resC, resN):
 	#For the colour map
     fig= plt.subplot()
 
-    for i in range(len(resC)):
-        if resC[i,2]!=0 and resN[i,2]!=0:
-            #Csaki term has half-transparency.
-            plt.scatter(resC[i,2], resC[i,1], c = resC[i,3], alpha=1/(2), marker=markers[-1], cmap=colormap, norm=normalize)
+    for i in range(len(reslN)):
+        if reslN[i,2]!=0 and resN[i,2]!=0:
+            #large N term has half-transparency.
+            plt.scatter(reslN[i,2], reslN[i,1], c = reslN[i,3], alpha=1/(2), marker=markers[-1], cmap=colormap, norm=normalize)
             #Normal term has full-transparency.
             plt.scatter(resN[i,2], resN[i,1], c = resN[i,3], alpha=1/(1), marker=markers[-1], cmap=colormap, norm=normalize)
             #Pops off the last marker to move onto the next one.
@@ -69,6 +69,6 @@ def plotDifference(resC, resN):
 	
 #Load up the data.
 resN = np.genfromtxt(f'Test_N3F6_Normal.csv', delimiter=',', dtype=float, skip_header=1)[:,4:]
-resC = np.genfromtxt(f'Test_N3F6_Csaki.csv', delimiter=',', dtype=float, skip_header=1)[:,4:]
+reslN = np.genfromtxt(f'Test_N3F6_largeN.csv', delimiter=',', dtype=float, skip_header=1)[:,4:]
 
-plotDifference(resC,resN)
+plotDifference(reslN,resN)

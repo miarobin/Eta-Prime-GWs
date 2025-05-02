@@ -174,7 +174,7 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
         for row in transposed_arrays:
             writer.writerow(row)
 
-def readAndEdit(filename, N, F, CsakiTerm):
+def readAndEdit(filename, N, F, termType):
     delimiter = ','
     #Read into a numpy array the edited data.
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
@@ -196,27 +196,25 @@ def readAndEdit(filename, N, F, CsakiTerm):
     #Scanning over each row in 'data' and calculating new Vw.
     for i in range(len(m2s)):
         if Tns[i]>1:
-            V = Potential2.Potential(m2s[i], cs[i], lss[i], las[i], N, F, CsakiTerm)
+            detPow = Potential2.get_detPow(N,F,termType)
+            V = Potential2.Potential(m2s[i], cs[i], lss[i], las[i], N, F, detPow)
             minima = V.findminima(Tns[i])
             psiN = V.dVdT(minima,Tns[i])/V.dVdT(0,Tns[i])
-            cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
+            
             cs2 = V.dVdT(0,Tns[i])/(Tns[i]*V.d2VdT2(0,Tns[i]))
-            alp = alpha(V, Tns[i], cb2)
-            Vws[i] = find_vw(alp,cb2,cs2,psiN)
-                #Vws[i] = wallVelocity(V, alp, Tns[i])
+            cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
+            alN = find_alphaN(V.criticalT(), Tns[i], cb2, N)
+            
+            Vws[i] = find_vw(alN,cb2,cs2)
+
             #Potential Parameters
             print(rf'$m^2$ = {m2s[i]}, $c$ = {cs[i]}, $\lambda_\sigma$ = {lss[i]}, $\lambda_a$ = {las[i]}')
-            #Sound speeds
-            print(rf'$c_s^2$ = {cs2}, $c_b^2$ = {cb2}')
+            #Sound speed
+            print(rf'$c_{{\text{{sound,sym}}}}^2$ = {cs2}, $c_{{\text{{sound,b}}}}^2$ = {cb2}')
             #GW Parameters
-            print(rf'$\Psi$_N$ = {psiN}, $\alpha$ = {alp}, Vw = {Vws[i]}')
+            print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, Vw = {Vws[i]}')
             
-    if CsakiTerm:
-        save_arrays_to_csv(f'VwJor_N{N}F{F}_Csaki.csv',
-                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw'], 
-                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
-    else:
-        save_arrays_to_csv(f'VwJor_N{N}F{F}_Normal.csv',
+    save_arrays_to_csv(f'VwJor_N{N}F{F}_{termType}.csv',
                            ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw'], 
                             m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
 

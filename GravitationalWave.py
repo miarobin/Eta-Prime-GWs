@@ -315,8 +315,8 @@ if __name__ == "__main__":
 	test.testN_F4(1, 2)
 	#test.testSymmRestoration(1,3)
 	
-	#xi, muSig, lmb, kappa, m2Sig, N, F
-	V=Potential2.Potential(0,*[0.2, 2, 1, 100**2],1,4)
+	#xi, muSig, lmb, kappa, m2Sig, N, F, detPow
+	V=Potential2.Potential(0,*[0.2, 2, 1, 100**2],1,4,1)
 	
 	def fSig1_function(muSig, lmb, kappa, m2Sig): return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
 	fSig1 = fSig1_function(0.2, 2, 1, 100**2)	
