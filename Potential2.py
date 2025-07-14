@@ -194,13 +194,19 @@ def get_detPow(N, F, termType):
 
 def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     #See appendix D in draft for these formulae.
-    if F*detPow<2 or abs(F*detPow-int(F*detPow))>0.001:
+    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>0.001:
         raise NonLinear(f"Lagrangian is non-linear with F={F}, N={N} and detPow={detPow}.")    
 
     m2 = (_m2Sig/2) - (_m2Eta/2)*(1/(F*detPow))*(4-F*detPow)
-    c = _m2Eta*N**2 * fPI**(2-F*detPow)
+    c = _m2Eta/detPow**2 * np.power(fPI,2-F*detPow)
     ls = (_m2Sig - _m2Eta*(1/(F*detPow))*(2-F*detPow))/fPI**2
-    la = (_m2X - _m2Eta*(1/(F*detPow))*(1/(detPow)+1))/fPI**2
+    la = (_m2X - 2*_m2Eta*(1/(F*detPow)))/fPI**2
+    
+    #REQUIREMENT ALL m^2>0
+    #NOTE THAT THIS MAY HAVE A ROUNDING ERROR FOR NORMAL, BUT SHOULD NEVER APPEAR IN THEORY
+    '''if detPow!= 1 and c*(detPow-1)<0:
+        print(f'Point is Invalid as m2Pi<0 at the vev')
+        return (None,None,None,None)'''
     
     #UNITARITY BOUNDS AND EFT EXPANSION
     if int(round(F*detPow))<4:
@@ -249,7 +255,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     if dV(fPI)>fPI:
         print(dV(fPI))
         print(f'Point is Invalid as fPI = {fPI} does not minimize potential')
-        plt.title('Csaki')
+        plt.title(f'detPow={detPow}')
         plt.plot(np.arange(0,2*fPI),V(np.arange(0,2*fPI)),label='V')
         plt.plot(np.arange(0,2*fPI),dV(np.arange(0,2*fPI)),label='dV')
         plt.legend()
@@ -262,6 +268,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     return (m2, c, ls, la)
 
 
+#IT WOULD BE NICE TO HAVE fPI AS INPUT HERE FOR LATER SO WE DON'T HAVE TO RELY ON THE FORMULAE.
 class Potential:
     def __init__(self, m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True):
 		#All the parameters needed to construct the potential.
@@ -291,33 +298,55 @@ class Potential:
         self.linear_small = interpolate.SmoothBivariateSpline(data[:self.num,0],data[:self.num,1],data[:self.num,2]/1e7, kx=4,ky=3)
         self.linear_large = interpolate.SmoothBivariateSpline(data[self.num:,0],data[self.num:,1],data[self.num:,2]/1e10, kx=4,ky=3)
   
-        
+    
+
 
         #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
         #                                            and their respective DoF]}
         if self.F*self.detPow>=2:
             self.mSq = {
                 #Sigma Mass	
-                'Sig': [lambda sig, T: - self.m2 
+                'Sig': [lambda sig: - self.m2 
 						- self.c * self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
 						+ (3/2) * self.lambdas * sig ** 2,
                         1.],
+                #        0],
 				#Eta Prime Mass
-                'Eta': [lambda sig, T: - self.m2 
+                'Eta': [lambda sig: - self.m2 
 						+ self.c *self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
 						+ (1/2) * self.lambdas * sig ** 2,
                         1.],
+                #        0],
 				#X Mass
-				'X': [lambda sig, T: - self.m2 
-						+ self.c / self.F * sig**(self.F*self.detPow - 2)
-						+ (1/2) * self.lambdas * sig ** 2,
+				'X': [lambda sig: - self.m2 
+						+ self.c * self.detPow / self.F * sig**(self.F*self.detPow - 2)
+						+ (1/2) * (self.lambdas+2*self.lambdaa) * sig ** 2,
 						self.F**2 - 1],
 				#Pi Mass
-				'Pi': [lambda sig, T: - self.m2 
-						- self.c / self.F * sig**(self.F*self.detPow - 2)
-						+ (1/2) * (self.lambdas + self.lambdaa) * sig ** 2,
+				'Pi': [lambda sig: - self.m2 
+						- self.c * self.detPow / self.F * sig**(self.F*self.detPow - 2)
+						+ (1/2) * self.lambdas * sig ** 2,
 						self.F**2 - 1]
 						}
+            
+            #Temperature dependent masses:
+            self.MSq = {
+                #Sigma Mass	
+                'Sig': [lambda sig, T: self.mSq['Sig'](sig) + ,
+                        1.],
+                #        0],
+				#Eta Prime Mass
+                'Eta': [lambda sig, T: self.mSq['Eta'](sig),
+                        1.],
+                #        0],
+				#X Mass
+				'X': [lambda sig, T: self.mSq['X'](sig),
+						self.F**2 - 1],
+				#Pi Mass
+				'Pi': [lambda sig, T: self.mSq['Pi'](sig),
+						self.F**2 - 1]
+						}
+            
 
         #Checking validity of the potential.
         elif self.F*self.detPow<2:
@@ -341,10 +370,17 @@ class Potential:
             return np.zeros(sig.shape)
 
         #One-loop, thermal correction to the potential. See https://arxiv.org/pdf/hep-ph/9901312 eq. 212
-        return np.reshape((np.sum([n*Jb_spline((m2(sig,T)/T**2)) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
+        return np.reshape((np.sum([n*Jb_spline(m2(sig,T)/T**2) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
                                                                         self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
+        #return np.reshape((np.sum([n*fT.Jb(np.sqrt(m2(sig,T)/T**2),n=4) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
+        #                                                                self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
 
-
+    def V1_cutoff(self, sig):
+		# One loop corrections to effective potential in cut-off regularisation scheme.
+        sig = np.array(sig)
+			
+        return np.reshape(np.sum([n * (m2(sig,0)**2 * (np.log(np.abs(m2(sig,0)/m2(self.fSigma(),0)) + 1e-100) - 1.5) + 2*m2(sig,0)*m2(self.fSigma(),0)) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],self.mSq['X'],self.mSq['Pi']]],axis=0)/(64.*np.pi**2), sig.shape)
+		
 
     def _Vg(self, sig, T):
         # Check if input1 or input2 are single numbers (scalars)
@@ -405,22 +441,33 @@ class Potential:
         sig = np.array(sig)
               
         if self.Polyakov:
-            return self.VGluonic(sig, T) + self.V(sig) + self.V1T(sig,T).real
+            return self.VGluonic(sig, T) + self.V(sig) + self.V1T(sig,T).real + self.V1_cutoff(sig).real
 	
         else:
             #Ignoring Polyakov loops.
-            return self.V(sig) + self.V1T(sig,T).real
+            return self.V(sig) + self.V1T(sig,T).real+ self.V1_cutoff(sig).real
 
     def VIm(self,sig,T):
         #This finds the inaginary part of the effective potential.
         #Setting to zero at T=0 GeV to avoid any computational divergences.
         sig = np.array(sig)
         if T==0:
-            return np.zeros(sig.shape)
+            return self.V1_cutoff(sig).imag
+        
+        #Thermal correction:
+        # Create a matrix to store the results
+        if np.ndim(sig) == 0:
+            sig = np.array([sig])  # Treat as a vector of one element
+        VthIm = np.zeros(sig.shape)
+        
+        # Loop through each element of vector1 and vector2, applying the function
+        for i, a in enumerate(sig):
+            VthIm[i] = np.sum([n*_Jb_exact2_Im((m2(a,T)/T**2)) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
+                                                                        self.mSq['X'],self.mSq['Pi']]],axis=0)*T**4/(2*np.pi**2)
+        VthIm = np.array(VthIm)
 
         #One-loop, thermal correction to the potential, using CosmoTransitions Exact Function.
-        return np.reshape((np.sum([n*fT.Jb_exact2((m2(sig,T)/T**2)) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
-                                                                        self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape).imag
+        return (VthIm + self.V1_cutoff(sig).imag)
 
 
 
@@ -443,7 +490,7 @@ class Potential:
             return np.real((2 * 3**(1/3) * self.F**4 * self.m2 * self.lambdas + x**(2/3)) / (3**(2/3)*self.F**2*self.lambdas * x**(1/3)))
 		
         elif int(self.F*self.detPow) == 2:
-            return 2 * np.sqrt(self.F*self.m2 + self.c1/self.detPow)/np.sqrt(self.F*self.lambdas)
+            return np.sqrt(2) * np.sqrt(self.m2 + self.c*2/self.F**2)/np.sqrt(self.lambdas)
 		
         elif int(self.F*self.detPow) == 3:
             return (self.c/self.detPow + np.sqrt(self.c**2/self.detPow**2 + 2*self.F**2*self.m2*self.lambdas)/(self.F*self.lambdas))
@@ -632,6 +679,16 @@ def Jb_spline(X,n=0):
     y[x < _xbmin] = interpolate.splev(_xbmin,_tckb, der=n)
     y[x > _xbmax] = 0
     return y.reshape(X.shape)
+
+
+def _Jb_exact2_Im(theta):
+    # Note that this is a function of theta so that you can get negative values. Input is (m/T)^2.
+    if theta >= 0:
+        return 0
+    else:
+        f1 = lambda y: y*y*np.arctan(np.sin(np.sqrt(+np.abs(theta+y*y)))/(1-np.cos(np.sqrt(+np.abs(theta+y*y)))))
+        
+        return integrate.quad(f1, 0, abs(theta)**.5)[0]
 
 
 		

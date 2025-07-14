@@ -67,7 +67,7 @@ from multiprocessing import Pool
 
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-5,V.fSigma()*1.25,num=100),V.Vtot(np.linspace(-5,V.fSigma()*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+		plt.plot(np.linspace(-5,V.fSigma()*1.25,num=100)/V.fSigma(),V.Vtot(np.linspace(-5,V.fSigma()*1.25,num=100),T)/V.fSigma()**4-V.Vtot(0,T)/V.fSigma()**4,label=f"T={T}")
 
 
 def save_arrays_to_csv(file_path, column_titles, *arrays):
@@ -192,7 +192,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 		point = data[i]
 		#Calculating the Lagrangian inputs. See appendix D of draft.
 		lN_Linput = [*Potential2.masses_to_lagrangian(*point),N,F,"largeN"]
-		N_Linput = [*Potential2.masses_to_lagrangian(*point),N,F,"normal"]
+		N_Linput = [*Potential2.masses_to_lagrangian(*point),N,F,"Normal"]
 		#Only keeping point if BOTH largeN and Normal are valid. <---- May want to change this later.
 		if (lN_Linput[0] is not None) and (N_Linput[0] is not None):
 			lN_LInputs.append(lN_Linput)
@@ -212,7 +212,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 	with Pool(1) as p:
 		#Populating the result arrays.
 		resN = p.starmap(populateN, N_LInputs)
-		reslN = p.starmap(populateC, lN_LInputs)
+		reslN = p.starmap(populatelN, lN_LInputs)
 	
 	#MAKE THE FILE WRITER
 	#Column Titles
@@ -234,7 +234,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 
 	plotDifference(reslN, resN)
 	
-def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F):
+def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F, num=30):
 	#Gets critical temperature associated with ChiralPT NOT incl. confinement.
 	data = []
 	for i in m2Sig:
@@ -245,32 +245,33 @@ def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F):
 						data.append([i,j,k,l,N,F])
 
 	data=np.array(data)
-	data = data[np.array(np.random.randint(0, high=len(data),size=30))]
+	data = data[np.array(np.random.randint(0, high=len(data),size=num))]
 	
 	reslN = []; resNormal = []
 	for point in data:
 		try:
 			#largeN Term
 			detPowlN = Potential2.get_detPow(N,F,"largeN")
-			VlN=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,"largeN"),N,F,detPowlN,Polyakov=False)
+			VlN=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,detPowlN),N,F,detPowlN,Polyakov=False)
 			tclN = VlN.criticalT(prnt=False)
 			
 			if tclN is not None:
 				orderlN = 1 if VlN.findminima(tclN) else 2
 			else: orderlN = 0
 			
-			reslN.append([*Potential2.masses_to_lagrangian(*point, "largeN")]+ [tclN, orderlN])
+			reslN.append([*Potential2.masses_to_lagrangian(*point, detPowlN)]+ [tclN, orderlN])
 			print(f'Large N: Tc={tclN}, fPi={point[3]}, Transition Order = {orderlN}')
 			
 		except (Potential2.InvalidPotential):
 			print('Large N term threw invalid potential.')
 			tclN=None
-			reslN.append([*Potential2.masses_to_lagrangian(*point, "largeN")]+ [None, 0])
+			detPowlN = Potential2.get_detPow(N,F,"largeN")
+			reslN.append([*Potential2.masses_to_lagrangian(*point, detPowlN)]+ [None, 0])
 				
 		try:
 			#Normal Term
-			detPowN=Potential2.get_detPow(N,F,"normal")
-			VNormal=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,"normal"),N,F,detPowN,Polyakov=False)
+			detPowN=Potential2.get_detPow(N,F,"Normal")
+			VNormal=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,detPowN),N,F,detPowN,Polyakov=False)
 			tcNormal = VNormal.criticalT(prnt=False)
 			
 			if tcNormal is not None:
@@ -278,38 +279,92 @@ def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F):
 			else: orderNormal = 0
 			
 
-			resNormal.append([*Potential2.masses_to_lagrangian(*point,"normal")] + [tcNormal, orderNormal])
+			resNormal.append([*Potential2.masses_to_lagrangian(*point,detPowN)] + [tcNormal, orderNormal])
 			print(f'Normal: Tc={tcNormal}, fPi={point[3]}, Transition Order = {orderNormal}')
 					
 		except (Potential2.InvalidPotential):
 			print('Normal term threw invalid potential.')
 			tcNormal=None
-			resNormal.append([*Potential2.masses_to_lagrangian(*point,"normal")] + [None, 0])
+			detPowN=Potential2.get_detPow(N,F,"Normal")
+			resNormal.append([*Potential2.masses_to_lagrangian(*point,detPowN)] + [None, 0])
 
 		plot=False
+		if num==1: plot=True
 		if tclN != None and plot:
+			reslN=np.array(reslN)
+			print(f'\nPotential Parameters for Large N Case:')
+			print(f'Input Params')
+			print(f'm2Sig={data[0,0]},m2Eta={data[0,1]},m2X={data[0,2]},fPI={data[0,3]}')
+			print(f'Lagrangian Params')
+			print(f"m2={reslN[0,0]},ls={reslN[0,2]},la={reslN[0,3]},c={reslN[0,1]}")
+			print(f'PT Params')
+			print(f'Tc={reslN[0,4]}, Transition Order {reslN[0,5]}')
+			print(f"Tree Level Formula fPI={VlN.fSigma()}\n")
+			
+			fPilN=VlN.fSigma()
 			plotV(VlN, [0,tclN,point[3]])
-			plt.plot(np.linspace(-5,VlN.fSigma()*1.25,num=100),VlN.VIm(np.linspace(-5,VlN.fSigma()*1.25,num=100),tclN)-VlN.VIm(0,tclN),label=f"Large N at Tc Imaginary")
+			plt.plot(np.linspace(-5,fPilN*1.25,num=100)/fPilN,VlN.VIm(np.linspace(-5,fPilN*1.25,num=100),tclN)/fPilN**4-VlN.VIm(0,tclN)/fPilN**4,label=f"T = Tc Imaginary")
+			plt.plot(np.linspace(-5,fPilN*1.25,num=100)/fPilN,VlN.VIm(np.linspace(-5,fPilN*1.25,num=100),0)/fPilN**4-VlN.VIm(0,0)/fPilN**4,label=f"T = 0 Imaginary")
 			plt.title('largeN')
+			plt.xlabel(rf'$\sigma/f_\pi$')
+			plt.ylabel(rf'$V/f_{{pi}}^4$')
+			plt.legend()
+			plt.show()
+			
+			sigmas = np.linspace(-5,VlN.fSigma()*1.25,num=100)
+			plt.plot(sigmas,VlN.mSq['Sig'][0](sigmas,0),label='Sig')
+			plt.plot(sigmas,VlN.mSq['Eta'][0](sigmas,0),label='Eta')
+			plt.plot(sigmas,VlN.mSq['X'][0](sigmas,0),label='X')
+			plt.plot(sigmas,VlN.mSq['Pi'][0](sigmas,0),label='Pi')
+
+			plt.title('largeN at T=0 GeV')
 			plt.legend()
 			plt.show()
 			
 
 		if tcNormal != None and plot:
-			plotV(VNormal, [0,tcNormal,point[3]])
-			plt.plot(np.linspace(-5,VNormal.fSigma()*1.25,num=100),VNormal.VIm(np.linspace(-5,VNormal.fSigma()*1.25,num=100),tcNormal)-VNormal.VIm(0,tcNormal),label=f"Normal at Tc Imaginary")
+			resNormal=np.array(resNormal)
+			
+			print(f'\nPotential Parameters for Normal Case')
+			print(f'Input Params')
+			print(f'm2Sig={data[0,0]},m2Eta={data[0,1]},m2X={data[0,2]},fPI={data[0,3]}')
+			print(f'Lagrangian Params')
+			print(f'm2={resNormal[0,0]},ls={resNormal[0,2]},la={resNormal[0,3]},c={resNormal[0,1]}')
+			print(f'PT Params')
+			print(f'Tc={resNormal[0,4]},Transition Order {resNormal[0,5]}')
+			print(f"Tree Level Formula fPI={VNormal.fSigma()}\m")
+	
+			fPiN=VNormal.fSigma()
+			xs = np.linspace(-5,fPiN*1.5,num=100)
+			plt.plot(xs, VNormal.V(xs)/fPiN**4-VNormal.V(0)/fPiN**4, label='$V_{{Tree}}$')
+			plt.plot(xs, VNormal.V1_cutoff(xs)/fPiN**4-VNormal.V1_cutoff(0)/fPiN**4, label='$V_{{1-loop}}$')
+			plt.plot(xs, VNormal.V1T(xs,tcNormal)/fPiN**4-VNormal.V1T(0,tcNormal)/fPiN**4, label='$V_{{thermal}}$ at $T=T_c$')
+			plt.plot(xs, VNormal.Vtot(xs,0)/fPiN**4-VNormal.Vtot(0,0)/fPiN**4, label='$V_{{tot}}$ at $T=0$')
+			plt.plot(xs, VNormal.Vtot(xs,tcNormal)/fPiN**4-VNormal.Vtot(0,tcNormal)/fPiN**4, label='$V_{{tot}}$ at $T=T_c$')
+			plt.plot(xs,VNormal.VIm(xs,tcNormal)/fPiN**4-VNormal.VIm(0,tcNormal)/fPiN**4,label=f"Imaginary at $T=T_c$")
 			plt.title('Normal')
+			plt.xlabel(rf'$\sigma$')
+			plt.ylabel(rf'$V/f_{{pi}}^4$')
+			plt.legend()
+			plt.show()
+			
+			sigmas = np.linspace(-5,VNormal.fSigma()*10,num=100)
+			plt.plot(sigmas,VNormal.mSq['Sig'][0](sigmas,0),label='Sig')
+			plt.plot(sigmas,VNormal.mSq['Eta'][0](sigmas,0),label='Eta')
+			plt.plot(sigmas,VNormal.mSq['X'][0](sigmas,0),label='X')
+			plt.plot(sigmas,VNormal.mSq['Pi'][0](sigmas,0),label='Pi')
+			plt.title('Normal at T=0 GeV')
 			plt.legend()
 			plt.show()
 
 
-		
-	data = np.array(data); reslN = np.array(reslN); resNormal = np.array(resNormal)
-	save_arrays_to_csv(f'TclN_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a', 'Tc','TransitionOrder'], 
-					data[:,0], data[:,1], data[:,2], data[:,3], reslN[:,0], reslN[:,1], reslN[:,2], reslN[:,3], reslN[:,4], reslN[:,5])
+	if num>1:
+		data = np.array(data); reslN = np.array(reslN); resNormal = np.array(resNormal)
+		save_arrays_to_csv(f'TclN_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a', 'Tc','TransitionOrder'], 
+						data[:,0], data[:,1], data[:,2], data[:,3], reslN[:,0], reslN[:,1], reslN[:,2], reslN[:,3], reslN[:,4], reslN[:,5])
 
-	save_arrays_to_csv(f'TcNormal_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a','Tc','TransitionOrder'], 
-					data[:,0], data[:,1], data[:,2], data[:,3], resNormal[:,0], resNormal[:,1], resNormal[:,2], resNormal[:,3], resNormal[:,4], resNormal[:,5])
+		save_arrays_to_csv(f'TcNormal_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a','Tc','TransitionOrder'], 
+						data[:,0], data[:,1], data[:,2], data[:,3], resNormal[:,0], resNormal[:,1], resNormal[:,2], resNormal[:,3], resNormal[:,4], resNormal[:,5])
 
 	
 if __name__ == "__main__":
@@ -317,17 +372,30 @@ if __name__ == "__main__":
 	
 
 	N=3; F=6
-	#See appendix D of draft for why I've chosen these!
-	#T0 = 1000 GeV
-	#Tc = 1000/\sqrt(3) GeV
 
+	m2Sig = np.linspace(1E2**2, 1E3**2/np.sqrt(2), num=10)
+	m2Eta = np.linspace(1E2**2, 2E3**2, num=10)
+	
+	fPi = np.linspace(500, 2000, num=10)
+	m2X = np.linspace(500**2, 2000**2, num=10)
+	
+	#getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=30)
+	
+	'''
+		
+	m2Sig = np.array([552194.1631450924])
+	m2Eta= np.array([2.2266666666666665E6])
+	m2X = np.array([3.5833333333333335E6])
+	fPi=np.array([2000.0])
+		
+	(m2, c, ls, la)=Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPi,3,6,1)
+	print(f'm^2={m2[0]}, c={c[0]}, ls={ls[0]}, la={la[0]}')
+	MarthafPIFormula = np.sqrt(3*ls/c - (np.sqrt(3*(-8*c*m2+3*ls**2))/c))/(np.sqrt(2))
+	print(MarthafPIFormula)'''
 
-	m2Sig = np.linspace(1E6, 1E8/np.sqrt(2), num=10)
-	m2Eta = np.linspace(1E6, 1E8, num=10)
-	
-	fPi = np.linspace(1E3, 1E5, num=10)
-	m2X = np.linspace(1E8/np.sqrt(2), 2*1E8, num=10)
-	
-	getTcs(m2Sig,m2Eta,m2X, fPi, N, F)
+	getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=1)
 	
 	#parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
+	
+	#(m2, c, ls, la)=Potential2.masses_to_lagrangian(np.array([1000**2]),np.array([1000**2]),np.array([1000**2]),np.array([1000]),2,4,1/2)
+	#print(f'm2->{m2[0]}, c->{c[0]}, ls->{ls[0]}, la->{la[0]}')
