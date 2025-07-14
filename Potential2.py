@@ -368,19 +368,12 @@ class Potential:
         sig = np.array(sig)
         if T==0:
             return np.zeros(sig.shape)
+        
 
         #One-loop, thermal correction to the potential. See https://arxiv.org/pdf/hep-ph/9901312 eq. 212
-        return np.reshape((np.sum([n*Jb_spline(m2(sig,T)/T**2) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
-                                                                        self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
-        #return np.reshape((np.sum([n*fT.Jb(np.sqrt(m2(sig,T)/T**2),n=4) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
-        #                                                                self.mSq['X'],self.mSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
+        return np.reshape((np.sum([n*Jb_spline(M2(sig,T)/T**2)-(1/4)*(M2(sig,T)-M2(sig,0))*Ib_spline(M2(sig,T)/T**2)/T**2 for M2, n in [self.MSq['Sig'],self.MSq['Eta'],
+                                                                        self.MSq['X'],self.MSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
 
-    def V1_cutoff(self, sig):
-		# One loop corrections to effective potential in cut-off regularisation scheme.
-        sig = np.array(sig)
-			
-        return np.reshape(np.sum([n * (m2(sig,0)**2 * (np.log(np.abs(m2(sig,0)/m2(self.fSigma(),0)) + 1e-100) - 1.5) + 2*m2(sig,0)*m2(self.fSigma(),0)) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],self.mSq['X'],self.mSq['Pi']]],axis=0)/(64.*np.pi**2), sig.shape)
-		
 
     def _Vg(self, sig, T):
         # Check if input1 or input2 are single numbers (scalars)
@@ -446,29 +439,6 @@ class Potential:
         else:
             #Ignoring Polyakov loops.
             return self.V(sig) + self.V1T(sig,T).real+ self.V1_cutoff(sig).real
-
-    def VIm(self,sig,T):
-        #This finds the inaginary part of the effective potential.
-        #Setting to zero at T=0 GeV to avoid any computational divergences.
-        sig = np.array(sig)
-        if T==0:
-            return self.V1_cutoff(sig).imag
-        
-        #Thermal correction:
-        # Create a matrix to store the results
-        if np.ndim(sig) == 0:
-            sig = np.array([sig])  # Treat as a vector of one element
-        VthIm = np.zeros(sig.shape)
-        
-        # Loop through each element of vector1 and vector2, applying the function
-        for i, a in enumerate(sig):
-            VthIm[i] = np.sum([n*_Jb_exact2_Im((m2(a,T)/T**2)) for m2, n in [self.mSq['Sig'],self.mSq['Eta'],
-                                                                        self.mSq['X'],self.mSq['Pi']]],axis=0)*T**4/(2*np.pi**2)
-        VthIm = np.array(VthIm)
-
-        #One-loop, thermal correction to the potential, using CosmoTransitions Exact Function.
-        return (VthIm + self.V1_cutoff(sig).imag)
-
 
 
 
@@ -689,6 +659,17 @@ def _Jb_exact2_Im(theta):
         f1 = lambda y: y*y*np.arctan(np.sin(np.sqrt(+np.abs(theta+y*y)))/(1-np.cos(np.sqrt(+np.abs(theta+y*y)))))
         
         return integrate.quad(f1, 0, abs(theta)**.5)[0]
+    
+
+####Need to use Martha's code here!
+def Ib_spline(X,n=0):
+    """Ib interpolated from a saved spline. Input is (m/T)^2."""
+    X = np.array(X)
+    x = X.ravel()
+    y = interpolate.splev(x,_tckb, der=n).ravel()
+    y[x < _xbmin] = 0
+    y[x > _xbmax] = 0
+    return y.reshape(X.shape)
 
 
 		
