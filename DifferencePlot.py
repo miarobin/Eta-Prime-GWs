@@ -30,18 +30,19 @@ plt.rcParams["font.size"]= 11
 def plotDifference(reslN, resN):
     #So you can see exactly where the points have moved to
     markers = [".","o","v","^","<",">","1","2","3","4","8","s","p","P","*","h","H","+","x","D","d","|"]
-	
+    print(reslN[reslN[:,10]!=0,1])
     colormap = plt.cm.viridis #or any other colormap
-    normalize = matplotlib.colors.Normalize(vmin=3, vmax=20) #Set manually this time.
+    normalize = matplotlib.colors.Normalize(vmin=np.min(np.concatenate((reslN[reslN[:,10]!=0,1],resN[resN[:,10]!=0,1]))), vmax=np.max(np.concatenate((reslN[reslN[:,10]!=0,1],resN[resN[:,10]!=0,1])))) #Set manually this time.
 	#For the colour map
     fig= plt.subplot()
+    
 
     for i in range(len(reslN)):
-        if reslN[i,2]!=0 and resN[i,2]!=0:
+        if reslN[i,10]!=0 or resN[i,10]!=0:
             #large N term has half-transparency.
-            plt.scatter(reslN[i,2], reslN[i,1], c = reslN[i,3], alpha=1/(2), marker=markers[-1], cmap=colormap, norm=normalize)
+            plt.scatter(reslN[i,11], reslN[i,10], c = reslN[i,1], alpha=1/(2), marker=markers[-1], cmap=colormap, norm=normalize)
             #Normal term has full-transparency.
-            plt.scatter(resN[i,2], resN[i,1], c = resN[i,3], alpha=1/(1), marker=markers[-1], cmap=colormap, norm=normalize)
+            plt.scatter(resN[i,11], resN[i,10], c = resN[i,1], alpha=1/(1), marker=markers[-1], cmap=colormap, norm=normalize)
             #Pops off the last marker to move onto the next one.
             markers.pop()
 
@@ -58,7 +59,7 @@ def plotDifference(reslN, resN):
     #fig.set_yticks([1.49E-2,1.5E-2,1.51E-2,1.52E-2,1.53E-2])
     #fig.set_yticklabels([1.49E-2,1.5E-2,1.51E-2,1.52E-2,1.53E-2])
 
-    plt.colorbar(label=r"$m^2_\sigma$")
+    plt.colorbar(label=r"$m^2_{\eta'}$")
     fig.set_xlabel(r'$\beta/H$',fontsize=13)
     fig.set_ylabel(r'$\alpha$',fontsize=15)
     plt.tight_layout()
@@ -68,7 +69,7 @@ def plotDifference(reslN, resN):
 
 	
 #Load up the data.
-resN = np.genfromtxt(f'Test_N3F6_Normal.csv', delimiter=',', dtype=float, skip_header=1)[:,4:]
-reslN = np.genfromtxt(f'Test_N3F6_largeN.csv', delimiter=',', dtype=float, skip_header=1)[:,4:]
+resN = np.genfromtxt(f'Test_N3F6_Normal.csv', delimiter=',', dtype=float, skip_header=1)
+reslN = np.genfromtxt(f'Test_N3F6_largeN.csv', delimiter=',', dtype=float, skip_header=1)
 
 plotDifference(reslN,resN)

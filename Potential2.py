@@ -7,6 +7,7 @@ from scipy import interpolate, integrate
 from itertools import takewhile
 import os
 from mpl_toolkits.mplot3d import Axes3D
+import DressedMasses
 
 '''
     This file does the following:
@@ -182,7 +183,7 @@ class InvalidPotential(Exception):
 #CONVERT between physical inputs and Lagrangian parameters
 
 def get_detPow(N, F, termType):
-    if termType=='Normal':
+    if termType=="Normal":
         return 1
     elif termType=="largeN":
         return 1/N
@@ -209,32 +210,30 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         return (None,None,None,None)'''
     
     #UNITARITY BOUNDS AND EFT EXPANSION
-    if int(round(F*detPow))<4:
-        if np.abs(3*ls)>16*np.pi:
-            print(f'Point is Invalid as unitarity is violated')
-            return (None,None,None,None)
-        if np.abs(ls+2*la)>16*np.pi:
-            print(f'Point is Invalid as unitarity is violated')
-            return (None,None,None,None)
-        #Not sure this is true!
-        if np.abs(c*fPI**(F*detPow-4))>4*4*np.pi:
-            print(f'Point is Invalid as EFT expansion does not appear to converge')
-            return (None,None,None,None)
-        
-    if int(round(F*detPow))>=4:
-        if np.abs(3*ls-c*fPI**(F*detPow-4)*(F-3/detPow)*(F-2/detPow)*(F-1/detPow)/(F*detPow**(-4)))>16*np.pi:
-            print(f'Point is Invalid as unitarity is violated')
-            return (None,None,None,None)
-        if np.abs(ls+2*la- 2*c*fPI**(F*detPow-4)*3*(F-2/detPow)/(detPow**(-3)*F**2))>16*np.pi:
-            print(f'Point is Invalid as unitarity is violated')
-            return (None,None,None,None)
-        if np.abs(ls-2*c*fPI**(F*detPow-4)*F*detPow*(2-detPow))>16*np.pi/3:
-            print(f'Point is Invalid as unitarity is violated')
-            return (None,None,None,None)
-        #Not sure this is true!
-        if np.abs(c*fPI**(F*detPow-4))>4*4*np.pi:
-            print(f'Point is Invalid as EFT expansion does not appear to converge')
-            return (None,None,None,None)
+    #From sigma sigma -> sigma sigma scattering
+    if np.abs(3*ls - c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>16*np.pi:
+        print(f'Point is Invalid as unitarity is violated in sigma sigma -> sigma sigma')
+        return (None,None,None,None)
+    if np.abs(3*ls + c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>16*np.pi:
+        print(f'Point is Invalid as unitarity is violated in sigma eta prime -> sigma eta prime')
+        return (None,None,None,None)
+    
+    #From pi sigma -> pi sigma scattering
+    if np.abs(ls+2*la - c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3))>8*np.pi:
+        print(f'Point is Invalid as unitarity is violated in sigma sigma -> pi pi')
+        return (None,None,None,None)
+    if np.abs(ls+2*la + c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3))>8*np.pi:
+        print(f'Point is Invalid as unitarity is violated in sigma sigma -> X X')
+        return (None,None,None,None)
+
+    #From pi pi -> pi pi scattering    
+    if np.abs(3*ls-c*fPI**(F*detPow-4)*8*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>16*np.pi:
+        print(f'Point is Invalid as unitarity is violated in X X -> X X')
+        return (None,None,None,None) 
+    if np.abs(3*ls+c*fPI**(F*detPow-4)*8*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>16*np.pi:
+        print(f'Point is Invalid as unitarity is violated in X pi -> X pi')
+        return (None,None,None,None)
+
         
     #CHECKS
     V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F*detPow)/F**2 + ls*sigma**4/8
@@ -281,8 +280,19 @@ class Potential:
         self.detPow = detPow
         self.Polyakov = Polyakov
         
+
         if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:
             raise InvalidPotential('Input parameter is None')
+        try:
+            self.fSIGMA = self.fSigma()
+        except(InvalidPotential):
+            print("Imaginary fSigma")
+
+        
+
+        
+        ##CHECK IT CONFINES
+        #QCD Beta function = blah blah blah...
         
 
         
@@ -310,13 +320,11 @@ class Potential:
 						- self.c * self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
 						+ (3/2) * self.lambdas * sig ** 2,
                         1.],
-                #        0],
 				#Eta Prime Mass
                 'Eta': [lambda sig: - self.m2 
 						+ self.c *self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
 						+ (1/2) * self.lambdas * sig ** 2,
                         1.],
-                #        0],
 				#X Mass
 				'X': [lambda sig: - self.m2 
 						+ self.c * self.detPow / self.F * sig**(self.F*self.detPow - 2)
@@ -330,22 +338,21 @@ class Potential:
 						}
             
             #Temperature dependent masses:
+            dressedMasses = DressedMasses.SolveMasses(self)
             self.MSq = {
-                #Sigma Mass	
-                'Sig': [lambda sig, T: self.mSq['Sig'](sig) + ,
-                        1.],
-                #        0],
-				#Eta Prime Mass
-                'Eta': [lambda sig, T: self.mSq['Eta'](sig),
-                        1.],
-                #        0],
-				#X Mass
-				'X': [lambda sig, T: self.mSq['X'](sig),
-						self.F**2 - 1],
-				#Pi Mass
-				'Pi': [lambda sig, T: self.mSq['Pi'](sig),
-						self.F**2 - 1]
-						}
+            #Sigma Mass	
+            'Sig': [lambda sig, T: dressedMasses['Sig'].ev(T,sig),
+                    1.],
+			#Eta Prime Mass
+            'Eta': [lambda sig, T: dressedMasses['Eta'].ev(T,sig),
+                    1.],
+			#X Mass
+			'X': [lambda sig, T: dressedMasses['X'].ev(T,sig),
+					self.F**2 - 1],
+			#Pi Mass
+			'Pi': [lambda sig, T: dressedMasses['Pi'].ev(T,sig),
+					self.F**2 - 1]
+			}
             
 
         #Checking validity of the potential.
@@ -434,11 +441,11 @@ class Potential:
         sig = np.array(sig)
               
         if self.Polyakov:
-            return self.VGluonic(sig, T) + self.V(sig) + self.V1T(sig,T).real + self.V1_cutoff(sig).real
+            return self.VGluonic(sig, T).real + self.V(sig).real + self.V1T(sig,T).real
 	
         else:
             #Ignoring Polyakov loops.
-            return self.V(sig) + self.V1T(sig,T).real+ self.V1_cutoff(sig).real
+            return self.V(sig) + self.V1T(sig,T).real
 
 
 
@@ -460,7 +467,10 @@ class Potential:
             return np.real((2 * 3**(1/3) * self.F**4 * self.m2 * self.lambdas + x**(2/3)) / (3**(2/3)*self.F**2*self.lambdas * x**(1/3)))
 		
         elif int(self.F*self.detPow) == 2:
-            return np.sqrt(2) * np.sqrt(self.m2 + self.c*2/self.F**2)/np.sqrt(self.lambdas)
+            if self.m2 + self.c*2/self.F**2>0:
+                return np.sqrt(2) * np.sqrt(self.m2 + self.c*2/self.F**2)/np.sqrt(self.lambdas)
+            else:
+                raise InvalidPotential("Not enough minima")
 		
         elif int(self.F*self.detPow) == 3:
             return (self.c/self.detPow + np.sqrt(self.c**2/self.detPow**2 + 2*self.F**2*self.m2*self.lambdas)/(self.F*self.lambdas))
@@ -561,7 +571,7 @@ class Potential:
 
         def plotV(V, Ts):
             for T in Ts:
-                plt.plot(np.linspace(-10,self.fSigma()*.25,num=100),V.Vtot(np.linspace(-10,self.fSigma()*.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+                plt.plot(np.linspace(-10,self.fSIGMA*1.25,num=100),V.Vtot(np.linspace(-10,self.fSIGMA*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
                 if self.findminima(T) is not None:
                     plt.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
             plt.legend()
@@ -610,17 +620,12 @@ class Potential:
             else:
                 return None
 
-    def imaginary(self,sig,T):
-        #Imaginary part of the 1 loop potential
-        return (self.V1T(sig,T)).imag
-    def real(self,sig,T):
-        #Real part of the 1 loop potential
-        return self.V(sig) + (self.V1T(sig,T)).real
 
 
 
 
-##SPLINE FIT
+
+##SPLINE FIT FOR Jb
 # Spline fitting, Jb
 _xbmin = -3.72402637
 # We're setting the lower acceptable bound as the point where it's a minimum
@@ -661,19 +666,42 @@ def _Jb_exact2_Im(theta):
         return integrate.quad(f1, 0, abs(theta)**.5)[0]
     
 
-####Need to use Martha's code here!
-def Ib_spline(X,n=0):
+##SPLINE FIT FOR Ib
+
+pos = np.genfromtxt(f'IBData.csv', delimiter=',', dtype=float, skip_header=1)
+neg = np.genfromtxt(f'IBDataR2Negative.csv', delimiter=',', dtype=float, skip_header=1)
+
+_xb_pos, _yb_pos = pos[:,0], pos[:,1]
+_xb_neg, _yb_neg = neg[:,0], neg[:,1]
+# Spline fitting, Ib
+_xbmin = -3.72402637 #Set by CT - can decrease but left to be consistent.
+_xbmax = 1.41e3
+
+_tckbPos = interpolate.CubicSpline(_xb_pos, _yb_pos)
+_tckbNeg = interpolate.CubicSpline(_xb_neg, _yb_neg)
+
+def Ib_spline(X):
     """Ib interpolated from a saved spline. Input is (m/T)^2."""
     X = np.array(X)
     x = X.ravel()
-    y = interpolate.splev(x,_tckb, der=n).ravel()
-    y[x < _xbmin] = 0
+    
+    y = [_tckbPos(xi) if xi>0 else _tckbNeg(xi) for xi in x]
+    y = np.array(y)
+
+    y[x < _xbmin] = _tckbNeg(_xbmin)
     y[x > _xbmax] = 0
     return y.reshape(X.shape)
 
 
+def Ib(X):
+    #Integral solution for IB - cannot handle negative values.
+    if not isinstance(X, (int, float)):
+        raise ValueError("R2 must be a numeric value.")
+    
+    integrand = lambda x: (x**2 / np.sqrt(x**2 + X)) * (1 / (np.exp(np.sqrt(x**2 + X)) - 1))
+    result, error = quad(integrand, 0, np.inf, limit=100, epsabs=1e-10, epsrel=1e-10)
+    return result
 		
 if __name__ == "__main__":
     print('hello world')
-
 

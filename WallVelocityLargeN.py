@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
-from scipy.integrate import solve_ivp ,simps
+from scipy.integrate import solve_ivp ,simpson
 from scipy.optimize import root_scalar
 
 
@@ -218,7 +218,7 @@ def readAndEdit(filename, N, F, termType):
             
             cs2 = V.dVdT(0,Tns[i])/(Tns[i]*V.d2VdT2(0,Tns[i]))
             cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
-            alN = find_alphaN(V.criticalT(), Tns[i], cb2, N)
+            alN = find_alphaN(Tcs[i], Tns[i], cb2, N)
             
             Vws[i] = find_vw(alN,cb2,cs2)
 
@@ -229,13 +229,14 @@ def readAndEdit(filename, N, F, termType):
             #GW Parameters
             print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, Vw = {Vws[i]}')
             
-    save_arrays_to_csv(f'VwJor_N{N}F{F}_{termType}.csv',
-                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw'], 
+    save_arrays_to_csv(f'VwVdV_N{N}F{F}_{termType}.csv',
+                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'VwVdV'], 
                             m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
 
 if __name__ == "__main__":
     
-    #readAndEdit('Test_N3F6_Normal.csv', 3, 6, False)
-    testAgainstVdV()
+    readAndEdit('Test_N3F6_Normal.csv', 3, 6, "Normal")
+    readAndEdit('Test_N3F6_largeN.csv', 3, 6, "largeN")
+    #testAgainstVdV()
 
 

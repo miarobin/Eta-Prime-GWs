@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
-from scipy.integrate import solve_ivp ,simps
+from scipy.integrate import solve_ivp ,simpson
 from scipy.optimize import root_scalar
 
 
@@ -30,13 +30,12 @@ The two additional functions I have written are:
         csv file.
         
         readAndEdit:
-        INPUTS: (filename, N, F, CsakiTerm)
-                (string, int, int, bool)
+        INPUTS: (filename, N, F, termType)
+                (string, int, int, string)
         OUTPUTS: Nothing.
     
     '''
 ###### GLOBAL VARIABLES ######
-N=30
 
 def wallVelocity(V, alpha, Tn):
     #Jouget velocity.
@@ -180,18 +179,18 @@ def readAndEdit(filename, N, F, termType):
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     #Empty arrays to store the needed potential parameters from 'data'.
-    m2Sigs = []; m2Etas = []; m2Xs = []; fPIs = []; m2s = []; cs = []; lss = []; las = []; Tcs = []; Tns = []; Alphas = []; Betas = []; Vws = np.zeros(len(data))
+    m2Sigs = []; m2Etas = []; m2Xs = []; fPIs = []; m2s = []; cs = []; lss = []; las = []; Tcs = []; Tns = []; Alphas = []; Betas = []; VwsLN = []; VwsLTE = np.zeros(len(data))
     for item in data:
         #Zero T particle masses
         m2Sigs.append(item[0]); m2Etas.append(item[1]); m2Xs.append(item[2]); fPIs.append(item[3]); 
         #Potential Parameters
         m2s.append(item[4]); cs.append(item[5]); lss.append(item[6]); las.append(item[7]); Tcs.append(item[8]); 
         #GW Parameters
-        Tns.append(item[9]); Alphas.append(item[10]); Betas.append(item[11])
+        Tns.append(item[9]); Alphas.append(item[10]); Betas.append(item[11]); VwsLN.append(item[12])
 
     m2Sigs = np.array(m2Sigs); m2Etas = np.array(m2Etas); m2Xs = np.array(m2Xs); fPIs = np.array(fPIs)
     m2s = np.array(m2s); cs = np.array(cs); lss = np.array(lss); las = np.array(las); Tcs=np.array(Tcs)
-    Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas)
+    Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas); VwsLN = np.array(VwsLN)
 
     #Scanning over each row in 'data' and calculating new Vw.
     for i in range(len(m2s)):
@@ -203,20 +202,20 @@ def readAndEdit(filename, N, F, termType):
             
             cs2 = V.dVdT(0,Tns[i])/(Tns[i]*V.d2VdT2(0,Tns[i]))
             cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
-            alN = find_alphaN(V.criticalT(), Tns[i], cb2, N)
+            ######alN = alpha(Tcs[i], Tns[i], cb2, N)
             
-            Vws[i] = find_vw(alN,cb2,cs2)
+            VwsLTE[i] = find_vw(alN,cb2,cs2)
 
             #Potential Parameters
             print(rf'$m^2$ = {m2s[i]}, $c$ = {cs[i]}, $\lambda_\sigma$ = {lss[i]}, $\lambda_a$ = {las[i]}')
             #Sound speed
             print(rf'$c_{{\text{{sound,sym}}}}^2$ = {cs2}, $c_{{\text{{sound,b}}}}^2$ = {cb2}')
             #GW Parameters
-            print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, Vw = {Vws[i]}')
+            print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, VwLN = {VwsLN[i]}, VwLTE = {VwsLTE[i]}')
             
     save_arrays_to_csv(f'VwJor_N{N}F{F}_{termType}.csv',
-                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw'], 
-                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
+                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'VwsLN','VwsLTE'], 
+                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, VwsLN, VwsLTE)
 
 if __name__ == "__main__":
     '''
@@ -240,6 +239,8 @@ if __name__ == "__main__":
     psiN = V.dVdT(minima[1],Tn)/V.dVdT(minima[0],Tn)
     print(f'Numerical Vw = {find_vw(alp,1/3,1/3,psiN)}')
     '''
+    
+
     
     readAndEdit('Test_N3F6_Normal.csv', 3, 6, False)
 

@@ -165,12 +165,14 @@ def plotDifference(reslN, resN):
 	
 def populateN(mSq, c, ls, la, N, F, Polyakov=True):
 	#Wrapper function for normal case.
-	detPow = Potential2.get_detPow(N,F,"normal")
-	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=False)
-def populatelN(mSq, c, ls, la, N, F, Polyakov=False):
+	detPow = Potential2.get_detPow(N,F,"Normal")
+	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
+	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=True)
+def populatelN(mSq, c, ls, la, N, F, Polyakov=True):
 	#Wrapper for the largeN case.
 	detPow = Potential2.get_detPow(N,F,"largeN")
-	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=False)
+	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
+	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=True)
 
 
 
@@ -191,8 +193,8 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 	for i in range(len(data)):
 		point = data[i]
 		#Calculating the Lagrangian inputs. See appendix D of draft.
-		lN_Linput = [*Potential2.masses_to_lagrangian(*point),N,F,"largeN"]
-		N_Linput = [*Potential2.masses_to_lagrangian(*point),N,F,"Normal"]
+		lN_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"largeN")),N,F,"largeN"]
+		N_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"Normal")),N,F,"Normal"]
 		#Only keeping point if BOTH largeN and Normal are valid. <---- May want to change this later.
 		if (lN_Linput[0] is not None) and (N_Linput[0] is not None):
 			lN_LInputs.append(lN_Linput)
@@ -201,7 +203,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 			N_Masses.append(point)
 			
 	#Cropping the data for now.
-	crop=20
+	crop=40
 	lN_LInputs=lN_LInputs[:crop]
 	N_LInputs=N_LInputs[:crop]
 	lN_Masses=lN_Masses[:crop]
@@ -209,7 +211,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 	
         
 	#Multithreading with X cores.
-	with Pool(1) as p:
+	with Pool(8) as p:
 		#Populating the result arrays.
 		resN = p.starmap(populateN, N_LInputs)
 		reslN = p.starmap(populatelN, lN_LInputs)
@@ -223,13 +225,13 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 	save_arrays_to_csv(file_path, column_titles, 
 					N_Masses[:,0],N_Masses[:,1],N_Masses[:,2],N_Masses[:,3],
 					N_LInputs[:,0],N_LInputs[:,1],N_LInputs[:,2],N_LInputs[:,3],
-					resN[:,3],resN[:,0],resN[:,1],resN[:,2]
+					resN[:,4],resN[:,0],resN[:,1],resN[:,2]
 					)
 	file_path = f'Test_N{N}F{F}_largeN.csv'
 	save_arrays_to_csv(file_path, column_titles, 
 					lN_Masses[:,0],lN_Masses[:,1],lN_Masses[:,2],lN_Masses[:,3],
 					lN_LInputs[:,0],lN_LInputs[:,1],lN_LInputs[:,2],lN_LInputs[:,3],
-					reslN[:,3],reslN[:,0],reslN[:,1],reslN[:,2]
+					reslN[:,4],reslN[:,0],reslN[:,1],reslN[:,2]
 					)
 
 	plotDifference(reslN, resN)
@@ -253,7 +255,10 @@ def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F, num=30):
 			#largeN Term
 			detPowlN = Potential2.get_detPow(N,F,"largeN")
 			VlN=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,detPowlN),N,F,detPowlN,Polyakov=False)
-			tclN = VlN.criticalT(prnt=False)
+			if num==1:
+				tclN = VlN.criticalT(prnt=True)
+			else:
+				tclN = VlN.criticalT(prnt=False)
 			
 			if tclN is not None:
 				orderlN = 1 if VlN.findminima(tclN) else 2
@@ -272,7 +277,10 @@ def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F, num=30):
 			#Normal Term
 			detPowN=Potential2.get_detPow(N,F,"Normal")
 			VNormal=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,detPowN),N,F,detPowN,Polyakov=False)
-			tcNormal = VNormal.criticalT(prnt=False)
+			if num==1:
+				tcNormal = VNormal.criticalT(prnt=True)
+			else:
+				tcNormal = VNormal.criticalT(prnt=False)
 			
 			if tcNormal is not None:
 				orderNormal = 1 if VNormal.findminima(tcNormal) else 2
@@ -301,15 +309,6 @@ def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F, num=30):
 			print(f'Tc={reslN[0,4]}, Transition Order {reslN[0,5]}')
 			print(f"Tree Level Formula fPI={VlN.fSigma()}\n")
 			
-			fPilN=VlN.fSigma()
-			plotV(VlN, [0,tclN,point[3]])
-			plt.plot(np.linspace(-5,fPilN*1.25,num=100)/fPilN,VlN.VIm(np.linspace(-5,fPilN*1.25,num=100),tclN)/fPilN**4-VlN.VIm(0,tclN)/fPilN**4,label=f"T = Tc Imaginary")
-			plt.plot(np.linspace(-5,fPilN*1.25,num=100)/fPilN,VlN.VIm(np.linspace(-5,fPilN*1.25,num=100),0)/fPilN**4-VlN.VIm(0,0)/fPilN**4,label=f"T = 0 Imaginary")
-			plt.title('largeN')
-			plt.xlabel(rf'$\sigma/f_\pi$')
-			plt.ylabel(rf'$V/f_{{pi}}^4$')
-			plt.legend()
-			plt.show()
 			
 			sigmas = np.linspace(-5,VlN.fSigma()*1.25,num=100)
 			plt.plot(sigmas,VlN.mSq['Sig'][0](sigmas,0),label='Sig')
@@ -373,29 +372,35 @@ if __name__ == "__main__":
 
 	N=3; F=6
 
-	m2Sig = np.linspace(1E2**2, 1E3**2/np.sqrt(2), num=10)
-	m2Eta = np.linspace(1E2**2, 2E3**2, num=10)
+	m2Sig = np.linspace(3E2**2, 1E3**2/np.sqrt(2), num=5)
+	m2Eta = np.linspace(1.5E2**2, 1E3**2, num=10)
 	
-	fPi = np.linspace(500, 2000, num=10)
-	m2X = np.linspace(500**2, 2000**2, num=10)
+	fPi = np.linspace(500, 2000, num=4)
+	m2X = np.linspace(500**2, 2000**2, num=4)
 	
 	#getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=30)
 	
-	'''
-		
-	m2Sig = np.array([552194.1631450924])
-	m2Eta= np.array([2.2266666666666665E6])
-	m2X = np.array([3.5833333333333335E6])
-	fPi=np.array([2000.0])
-		
-	(m2, c, ls, la)=Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPi,3,6,1)
-	print(f'm^2={m2[0]}, c={c[0]}, ls={ls[0]}, la={la[0]}')
-	MarthafPIFormula = np.sqrt(3*ls/c - (np.sqrt(3*(-8*c*m2+3*ls**2))/c))/(np.sqrt(2))
-	print(MarthafPIFormula)'''
 
-	getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=1)
+
+	#getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=2)
+	
 	
 	#parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
 	
 	#(m2, c, ls, la)=Potential2.masses_to_lagrangian(np.array([1000**2]),np.array([1000**2]),np.array([1000**2]),np.array([1000]),2,4,1/2)
 	#print(f'm2->{m2[0]}, c->{c[0]}, ls->{ls[0]}, la->{la[0]}')
+	
+
+	m2Sig = 90000.0; m2X = 250000.0; fPI = 2000.0
+
+	#Large N 
+	m2Eta = 8.19444444444445E-09 * fPI**4 * (F/N)**2
+	lN_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"largeN"))]
+	
+	#NORMAL (fixed c = 8.19444444444445E-09)
+	m2Eta = 131111.11111111100
+	N_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"Normal"))]
+
+	
+	print(populateN(*N_Linput, N, F, Polyakov=True))
+	#print(populatelN(*lN_Linput, N, F, Polyakov=True))

@@ -3,11 +3,13 @@ from cosmoTransitions.tunneling1D import PotentialError
 from cosmoTransitions import helper_functions
 from functools import reduce
 import Potential2
-from scipy import interpolate, optimize, integrate
+from scipy import interpolate, optimize, integrate, special
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
 import TestCode
+from scipy.integrate import simpson
+import traceback
 
 #Terminal Colour Escape Sequences
 RESET = "\033[0m"  # Reset all formatting
@@ -17,7 +19,6 @@ CYAN = "\033[36m" # Cyan color
 
 #Set g_star
 _g_star = 106.75; MPl = 2.435E18;  
-
 
 
 #Calculate the action S3 for a given temperature T using CosmoTransitions SingleFieldInstanton class.
@@ -32,6 +33,8 @@ def action(V,T,prnt=True):
 	
 	true_min = min([0,vT], key=lambda phi: V.Vtot(phi,T))
 	false_min = max([0,vT], key=lambda phi: V.Vtot(phi,T))
+	
+	print(f'True Min = {true_min}, False Min = {false_min}, T = {T}')
 	
 
 	if false_min > true_min:
@@ -59,8 +62,10 @@ def action(V,T,prnt=True):
 	except helper_functions.IntegrationError:
 		if prnt: print(RED + "CosmoTransitions has returned IntegrationError" + RESET)
 		return None
-	except ValueError:
+	except ValueError as e:
 		if prnt: print(RED + "CosmoTransitions has returned ValueError" + RESET)
+		print(e)
+		traceback.print_exc()
 		return None
 	except PotentialError:
 		if prnt: print(RED + "CosmoTransitions has returned PotentialError" + RESET)
@@ -88,7 +93,7 @@ def plotAs(As, Ts):
 
 #Finds an interpolated function of 3D Action/T as a function of T, and Tn if it exists.
 	#NOTE Print just shows you all of the individual broken points in detail so it can be manually fixed.
-def grid(V, tc=None, prnt=True, plot=False):
+def grid(V, tc=None, prnt=True, plot=True):
 	#Range of T's to consider.
 	if tc==None:
 		tc = V.criticalT(prnt=plot)
@@ -105,13 +110,13 @@ def grid(V, tc=None, prnt=True, plot=False):
 	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc*(2/3), bounds=[(tc*(1/2),maxT-1)], method='Nelder-Mead')
 	if minTy.fun/V.fSigma()**4<1:
 		#Sometimes minTy is a terrible estimate so manually setting a minimum. 
-		minT = max(minTy.x[0],maxT*.85) 
+		minT = max(minTy.x[0],maxT*.8) 
 	else:
 		return None, None, tc, 2
 	print(f'maximum T = {maxT}, minimum T = {minT}')
 	
 	
-	numberOfEvaluations = 150
+	numberOfEvaluations = 100
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
 	Test_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for _T in Test_Ts:
@@ -121,7 +126,6 @@ def grid(V, tc=None, prnt=True, plot=False):
 			if _T< maxT:
 				minT = _T
 			break
-	print(f'minT={minT}')
 	
 	#FINE SAMPLE.
 	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations); As = []; Ts = []
@@ -269,6 +273,7 @@ def gravitationalWave(V):
 	if Tn == None:
 		#No transition occurs
 		return None
+
 	#Calculate beta/H
 	beta_H = beta_over_H(V, Tn, grd)
 	#Calculate alpha
