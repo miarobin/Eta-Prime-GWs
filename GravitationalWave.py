@@ -3,12 +3,11 @@ from cosmoTransitions.tunneling1D import PotentialError
 from cosmoTransitions import helper_functions
 from functools import reduce
 import Potential2
-from scipy import interpolate, optimize, integrate, special
+from scipy import interpolate, optimize, integrate
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
 import TestCode
-from scipy.integrate import simpson
 import traceback
 
 #Terminal Colour Escape Sequences
@@ -18,7 +17,7 @@ GREEN = "\033[32m" # Green color
 CYAN = "\033[36m" # Cyan color
 
 #Set g_star
-_g_star = 106.75; MPl = 2.435E18;  
+_g_star = 47.50; MPl = 2.435E18;  
 
 
 #Calculate the action S3 for a given temperature T using CosmoTransitions SingleFieldInstanton class.
@@ -115,6 +114,24 @@ def grid(V, tc=None, prnt=True, plot=True):
 		return None, None, tc, 2
 	print(f'maximum T = {maxT}, minimum T = {minT}')
 	
+	if plot:
+		xs=np.linspace(-5,V.fSigma()*1.25,num=100)
+		plt.plot(xs,V.V(xs)-V.V(0),label=f"Vtree")
+
+		plt.plot(xs,V.Vtot(xs,minT)-V.Vtot(0,minT),linestyle='-.',label=f"T={round(minT,4)} Vtot")
+		plt.plot(xs,V.Vtot(xs,(minT+maxT)/2)-V.Vtot(0,(minT+maxT)/2),linestyle='-.',label=f"T={round((maxT+minT)/2,4)} Vtot")
+		
+		plt.plot(xs,V.V1T(xs,minT)-V.V1T(0,minT),linestyle='--',label=f"T={round(minT,4)} V1T")
+		plt.plot(xs,V.V1T(xs,(minT+maxT)/2)-V.V1T(0,(minT+maxT)/2),linestyle='--',label=f"T={round((maxT+minT)/2,4)} V1T")
+		
+		if V.Polyakov:
+			plt.plot(xs,V.VGluonic(xs,minT)-V.VGluonic(0,minT),linestyle=':',label=f"T={round(minT,4)} VGluonic")
+			plt.plot(xs,V.VGluonic(xs,(minT+maxT)/2)-V.VGluonic(0,(minT+maxT)/2),linestyle=':',label=f"T={round((maxT+minT)/2,4)} VGluonic")
+	
+		plt.legend()
+		plt.xlabel('sigma')
+		plt.ylabel('V')
+		plt.show()
 	
 	numberOfEvaluations = 100
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
@@ -128,13 +145,16 @@ def grid(V, tc=None, prnt=True, plot=True):
 			break
 	
 	#FINE SAMPLE.
-	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations); As = []; Ts = []
-	for _T in Test_Ts:
+	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+50); As = []; Ts = []
+	for i,_T in enumerate(Test_Ts):
 		rollingAction = action(V, _T)
 		if rollingAction is not None and rollingAction>0:
 			As.append(rollingAction)
 			Ts.append(_T)
 			if prnt: print(f'Temperature {_T}, Action {rollingAction}, S/T = {rollingAction/_T}')
+			
+		if plot and i%20==0:
+			plotV(V,[0,_T-1,_T,_T+1])
 	
 
 	if len(As)==0:
@@ -204,9 +224,38 @@ def grid(V, tc=None, prnt=True, plot=True):
 	if res.success and res.fun <=0.1:
 		if plot: 
 			print(f"Tn = {res.x[0]}, Minimisation method L-BFGS-B")
+			plt.plot(_Ts, [interpolator(_T) for _T in _Ts])
+			plt.xlabel('Temperature'); plt.ylabel('I(T)')
+			plt.show()
+			
+			interp = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)(moreTs)
+			plotAs(_As,_Ts)#Comparing with original data
+			plt.plot(moreTs,interp)#Check if the interpolator is doing well.
+			plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
+			plt.show()
 			print(res)
+			
+			tn=res.x[0]
+			xs=np.linspace(-5,V.fSigma()*1.25,num=100)
+			plt.plot(xs,V.V(xs)-V.V(0),label=f"Vtree")
 
-		return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), tc, 0
+			plt.plot(xs,V.Vtot(xs,tc)-V.Vtot(0,tc),linestyle='-.',label=f"T={round(tc,4)} Tc Vtot")
+			plt.plot(xs,V.Vtot(xs,tn)-V.Vtot(0,tn),linestyle='-.',label=f"T={round(tn,4)} Tn Vtot")
+			
+			plt.plot(xs,V.V1T(xs,tc)-V.V1T(0,tc),linestyle='--',label=f"T={round(tc,4)} Tc V1T")
+			plt.plot(xs,V.V1T(xs,tn)-V.V1T(0,tn),linestyle='--',label=f"T={round(tn,4)} Tn V1T")
+			
+			if V.Polyakov:
+				plt.plot(xs,V.VGluonic(xs,tc)-V.VGluonic(0,tc),linestyle=':',label=f"T={round(tc,4)} Tc VGluonic")
+				plt.plot(xs,V.VGluonic(xs,tn)-V.VGluonic(0,tn),linestyle=':',label=f"T={round(tn,4)} Tn VGluonic")
+		
+			plt.legend()
+			plt.xlabel('sigma')
+			plt.ylabel('V')
+			plt.show()
+		
+
+		return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), tc, 0
 	else:
 		res = optimize.minimize(lambda T: abs(interpolator(T) - 0.34), (narrowRegion[0]+narrowRegion[-1])/2, bounds=[(min(narrowRegion), max(narrowRegion))],method='Nelder-Mead',tol=1e-3)
 		if res.success and res.fun <=0.1:
@@ -216,14 +265,20 @@ def grid(V, tc=None, prnt=True, plot=True):
 				plt.plot(_Ts, [interpolator(_T) for _T in _Ts])
 				plt.xlabel('Temperature'); plt.ylabel('I(T)')
 				plt.show()
+				
+				interp = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)(moreTs)
+				plotAs(_As,_Ts)#Comparing with original data
+				plt.plot(moreTs,interp)#Check if the interpolator is doing well.
+				plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
+				plt.show()
 
 			#Need to return Tn, S_3/T and success error message.
-			return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), tc, 0
+			return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), tc, 0
 		
 		print(res)
 		if plot:
 			plt.plot(_Ts, np.array(_As)/np.array(_Ts))
-			plt.plot(np.linspace(_Ts[0],_Ts[-1]), (interpolate.UnivariateSpline(_Ts,_As/_Ts,k=3, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)(np.linspace(_Ts[0],_Ts[-1]))))
+			plt.plot(np.linspace(_Ts[0],_Ts[-1]), (interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)(np.linspace(_Ts[0],_Ts[-1]))))
 			plt.show()
 		return None, None, tc, 7
 	
@@ -267,7 +322,7 @@ def alpha(V, Tn):
 	
 def gravitationalWave(V):
 	#This method is slow so we only want to run it once, then just pass through the interpolated function to everything else.
-	Tn, grd, message = grid(V,prnt=False)
+	Tn, grd, message = grid(V,prnt=True,plot=True)
 	
 	#Calculate nucleation temperature
 	if Tn == None:

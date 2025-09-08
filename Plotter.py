@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors
 import csv
 from multiprocessing import Pool
+import DressedMasses
 
 '''
 	Please see the dockstring in "Potential2.py" for a parameter dictionary!!
@@ -64,6 +65,9 @@ from multiprocessing import Pool
 		
 	NOTE The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
 '''
+##GLOBAL VARIABLES##
+CORES=8
+
 
 def plotV(V, Ts):
 	for T in Ts:
@@ -89,14 +93,20 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 	
 	#Building the potential...
-	V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov)
+	try:
+		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov)
+	except Potential2.InvalidPotential as e:
+		print(e)
+		return (0, 0, 0, 0, 0, 16) #Dressed mass calculation has failed for this.
 	
 	#Calculating the zero temperature, tree level, analytic minimum.
 	fSig = V.fSigma()
 	print(f'fSigma={fSig}')
+	print(f'm2_sig={V.mSq['Sig'][0](fSig)}, m2Eta={V.mSq['Eta'][0](fSig)}, m2X={V.mSq['X'][0](fSig)}, m2Pi={V.mSq['Pi'][0](fSig)}')
 	
 	if plot:
-		
+		#Plotting the dressed masses
+		DressedMasses.SolveMasses(V,plot=True)
 		#Plots the potential as a function of temperature
 		def plotV(V, Ts):
 			for T in Ts:
@@ -163,16 +173,17 @@ def plotDifference(reslN, resN):
 	plt.ylabel(f'alpha')
 	plt.show()
 	
-def populateN(mSq, c, ls, la, N, F, Polyakov=True):
+	
+def populateN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
 	#Wrapper function for normal case.
 	detPow = Potential2.get_detPow(N,F,"Normal")
 	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=True)
-def populatelN(mSq, c, ls, la, N, F, Polyakov=True):
+	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)
+def populatelN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
 	#Wrapper for the largeN case.
 	detPow = Potential2.get_detPow(N,F,"largeN")
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=True)
+	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)
 
 
 
@@ -211,7 +222,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 	
         
 	#Multithreading with X cores.
-	with Pool(8) as p:
+	with Pool(CORES) as p:
 		#Populating the result arrays.
 		resN = p.starmap(populateN, N_LInputs)
 		reslN = p.starmap(populatelN, lN_LInputs)
@@ -331,7 +342,7 @@ def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F, num=30):
 			print(f'm2={resNormal[0,0]},ls={resNormal[0,2]},la={resNormal[0,3]},c={resNormal[0,1]}')
 			print(f'PT Params')
 			print(f'Tc={resNormal[0,4]},Transition Order {resNormal[0,5]}')
-			print(f"Tree Level Formula fPI={VNormal.fSigma()}\m")
+			print(f"Tree Level Formula fPI={VNormal.fSigma()}")
 	
 			fPiN=VNormal.fSigma()
 			xs = np.linspace(-5,fPiN*1.5,num=100)
@@ -372,10 +383,10 @@ if __name__ == "__main__":
 
 	N=3; F=6
 
-	m2Sig = np.linspace(3E2**2, 1E3**2/np.sqrt(2), num=5)
+	m2Sig = np.linspace(3E2**2, 4E3**2/np.sqrt(2), num=5)
 	m2Eta = np.linspace(1.5E2**2, 1E3**2, num=10)
 	
-	fPi = np.linspace(500, 2000, num=4)
+	fPi = np.linspace(500, 1000, num=4)
 	m2X = np.linspace(500**2, 2000**2, num=4)
 	
 	#getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=30)
@@ -387,20 +398,26 @@ if __name__ == "__main__":
 	
 	#parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
 	
-	#(m2, c, ls, la)=Potential2.masses_to_lagrangian(np.array([1000**2]),np.array([1000**2]),np.array([1000**2]),np.array([1000]),2,4,1/2)
-	#print(f'm2->{m2[0]}, c->{c[0]}, ls->{ls[0]}, la->{la[0]}')
-	
 
-	m2Sig = 90000.0; m2X = 250000.0; fPI = 2000.0
+	
+	m2Sig = 90000.0; m2X = 250000.0; fPI = 900.0
+	m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X=2750000.0; fPI=833.3333333333330
+	m2Sig = 90000.0; m2Eta =	131111.11111111100; m2X=	2750000.0;	fPI=1000.0
 
 	#Large N 
-	m2Eta = 8.19444444444445E-09 * fPI**4 * (F/N)**2
+	#m2Eta = 8.19444444444445E-09 * fPI**4 * (F/N)**2
 	lN_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"largeN"))]
 	
 	#NORMAL (fixed c = 8.19444444444445E-09)
-	m2Eta = 131111.11111111100
+	#m2Eta = 131111.11111111100
 	N_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"Normal"))]
 
 	
-	print(populateN(*N_Linput, N, F, Polyakov=True))
-	#print(populatelN(*lN_Linput, N, F, Polyakov=True))
+	print(populateN(*N_Linput, N, F, Polyakov=True,plot=True))
+	print(populatelN(*lN_Linput, N, F, Polyakov=True,plot=True))
+	
+
+	#VAN DER WOUDE COMPARISON
+	m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
+	
+	print(populateN(m2,c,ls,la, N, F, Polyakov=False,plot=True))
