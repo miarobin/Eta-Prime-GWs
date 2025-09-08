@@ -231,64 +231,7 @@ def SolveMasses(V, plot=False):
         fig.legend()
         
         #Plot 2: Data grids for effective masses
-        X,Y=np.meshgrid(TRange,sigmaRange)
-        
-        fig, ax = plt.subplots(2,2)
-        plt.rcParams['figure.figsize'] = [12, 8]
-        
-        im0 = ax[0,0].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqSigData.T)
-        cbar = plt.colorbar(im0)
-        cbar.set_label(r'$m_\sigma^2$',fontsize=14)
-        ax[0,0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
-        ax[0,0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
-        
-        RHS_mins=np.array([V.findminima(T) for T in TRange]) 
-        _RHS_mins = RHS_mins[RHS_mins!=None]
-        _Ts = TRange[RHS_mins!=None]
-        for T,mins in zip(_Ts,_RHS_mins):
-            if V.Vtot(mins,T)>V.Vtot(0,T):
-                ax[0,0].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='firebrick')
-            else:
-                ax[0,0].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='blueviolet')
-        
-
-        im1 = ax[0,1].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqEtaData.T)
-        cbar = plt.colorbar(im1)
-        cbar.set_label(r"$m_{\eta'}^2$",fontsize=14)
-        ax[0,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
-        ax[0,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
-
-        ax[0,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
-        
-        
-        im2 = ax[1,0].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqXData.T)
-        cbar = plt.colorbar(im2)
-        cbar.set_label(r'$m_X^2$',fontsize=14)
-        ax[1,0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
-        ax[1,0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
-        
-        ax[1,0].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
-        
-        
-        im3 = ax[1,1].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqPiData.T)
-        cbar = plt.colorbar(im3)
-        cbar.set_label(r'$m_\pi^2$',fontsize=14)
-        ax[1,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
-        ax[1,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
-
-        ax[1,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
-
-        tc=V.criticalT(prnt=False)
-        if tc is not None:
-            print(tc)
-            ax[0,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
-            ax[0,1].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
-            ax[1,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
-            ax[1,1].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
-        
-        
-
-        fig.suptitle(f"$f_\pi={V.fSIGMA}$")
+        plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V)
         plt.show()
         
         fig, ax = plt.subplots()
@@ -385,7 +328,6 @@ def plotMassData(massData, V):
         
 
     fig.suptitle(f"$f_\pi={V.fSIGMA}$")
-    plt.show()
 
 
 def plotInterpMasses(massDict, V):
