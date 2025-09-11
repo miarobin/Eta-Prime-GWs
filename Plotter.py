@@ -66,7 +66,7 @@ import DressedMasses
 	NOTE The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
 '''
 ##GLOBAL VARIABLES##
-CORES=8
+CORES=1
 
 
 def plotV(V, Ts):
@@ -174,12 +174,12 @@ def plotDifference(reslN, resN):
 	plt.show()
 	
 	
-def populateN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
+def populateN(mSq, c, ls, la, N, F, Polyakov=True,plot=True):
 	#Wrapper function for normal case.
 	detPow = Potential2.get_detPow(N,F,"Normal")
 	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)
-def populatelN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
+def populatelN(mSq, c, ls, la, N, F, Polyakov=True,plot=True):
 	#Wrapper for the largeN case.
 	detPow = Potential2.get_detPow(N,F,"largeN")
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
@@ -203,11 +203,12 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 	lN_Masses = []; N_Masses = []
 	for i in range(len(data)):
 		point = data[i]
+		print(point)
 		#Calculating the Lagrangian inputs. See appendix D of draft.
 		lN_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"largeN")),N,F,"largeN"]
 		N_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"Normal")),N,F,"Normal"]
 		#Only keeping point if BOTH largeN and Normal are valid. <---- May want to change this later.
-		if (lN_Linput[0] is not None) and (N_Linput[0] is not None):
+		if (lN_Linput[0] is not None) and (N_Linput[0] is not None): 
 			lN_LInputs.append(lN_Linput)
 			N_LInputs.append(N_Linput)
 			lN_Masses.append(point)
@@ -384,25 +385,24 @@ if __name__ == "__main__":
 	N=3; F=6
 
 	m2Sig = np.linspace(3E2**2, 4E3**2/np.sqrt(2), num=5)
-	m2Eta = np.linspace(1.5E2**2, 1E3**2, num=10)
+	m2Eta = np.linspace(1E2**2, 0.5E3**2, num=10)
 	
-	fPi = np.linspace(500, 1000, num=4)
-	m2X = np.linspace(500**2, 2000**2, num=4)
+	fPi = np.linspace(800, 1000, num=3)
+	m2X = np.linspace(500**2, 2000**2, num=5)
 	
 	#getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=30)
 	
 
 
 	#getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=2)
+		
+	parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
 	
+	#m2Sig = 90000.0; m2X = 250000.0; fPI = 900.0
+	m2Sig = 90000.0; m2Eta = 22500.0; m2X=	4000000.0;	fPI=850.0
+	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X=2750000.0; fPI=833.3333333333330
+	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X = 250000.0; fPI=833.3333333333330
 	
-	#parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
-	
-
-	
-	m2Sig = 90000.0; m2X = 250000.0; fPI = 900.0
-	m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X=2750000.0; fPI=833.3333333333330
-	m2Sig = 90000.0; m2Eta =	131111.11111111100; m2X=	2750000.0;	fPI=1000.0
 
 	#Large N 
 	#m2Eta = 8.19444444444445E-09 * fPI**4 * (F/N)**2
@@ -418,6 +418,6 @@ if __name__ == "__main__":
 	
 
 	#VAN DER WOUDE COMPARISON
-	m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
+	#m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
 	
-	print(populateN(m2,c,ls,la, N, F, Polyakov=False,plot=True))
+	#print(populateN(m2,c,ls,la, N, F, Polyakov=False,plot=True))

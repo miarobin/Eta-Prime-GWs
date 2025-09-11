@@ -102,7 +102,7 @@ def grid(V, tc=None, prnt=True, plot=True):
 			return None, None, None, 1
 
 	#Maximum temperature of the action scan. CT fails if T is too close to tc.
-	maxT = tc-0.2
+	maxT = tc*0.95 #Also want some OK-ish supercooling to get a GW signal.
 	
 	
 	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
@@ -133,7 +133,7 @@ def grid(V, tc=None, prnt=True, plot=True):
 		plt.ylabel('V')
 		plt.show()
 	
-	numberOfEvaluations = 100
+	numberOfEvaluations = 90
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
 	Test_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for _T in Test_Ts:
@@ -153,8 +153,8 @@ def grid(V, tc=None, prnt=True, plot=True):
 			Ts.append(_T)
 			if prnt: print(f'Temperature {_T}, Action {rollingAction}, S/T = {rollingAction/_T}')
 			
-		if plot and i%20==0:
-			plotV(V,[0,_T-1,_T,_T+1])
+		#if plot and i%20==0:
+		#	plotV(V,[0,_T-1,_T,_T+1])
 	
 
 	if len(As)==0:
@@ -228,7 +228,7 @@ def grid(V, tc=None, prnt=True, plot=True):
 			plt.xlabel('Temperature'); plt.ylabel('I(T)')
 			plt.show()
 			
-			interp = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)(moreTs)
+			interp = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))(moreTs)
 			plotAs(_As,_Ts)#Comparing with original data
 			plt.plot(moreTs,interp)#Check if the interpolator is doing well.
 			plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
@@ -253,9 +253,27 @@ def grid(V, tc=None, prnt=True, plot=True):
 			plt.xlabel('sigma')
 			plt.ylabel('V')
 			plt.show()
+			
+					
+		spl = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))
 		
-
-		return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), tc, 0
+		#Checking to see if the spline doesn't oscillate.
+		if all(spl.derivatives(_Ts)[1]>0):
+			return res.x[0], spl, tc, 0
+		else: 
+			spl = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=1, s=len(_Ts)+np.sqrt(2*len(_Ts)))
+			if plot:
+				plotAs(_As,_Ts)#Comparing with original data
+				plt.plot(moreTs,interp)#Check if the interpolator is doing well.
+				plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
+				plt.show()
+				print(res)
+			if all(spl.derivatives(_Ts)[1]>0):
+				return res.x[0], spl, tc, 0
+			else:
+				return 0, 0, 0, 17
+		
+	#If previous Tn failed, trying again with a new method.
 	else:
 		res = optimize.minimize(lambda T: abs(interpolator(T) - 0.34), (narrowRegion[0]+narrowRegion[-1])/2, bounds=[(min(narrowRegion), max(narrowRegion))],method='Nelder-Mead',tol=1e-3)
 		if res.success and res.fun <=0.1:
@@ -265,20 +283,51 @@ def grid(V, tc=None, prnt=True, plot=True):
 				plt.plot(_Ts, [interpolator(_T) for _T in _Ts])
 				plt.xlabel('Temperature'); plt.ylabel('I(T)')
 				plt.show()
-				
-				interp = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)(moreTs)
+					
+				interp = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))(moreTs)
 				plotAs(_As,_Ts)#Comparing with original data
 				plt.plot(moreTs,interp)#Check if the interpolator is doing well.
 				plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
 				plt.show()
+				
+				#For manually checking each point.
+				validInput=False
+				while not validInput:
+					toRemove = input ("Enter 'r' to remove and flag or 'k' to keep:")
+					print(f'You have selected {toRemove}')
+					if str(toRemove.strip()) == 'r':
+						print('Point added to removal list.')
+						return 0, 0, 0, 17
+					elif str(toRemove.strip()) == 'k':
+						print('Point kept.')
+						validInput=True
+					else:
+						print('Input character not valid. Try again please')
 
 			#Need to return Tn, S_3/T and success error message.
-			return res.x[0], interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2), tc, 0
+			spl = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))
+		
+			#Checking to see if the spline doesn't oscillate.
+			if all(spl.derivatives(_Ts)[1]>0):
+				return res.x[0], spl, tc, 0
+			else: 
+				spl = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=1, s=len(_Ts)+np.sqrt(2*len(_Ts)))
+				if plot:
+					plotAs(_As,_Ts)#Comparing with original data
+					plt.plot(moreTs,interp)#Check if the interpolator is doing well.
+					plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
+					plt.show()
+					print(res)
+				if all(spl.derivatives(_Ts)[1]>0):
+					return res.x[0], spl, tc, 0
+				else:
+					return 0, 0, 0, 17
 		
 		print(res)
 		if plot:
+			print('abject failure')
 			plt.plot(_Ts, np.array(_As)/np.array(_Ts))
-			plt.plot(np.linspace(_Ts[0],_Ts[-1]), (interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts))/2)(np.linspace(_Ts[0],_Ts[-1]))))
+			plt.plot(np.linspace(_Ts[0],_Ts[-1]), (interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))(np.linspace(_Ts[0],_Ts[-1]))))
 			plt.show()
 		return None, None, tc, 7
 	

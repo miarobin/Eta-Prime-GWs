@@ -9,6 +9,7 @@ import csv
 import Potential2
 import cosmoTransitions
 from IBInterpolation import IB
+from scipy.ndimage import gaussian_filter
 
 
 plt.rcParams["font.family"] = "serif"
@@ -34,6 +35,7 @@ def SolveMasses(V, plot=False):
                 MSqEtaData[i,j] = V.mSq['Eta'][0](sigma)
                 MSqPiData[i,j] = V.mSq['Pi'][0](sigma)
                 MSqXData[i,j] = V.mSq['X'][0](sigma)
+                RMS[i,j] = 0
                 
             def bagEquations(vars):                
 
@@ -137,7 +139,7 @@ def SolveMasses(V, plot=False):
             #print(f'scipy.jacobian={differentiate.jacobian(bagEquations,[15,15,15,15])}')
             
             
-            sol = root(bagEquations, initial_guess, jac=jac, method='hybr')
+            sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-09)
             RMS[i,j]=np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)) #RMS
             if sol.success and RMS[i,j]<5*V.fSIGMA:
                 M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
@@ -151,7 +153,7 @@ def SolveMasses(V, plot=False):
             else:
                 #Try with numerical jacobian as well:
                 sol = root(bagEquations, initial_guess, method='hybr')
-                if sol.success and RMS[i,j]<5*V.fSIGMA:
+                if sol.success and RMS[i,j]<np.sqrt(V.fSIGMA):
                     M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                     MSqSigData[i,j]=M_sigma2
@@ -174,26 +176,46 @@ def SolveMasses(V, plot=False):
     X,Y=np.meshgrid(TRange,sigmaRange) 
     points = np.column_stack((X.ravel(), Y.ravel()))
     
+    
+    
     valuesSigma = MSqSigData.ravel()
     valuesEta = MSqEtaData.ravel()
     valuesX = MSqXData.ravel()
     valuesPi = MSqPiData.ravel()
+    valuesRMS = RMS.ravel()
+    
     
     _MSqSigData = interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X,Y))
     _MSqEtaData = interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X,Y))
     _MSqXData = interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X,Y))
     _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y))
     
-    #NB SOMETHING ABOUT THESE AXES IS TOTALLY WRONG
+    _MSqSigData = gaussian_filter(_MSqSigData,sigma=1)
+    _MSqEtaData = gaussian_filter(_MSqEtaData,sigma=1)
+    _MSqXData = gaussian_filter(_MSqXData,sigma=1)
+    _MSqPiData = gaussian_filter(_MSqPiData,sigma=1)
+
+    _xs = X.ravel()[np.isfinite(valuesSigma)]
+    _ys = Y.ravel()[np.isfinite(valuesSigma)]
+    #np.minimum(1/(valuesRMS[np.isfinite(valuesSigma)]),np.ones(len(_xs))*0.0001)
+    print(valuesRMS[np.isfinite(valuesSigma)])
+    print(min(valuesRMS[np.isfinite(valuesSigma)]))
+    print(max(valuesRMS[np.isfinite(valuesSigma)]))
+    _sigInterp = interpolate.bisplrep(_xs,_ys,valuesSigma[np.isfinite(valuesSigma)],w=1/(valuesRMS[np.isfinite(valuesSigma)]+0.01))
+    
     dressedMasses = {
         #Sigma Mass	
-        'Sig': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData,s=4*V.fSIGMA**3,ky=2,kx=2, maxit=40),
+        #'Sig': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData,s=V.fSIGMA**2,ky=2,kx=2, maxit=40),
+        
+        'Sig': _sigInterp,
+        #'Sig': interpolate.SmoothBivariateSpline(points[np.isfinite(valuesSigma)][:,0],points[np.isfinite(valuesSigma)][:,1],valuesSigma[np.isfinite(valuesSigma)],ky=2,kx=2),
+        
 		#Eta Prime Mass
-        'Eta': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData,s=4*V.fSIGMA**3,ky=2,kx=2, maxit=40),
+        'Eta': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData,s=V.fSIGMA**2,ky=2,kx=2, maxit=40),
 		#X Mass
-		'X': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData,s=4*V.fSIGMA**3,ky=2,kx=2, maxit=40),
+		'X': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData,s=V.fSIGMA**2,ky=2,kx=2, maxit=40),
 		#Pi Mass
-		'Pi':  interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData,s=4*V.fSIGMA**3,ky=2,kx=2, maxit=40)
+		'Pi':  interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData,s=V.fSIGMA**2,ky=2,kx=2, maxit=40)
 		}
     
     if plot:
@@ -217,7 +239,7 @@ def SolveMasses(V, plot=False):
             ax[1,1].scatter(sigmaRange, _MSqPiData[Tindex,:], color=colours[i],alpha=0.66,marker='1')
 
             
-            ax[0,0].plot(sigmaRange, dressedMasses['Sig'](T, sigmaRange).flatten(), color=colours[i])
+            ax[0,0].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['Sig']).flatten(), color=colours[i])
             ax[0,1].plot(sigmaRange, dressedMasses['Eta'](T, sigmaRange).flatten(), color=colours[i])
             ax[1,0].plot(sigmaRange, dressedMasses['X'](T, sigmaRange).flatten(), color=colours[i])
             ax[1,1].plot(sigmaRange, dressedMasses['Pi'](T, sigmaRange).flatten(), color=colours[i])
@@ -232,6 +254,13 @@ def SolveMasses(V, plot=False):
         
         #Plot 2: Data grids for effective masses
         plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V)
+        
+
+        tc = V.criticalT()
+        for sig,T in failPoints:#Flag up failure points within 15% of the critical temperature.
+            if abs((tc-T)/tc)<0.25:
+                plt.scatter(T/V.fSIGMA,sig/V.fSIGMA,marker='d',color='orange')
+                
         plt.show()
         
         fig, ax = plt.subplots()
@@ -248,14 +277,7 @@ def SolveMasses(V, plot=False):
         #if counter>10*len(TRange)*len(sigmaRange)/100:
         #    raise Potential2.InvalidPotential('More than X% of points failed')
     
-    #failPoints = []
-    #for i,T in enumerate(TRange):
-    #    for j,sigma in enumerate(sigmaRange):
-    #        if MSqSigData[i,j] is None:
-    #            failPoints.append([sigma, T])
-    print('########################################################################################')
-    print(failPoints)
-    print('########################################################################################')
+
     return dressedMasses, np.array(failPoints)
 
 
@@ -325,8 +347,6 @@ def plotMassData(massData, V):
         ax[1,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[1,1].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         
-        
-
     fig.suptitle(f"$f_\pi={V.fSIGMA}$")
 
 
@@ -514,18 +534,24 @@ if __name__ == "__main__":
    	#NORMAL (fixed c = 8.19444444444445E-09)
     N=3; F=6
     m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X = 250000.0; fPI=833.3333333333330
-    m2Sig = 90000.0; m2Eta = 131111.11111111100; m2X = 400000.0; fPI = 1000.0 #VERY BROKEN!
+    #m2Sig = 90000.0; m2Eta = 131111.11111111100; m2X = 400000.0; fPI = 1000.0 #VERY BROKEN!
     N_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"Normal"))]
 
-    #V = Potential2.Potential(*N_Linput, N, F, Potential2.get_detPow(N,F,"Normal"))
+    V = Potential2.Potential(*N_Linput, N, F, Potential2.get_detPow(N,F,"Normal"))
     
-    ##VAN DER WOUDE COMPARISON
-    m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
-    fPI=88
-    V = Potential2.Potential(m2,c,ls,la,3,3,1,Polyakov=False)
+    ###VAN DER WOUDE COMPARISON
+    #m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
+    #fPI=88
+    #V = Potential2.Potential(m2,c,ls,la,3,3,1,Polyakov=False)
 
     grd,_ = SolveMasses(V, plot=True)
     
+
+
+
+
+
+    #ALL KIND OF REDUNDANT!
     
     Ts = np.linspace(0,V.fSigma()*1.25)
     sigmas = np.linspace(0,V.fSigma()*1.25,num=100)

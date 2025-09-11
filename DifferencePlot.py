@@ -113,7 +113,7 @@ def plotArrows(reslN, resN):
 	
 #Load up the data.
 resN = np.genfromtxt(f'Test_N3F6_Normal.csv', delimiter=',', dtype=float, skip_header=1)
-reslN = np.genfromtxt(f'Test_N3F6_largeN.csv', delimiter=',', dtype=float, skip_header=1)
+reslN = np.genfromtxt(f'Test_N3F6_largeN.csv', delimiter=',', dtype=float, skip_header=2)
 
 plotDifference(reslN,resN)
 

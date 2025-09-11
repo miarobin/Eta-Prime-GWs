@@ -343,7 +343,7 @@ class Potential:
             dressedMasses, failPoints = DressedMasses.SolveMasses(self)
             self.MSq = {
             #Sigma Mass	
-            'Sig': [lambda sig, T: dressedMasses['Sig'].ev(T,sig),
+            'Sig': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['Sig']),sig.shape),
                     1.],
             #Eta Prime Mass
             'Eta': [lambda sig, T: dressedMasses['Eta'].ev(T,sig),
@@ -356,16 +356,20 @@ class Potential:
                     self.F**2 - 1]
             }
         
+        
+        #Calculating the critical temperature.
+        self.tc = self.criticalT(prnt=False)
+        if self.tc is None:
+            raise InvalidPotential("No critical temperature can be found.")
+        
         #Checking for the convergence of dressedMasses around the critical temperature.
         counter = 0
-        self.tc = self.criticalT()
         for sig,T in failPoints:
-            if abs((self.tc-T)/self.tc)<0.1:
+            if abs((self.tc-T)/self.tc)<0.25:
                 counter += 1
-                
         
-        if counter > 10:#10 is arbitrary right now!
-            raise InvalidPotential("Dressed Masses not converging properly around phase transition region")
+            if counter > 1000:#10 is arbitrary right now!
+                raise InvalidPotential("Dressed Masses not converging properly around phase transition region")
 
         #Checking validity of the potential.
         if self.F*self.detPow<2:
@@ -384,7 +388,6 @@ class Potential:
         if T==0:
             return np.zeros(sig.shape)
         
-
         #One-loop, thermal correction to the potential. See https://arxiv.org/pdf/hep-ph/9901312 eq. 212
         return np.reshape((np.sum([n*Jb_spline(M2(sig,T)/T**2)-(1/4)*(M2(sig,T)-M2(sig,0))*Ib_spline(M2(sig,T)/T**2)/T**2 for M2, n in [self.MSq['Sig'],self.MSq['Eta'],
                                                                         self.MSq['X'],self.MSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
