@@ -59,14 +59,14 @@ def plotDifference(reslN, resN):
     #fig.set_yticks([1.49E-2,1.5E-2,1.51E-2,1.52E-2,1.53E-2])
     #fig.set_yticklabels([1.49E-2,1.5E-2,1.51E-2,1.52E-2,1.53E-2])
 
-    plt.colorbar(label=r"$m^2_{\eta'}$")
+    plt.colorbar(label=r"$m^2_{\eta'}~[GeV^2]$")
     fig.set_xlabel(r'$\beta/H$',fontsize=13)
     fig.set_ylabel(r'$\alpha$',fontsize=15)
     plt.tight_layout()
-    plt.show()
+    #plt.show()
     
 
-    #plt.savefig('DifferencePlotN3F6.pdf',bbox_inches="tight")
+    plt.savefig('DifferencePlotN3F6.pdf',bbox_inches="tight")
 
 def plotArrows(reslN, resN):
     colormap = plt.cm.viridis #or any other colormap
@@ -109,7 +109,6 @@ def plotArrows(reslN, resN):
     plt.show()
     
     
-    #plt.savefig('DifferencePlotN3F6.pdf',bbox_inches="tight")
 	
 #Load up the data.
 resN = np.genfromtxt(f'Test_N3F6_Normal.csv', delimiter=',', dtype=float, skip_header=1)

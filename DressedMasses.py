@@ -30,7 +30,7 @@ def SolveMasses(V, plot=False):
     
     for i,T in enumerate(TRange):
         for j,sigma in enumerate(sigmaRange):
-            if T==0:
+            if T<1.:
                 MSqSigData[i,j] = V.mSq['Sig'][0](sigma)
                 MSqEtaData[i,j] = V.mSq['Eta'][0](sigma)
                 MSqPiData[i,j] = V.mSq['Pi'][0](sigma)
@@ -139,9 +139,10 @@ def SolveMasses(V, plot=False):
             #print(f'scipy.jacobian={differentiate.jacobian(bagEquations,[15,15,15,15])}')
             
             
-            sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-09)
-            RMS[i,j]=np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)) #RMS
-            if sol.success and RMS[i,j]<5*V.fSIGMA:
+            sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-08)
+            RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1.) #RMS
+
+            if sol.success and RMS[i,j]<np.sqrt(V.fSIGMA)/2:
                 M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                 MSqSigData[i,j]=M_sigma2
@@ -153,7 +154,7 @@ def SolveMasses(V, plot=False):
             else:
                 #Try with numerical jacobian as well:
                 sol = root(bagEquations, initial_guess, method='hybr')
-                if sol.success and RMS[i,j]<np.sqrt(V.fSIGMA):
+                if sol.success and RMS[i,j]<np.sqrt(V.fSIGMA)/2:
                     M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                     MSqSigData[i,j]=M_sigma2
@@ -182,7 +183,8 @@ def SolveMasses(V, plot=False):
     valuesEta = MSqEtaData.ravel()
     valuesX = MSqXData.ravel()
     valuesPi = MSqPiData.ravel()
-    valuesRMS = RMS.ravel()
+    print(f'max RMS = {max(RMS.ravel())}')
+    
     
     
     _MSqSigData = interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X,Y))
@@ -195,20 +197,28 @@ def SolveMasses(V, plot=False):
     _MSqXData = gaussian_filter(_MSqXData,sigma=1)
     _MSqPiData = gaussian_filter(_MSqPiData,sigma=1)
 
+    _RMS = gaussian_filter(RMS,sigma=4,truncate=4) #Spread out the weights a little.
+    _RMS[0,:]=RMS[0,:]+1e-8
+    valuesRMS = _RMS.ravel()
+
+    valuesRMS = valuesRMS[np.isfinite(valuesSigma)]
     _xs = X.ravel()[np.isfinite(valuesSigma)]
     _ys = Y.ravel()[np.isfinite(valuesSigma)]
-    #np.minimum(1/(valuesRMS[np.isfinite(valuesSigma)]),np.ones(len(_xs))*0.0001)
-    print(valuesRMS[np.isfinite(valuesSigma)])
-    print(min(valuesRMS[np.isfinite(valuesSigma)]))
-    print(max(valuesRMS[np.isfinite(valuesSigma)]))
-    _sigInterp = interpolate.bisplrep(_xs,_ys,valuesSigma[np.isfinite(valuesSigma)],w=1/(valuesRMS[np.isfinite(valuesSigma)]+0.01))
+    
+
+    #THIS IS TOTALLY SCREWWY
+    weights = 1 / (valuesRMS + .1)
+    print(min(weights))
+    print(max(weights))
+    print(np.mean(weights))
+    print(np.std(weights))
+    smoothing=(len(_xs))*1e8
+    _sigInterp = interpolate.bisplrep(_xs,_ys,valuesSigma[np.isfinite(valuesSigma)],kx=2,ky=2,s=smoothing,w=weights)
     
     dressedMasses = {
         #Sigma Mass	
-        #'Sig': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData,s=V.fSIGMA**2,ky=2,kx=2, maxit=40),
-        
+        #'Sig': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData,s=V.fSIGMA**3/2,ky=2,kx=1, maxit=40),
         'Sig': _sigInterp,
-        #'Sig': interpolate.SmoothBivariateSpline(points[np.isfinite(valuesSigma)][:,0],points[np.isfinite(valuesSigma)][:,1],valuesSigma[np.isfinite(valuesSigma)],ky=2,kx=2),
         
 		#Eta Prime Mass
         'Eta': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData,s=V.fSIGMA**2,ky=2,kx=2, maxit=40),
@@ -240,6 +250,7 @@ def SolveMasses(V, plot=False):
 
             
             ax[0,0].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['Sig']).flatten(), color=colours[i])
+            #ax[0,0].plot(sigmaRange, dressedMasses['Sig'](T, sigmaRange).flatten(), color=colours[i])
             ax[0,1].plot(sigmaRange, dressedMasses['Eta'](T, sigmaRange).flatten(), color=colours[i])
             ax[1,0].plot(sigmaRange, dressedMasses['X'](T, sigmaRange).flatten(), color=colours[i])
             ax[1,1].plot(sigmaRange, dressedMasses['Pi'](T, sigmaRange).flatten(), color=colours[i])
@@ -266,7 +277,7 @@ def SolveMasses(V, plot=False):
         fig, ax = plt.subplots()
         plt.rcParams['figure.figsize'] = [12, 8]
         
-        im0 = ax.contourf(X/V.fSIGMA, Y/V.fSIGMA, RMS)
+        im0 = ax.contourf(X/V.fSIGMA, Y/V.fSIGMA, _RMS.T)
         cbar = plt.colorbar(im0)
         cbar.set_label(r'RMS $[MeV^2]$',fontsize=14)
         ax.set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
@@ -476,7 +487,7 @@ def dIb_spline(X):
     y = [_dtckb_positive(xi) if xi>=0 else _dtckb_negative(xi) for xi in x]
     y = np.array(y)
 
-    y[x==0] = 1e10
+    y[x==0] = 1e15
     y[x < _xbmin] = _dtckb_negative(_xbmin)
     y[x > _xbmax] = 0
     return y.reshape(X.shape)

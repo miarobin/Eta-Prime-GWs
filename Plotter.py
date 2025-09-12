@@ -66,7 +66,7 @@ import DressedMasses
 	NOTE The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
 '''
 ##GLOBAL VARIABLES##
-CORES=1
+CORES=8
 
 
 def plotV(V, Ts):
@@ -127,7 +127,14 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 	#	c) and an error code.
 	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot)
 	
+
+	
 	if Tn is not None:
+		#I'm not even sure how this is an error but anyway:
+		print(Tn)
+		if Tn<tc/10:
+			return (0,0,0,0,tc,18)
+		
 		#Bubbles nucleate before BBN! Yay!
 		
 		#Calculating wave parameters.
@@ -174,12 +181,12 @@ def plotDifference(reslN, resN):
 	plt.show()
 	
 	
-def populateN(mSq, c, ls, la, N, F, Polyakov=True,plot=True):
+def populateN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
 	#Wrapper function for normal case.
 	detPow = Potential2.get_detPow(N,F,"Normal")
 	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)
-def populatelN(mSq, c, ls, la, N, F, Polyakov=True,plot=True):
+def populatelN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
 	#Wrapper for the largeN case.
 	detPow = Potential2.get_detPow(N,F,"largeN")
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
@@ -215,7 +222,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 			N_Masses.append(point)
 			
 	#Cropping the data for now.
-	crop=40
+	crop=50
 	lN_LInputs=lN_LInputs[:crop]
 	N_LInputs=N_LInputs[:crop]
 	lN_Masses=lN_Masses[:crop]

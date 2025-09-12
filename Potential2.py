@@ -344,6 +344,7 @@ class Potential:
             self.MSq = {
             #Sigma Mass	
             'Sig': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['Sig']),sig.shape),
+            #'Sig': [lambda sig, T: dressedMasses['Sig'].ev(T,sig),
                     1.],
             #Eta Prime Mass
             'Eta': [lambda sig, T: dressedMasses['Eta'].ev(T,sig),
@@ -368,8 +369,8 @@ class Potential:
             if abs((self.tc-T)/self.tc)<0.25:
                 counter += 1
         
-            if counter > 1000:#10 is arbitrary right now!
-                raise InvalidPotential("Dressed Masses not converging properly around phase transition region")
+            if counter > 3000:#10 is arbitrary right now!
+                raise InvalidPotential("Dressed Masses not converging properly around phase transition region!!")
 
         #Checking validity of the potential.
         if self.F*self.detPow<2:
