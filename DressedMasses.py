@@ -197,12 +197,11 @@ def SolveMasses(V, plot=False):
     
 
     _RMS = gaussian_filter(RMS,sigma=5,truncate=4) #Spread out the weights a little.
-    
     valuesRMS = _RMS.ravel()
-
-
     _xs = X.ravel()
     _ys = Y.ravel()
+    
+    #FOR NOISY DATA WE MIGHT WANT THE SMOOTHING SPLINE LATER, BUT IT DOESN'T WORK SO WELL FOR GOOD DATA!
     
     dressedMasses = {
         #Sigma Mass
@@ -212,10 +211,12 @@ def SolveMasses(V, plot=False):
         #'Eta': interpolate.SmoothBivariateSpline(_xs,_ys,rectiEta.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs))),
         'Eta' :  rectiEta,
 		#X Mass
-		'X': interpolate.SmoothBivariateSpline(_xs,_ys,rectiX.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs))),
-		#Pi Mass
-		'Pi': interpolate.SmoothBivariateSpline(_xs,_ys,rectiPi.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs)))
-		}
+		#'X': interpolate.SmoothBivariateSpline(_xs,_ys,rectiX.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs))),
+		'X' : rectiX,
+        #Pi Mass
+		#'Pi': interpolate.SmoothBivariateSpline(_xs,_ys,rectiPi.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs)))
+		'Pi' : rectiPi
+        }
     
     if plot:
         #Plot 1: Data vs interpolated        
@@ -238,10 +239,6 @@ def SolveMasses(V, plot=False):
             ax[1,1].scatter(sigmaRange, _MSqPiData[Tindex,:], color=colours[i],alpha=0.66,marker='1')
 
             
-            #ax[0,0].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['Sig']).flatten(), color=colours[i])
-            #ax[0,1].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['Eta']).flatten(), color=colours[i])
-            #ax[1,0].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['X']).flatten(), color=colours[i])
-            #ax[1,1].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['Pi']).flatten(), color=colours[i])
             ax[0,0].plot(sigmaRange, dressedMasses['Sig'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
             ax[0,1].plot(sigmaRange, dressedMasses['Eta'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
             ax[1,0].plot(sigmaRange, dressedMasses['X'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
@@ -607,41 +604,6 @@ if __name__ == "__main__":
 
     
 
-    Ts = np.linspace(0, fPis[0]*1.1, 100)
-    sigmas = np.linspace(0, fPis[0]*1.1, 100)
-    #MSqSigVals = np.array([MSqSig(fPis[0], T)[0] for T in Ts])
-    #MSqEtaVals = np.array([MSqEta(fPis[0], T)[0] for T in Ts])
-    #MSqXVals = np.array([MSqX(fPis[0], T)[0] for T in Ts])
-    #MSqPiVals = np.array([MSqPi(fPis[0], T)[0] for T in Ts])
-    
-    MSqSigVals = np.array([MSqSig(sigma, fPis[0]/4)[0] for sigma in sigmas])
-    MSqEtaVals = np.array([MSqEta(sigma, fPis[0]/4)[0] for sigma in sigmas])
-    MSqXVals = np.array([MSqX(sigma, fPis[0]/4)[0] for sigma in Ts])
-    MSqPiVals = np.array([MSqPi(sigma, fPis[0]/4)[0] for sigma in Ts])
-    
-    plt.figure(figsize=(10, 6))
-
-    plt.plot(Ts, MSqSigVals, 'gold', linestyle= '-', linewidth=2.5, alpha=0.4 ,label='$MI_\\sigma^2$' )
-    #plt.plot(Ts, np.sqrt(M_sigma2_list), 'indigo', linestyle= 'dotted', linewidth=1.5, alpha=1. ,label='$M_\\sigma^2$' )
-
-    plt.plot(Ts, MSqXVals,  'red', linestyle= '-', linewidth=2.5, alpha=0.4, label='$MI_a^2$')
-    #plt.plot(Ts, np.sqrt(M_a2_list),  'black', linestyle= 'dotted', linewidth=1.5, alpha=1., label='$M_a^2$')
-
-    plt.plot(Ts, MSqEtaVals,  'yellow', linestyle= '-', linewidth=2.5, alpha=0.4,label='$MI_\\eta^2$')
-    #plt.plot(Ts, np.sqrt(M_eta2_list),  'teal', linestyle= 'dotted', linewidth=1.5, alpha=1.,label='$M_\\eta^2$')
-
-    plt.plot(Ts, MSqPiVals, 'orange', linestyle= '-', linewidth=2.5, alpha=0.4,label='$MI_\\pi^2$')
-    #plt.plot(Ts, np.sqrt(M_pi2_list), 'deeppink', linestyle= 'dotted', linewidth=1.5, alpha=1.,label='$M_\\pi^2$')
-
-
-    plt.xlabel('Temperature $T$ [MeV]')
-    plt.ylabel('Thermal Masses [MeV]')
-    plt.title(f'Thermal Masses vs Temperature $f_\pi={fPis[0]}$')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
-    
+ 
 
     
