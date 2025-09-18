@@ -151,34 +151,6 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 		#Returns the failure state, the associated failure code, and the associated zero-temperature particle masses.
 		return (0, 0, 0, 0, tc, message)
 	
-
-def plotDifference(reslN, resN):
-
-	#Fixed list of markers to track each set of zero-temp masses.
-	markers = [".","o","v","^","<",">","1","2","3","4","8","s","p","P","*","h","H","+","x","D","d","|"]
-	
-	colormap = plt.cm.plasma 
-	#normalising the colour map to between the min and max values of _mSig
-	normalize = matplotlib.colors.Normalize(vmin=min(np.ravel(reslN[:,5]+resN[:,5])), vmax=max(np.ravel(reslN[:,5]+resN[:,5])))
-	
-
-	for i in range(len(reslN)):
-		if reslN[i,2]!=0 and resN[i,2]!=0:
-			#large N term has half-transparency.
-			plt.scatter(reslN[i,2], reslN[i,1], c = reslN[i,5], alpha=1/(2), marker=markers[-1], cmap=colormap, norm=normalize)
-			#Normal term has full-transparency.
-			plt.scatter(resN[i,2], resN[i,1], c = resN[i,5], alpha=1/(1), marker=markers[-1], cmap=colormap, norm=normalize)
-			
-			#Pops off the last marker to move onto the next one.
-			markers.pop()
-
-			
-	plt.xscale("log")
-	plt.yscale("log")
-	plt.colorbar(label=f'$m^2_\sigma$')
-	plt.xlabel(f'beta/H')
-	plt.ylabel(f'alpha')
-	plt.show()
 	
 	
 def populateN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
@@ -253,7 +225,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 					reslN[:,4],reslN[:,0],reslN[:,1],reslN[:,2]
 					)
 
-	plotDifference(reslN, resN)
+	print('Scan Finished')
 	
 def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F, num=30):
 	#Gets critical temperature associated with ChiralPT NOT incl. confinement.
@@ -386,9 +358,8 @@ def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F, num=30):
 
 	
 if __name__ == "__main__":
-	print('hello')
-	
 
+	###LARGE SCAN###
 	N=3; F=6
 
 	m2Sig = np.linspace(3E2**2, 4E3**2/np.sqrt(2), num=5)
@@ -397,14 +368,11 @@ if __name__ == "__main__":
 	fPi = np.linspace(800, 1000, num=3)
 	m2X = np.linspace(500**2, 2000**2, num=5)
 	
-	#getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=30)
-	
-
-
-	#getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPi, N, F, num=2)
-		
 	parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
 	
+
+	###SINGLE POINT###
+
 	#m2Sig = 90000.0; m2X = 250000.0; fPI = 900.0
 	m2Sig = 90000.0; m2Eta = 22500.0; m2X=	4000000.0;	fPI=850.0
 	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X=2750000.0; fPI=833.3333333333330

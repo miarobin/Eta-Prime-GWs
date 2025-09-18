@@ -271,7 +271,7 @@ def grid(V, tc=None, prnt=True, plot=True):
 			if all(spl.derivatives(_Ts)[1]>0):
 				return res.x[0], spl, tc, 0
 			else:
-				return 0, 0, 0, 17
+				return None, None, tc, 17
 		
 	#If previous Tn failed, trying again with a new method.
 	else:
@@ -321,7 +321,7 @@ def grid(V, tc=None, prnt=True, plot=True):
 				if all(spl.derivatives(_Ts)[1]>0):
 					return res.x[0], spl, tc, 0
 				else:
-					return 0, 0, 0, 17
+					return None,None,tc,17
 		
 		print(res)
 		if plot:

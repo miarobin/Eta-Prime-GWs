@@ -343,17 +343,20 @@ class Potential:
             dressedMasses, failPoints = DressedMasses.SolveMasses(self)
             self.MSq = {
             #Sigma Mass	
-            'Sig': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['Sig']),sig.shape),
-            #'Sig': [lambda sig, T: dressedMasses['Sig'].ev(T,sig),
+            #'Sig': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['Sig']),sig.shape),
+            'Sig': [lambda sig, T: dressedMasses['Sig'].ev(T,sig)*self.fSIGMA,
                     1.],
             #Eta Prime Mass
-            'Eta': [lambda sig, T: dressedMasses['Eta'].ev(T,sig),
+            #'Eta': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['Eta']),sig.shape),
+            'Eta': [lambda sig, T: dressedMasses['Eta'].ev(T,sig)*self.fSIGMA,
                     1.],
             #X Mass
-            'X': [lambda sig, T: dressedMasses['X'].ev(T,sig),
+            #'X': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['X']),sig.shape),
+            'X': [lambda sig, T: dressedMasses['X'].ev(T,sig)*self.fSIGMA,
                     self.F**2 - 1],
             #Pi Mass
-            'Pi': [lambda sig, T: dressedMasses['Pi'].ev(T,sig),
+            #'Pi': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['Pi']),sig.shape),
+            'Pi': [lambda sig, T: dressedMasses['Pi'].ev(T,sig)*self.fSIGMA,
                     self.F**2 - 1]
             }
         
@@ -369,7 +372,7 @@ class Potential:
             if abs((self.tc-T)/self.tc)<0.25:
                 counter += 1
         
-            if counter > 3000:#10 is arbitrary right now!
+            if counter > 10: #10 is arbitrary right now! Adjust as sensible.
                 raise InvalidPotential("Dressed Masses not converging properly around phase transition region!!")
 
         #Checking validity of the potential.

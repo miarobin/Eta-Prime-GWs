@@ -19,8 +19,8 @@ plt.rcParams["font.size"]= 12
 
 def SolveMasses(V, plot=False):
     #ADD T=0 HANDLING!! 
-    TRange = np.linspace(0,V.fSIGMA*1.5,num=150)
-    sigmaRange = np.linspace(0.01, V.fSIGMA*1.25,num=150)
+    TRange = np.linspace(0,V.fSIGMA*1.5,num=200)
+    sigmaRange = np.linspace(0.01, V.fSIGMA*1.25,num=200)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
     MSqEtaData = np.zeros((len(TRange),len(sigmaRange)))
@@ -140,9 +140,9 @@ def SolveMasses(V, plot=False):
             
             
             sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-08)
-            RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1.) #RMS
+            RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1) #RMS
 
-            if sol.success and RMS[i,j]<np.sqrt(V.fSIGMA)/2:
+            if sol.success and RMS[i,j]<0.01:
                 M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                 MSqSigData[i,j]=M_sigma2
@@ -154,7 +154,7 @@ def SolveMasses(V, plot=False):
             else:
                 #Try with numerical jacobian as well:
                 sol = root(bagEquations, initial_guess, method='hybr')
-                if sol.success and RMS[i,j]<np.sqrt(V.fSIGMA)/2:
+                if sol.success and RMS[i,j]<np.sqrt(V.fSIGMA):
                     M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                     MSqSigData[i,j]=M_sigma2
@@ -177,55 +177,44 @@ def SolveMasses(V, plot=False):
     X,Y=np.meshgrid(TRange,sigmaRange) 
     points = np.column_stack((X.ravel(), Y.ravel()))
     
-    
-    
     valuesSigma = MSqSigData.ravel()
     valuesEta = MSqEtaData.ravel()
     valuesX = MSqXData.ravel()
     valuesPi = MSqPiData.ravel()
-    print(f'max RMS = {max(RMS.ravel())}')
     
     
     
-    _MSqSigData = interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X,Y))
-    _MSqEtaData = interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X,Y))
-    _MSqXData = interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X,Y))
-    _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y))
+    _MSqSigData = interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X,Y), method='linear')
+    _MSqEtaData = interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X,Y), rescale=True)
+    _MSqXData = interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X,Y), rescale=True)
+    _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y), rescale=True)
     
-    _MSqSigData = gaussian_filter(_MSqSigData,sigma=1)
-    _MSqEtaData = gaussian_filter(_MSqEtaData,sigma=1)
-    _MSqXData = gaussian_filter(_MSqXData,sigma=1)
-    _MSqPiData = gaussian_filter(_MSqPiData,sigma=1)
 
-    _RMS = gaussian_filter(RMS,sigma=4,truncate=4) #Spread out the weights a little.
-    _RMS[0,:]=RMS[0,:]+1e-8
+    rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA,ky=2,kx=2, maxit=45)
+    rectiEta = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData/V.fSIGMA,ky=2,kx=2, maxit=45)
+    rectiX = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData/V.fSIGMA,ky=2,kx=2, maxit=45)
+    rectiPi = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData/V.fSIGMA,ky=2,kx=2, maxit=45)
+    
+
+    _RMS = gaussian_filter(RMS,sigma=5,truncate=4) #Spread out the weights a little.
+    
     valuesRMS = _RMS.ravel()
 
-    valuesRMS = valuesRMS[np.isfinite(valuesSigma)]
-    _xs = X.ravel()[np.isfinite(valuesSigma)]
-    _ys = Y.ravel()[np.isfinite(valuesSigma)]
-    
 
-    #THIS IS TOTALLY SCREWWY
-    weights = 1 / (valuesRMS + .1)
-    print(min(weights))
-    print(max(weights))
-    print(np.mean(weights))
-    print(np.std(weights))
-    smoothing=(len(_xs))*1e8
-    _sigInterp = interpolate.bisplrep(_xs,_ys,valuesSigma[np.isfinite(valuesSigma)],kx=2,ky=2,s=smoothing,w=weights)
+    _xs = X.ravel()
+    _ys = Y.ravel()
     
     dressedMasses = {
-        #Sigma Mass	
-        #'Sig': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData,s=V.fSIGMA**3/2,ky=2,kx=1, maxit=40),
-        'Sig': _sigInterp,
-        
+        #Sigma Mass
+        #'Sig': interpolate.SmoothBivariateSpline(_xs,_ys,rectiSig.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs))),
+        'Sig' : rectiSig,
 		#Eta Prime Mass
-        'Eta': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData,s=V.fSIGMA**2,ky=2,kx=2, maxit=40),
+        #'Eta': interpolate.SmoothBivariateSpline(_xs,_ys,rectiEta.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs))),
+        'Eta' :  rectiEta,
 		#X Mass
-		'X': interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData,s=V.fSIGMA**2,ky=2,kx=2, maxit=40),
+		'X': interpolate.SmoothBivariateSpline(_xs,_ys,rectiX.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs))),
 		#Pi Mass
-		'Pi':  interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData,s=V.fSIGMA**2,ky=2,kx=2, maxit=40)
+		'Pi': interpolate.SmoothBivariateSpline(_xs,_ys,rectiPi.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs)))
 		}
     
     if plot:
@@ -249,11 +238,14 @@ def SolveMasses(V, plot=False):
             ax[1,1].scatter(sigmaRange, _MSqPiData[Tindex,:], color=colours[i],alpha=0.66,marker='1')
 
             
-            ax[0,0].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['Sig']).flatten(), color=colours[i])
-            #ax[0,0].plot(sigmaRange, dressedMasses['Sig'](T, sigmaRange).flatten(), color=colours[i])
-            ax[0,1].plot(sigmaRange, dressedMasses['Eta'](T, sigmaRange).flatten(), color=colours[i])
-            ax[1,0].plot(sigmaRange, dressedMasses['X'](T, sigmaRange).flatten(), color=colours[i])
-            ax[1,1].plot(sigmaRange, dressedMasses['Pi'](T, sigmaRange).flatten(), color=colours[i])
+            #ax[0,0].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['Sig']).flatten(), color=colours[i])
+            #ax[0,1].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['Eta']).flatten(), color=colours[i])
+            #ax[1,0].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['X']).flatten(), color=colours[i])
+            #ax[1,1].plot(sigmaRange, interpolate.bisplev(T,sigmaRange,dressedMasses['Pi']).flatten(), color=colours[i])
+            ax[0,0].plot(sigmaRange, dressedMasses['Sig'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
+            ax[0,1].plot(sigmaRange, dressedMasses['Eta'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
+            ax[1,0].plot(sigmaRange, dressedMasses['X'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
+            ax[1,1].plot(sigmaRange, dressedMasses['Pi'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
 
         ax[0,0].set_xlabel(r'$\sigma/f_\pi$',fontsize=15)
         ax[0,0].set_ylabel(r'$m_\sigma^2$',fontsize=15)
