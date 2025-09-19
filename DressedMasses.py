@@ -283,8 +283,8 @@ def SolveMasses(V, plot=False):
 
 def plotMassData(massData, V):
         #Make sure these are exactly the same ranges as above!
-    TRange = np.linspace(0,V.fSIGMA*1.5,num=150)
-    sigmaRange = np.linspace(0.01, V.fSIGMA*1.25,num=150)
+    TRange = np.linspace(0,V.fSIGMA*1.5,num=200)
+    sigmaRange = np.linspace(0.01, V.fSIGMA*1.25,num=200)
     
     MSqSigData=massData[0]
     MSqEtaData=massData[1]

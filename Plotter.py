@@ -166,7 +166,7 @@ def populatelN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
 
 
 
-def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
+def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=50):
 	
 	#MAKE THE ARRAY
 	data = []
@@ -193,8 +193,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 			lN_Masses.append(point)
 			N_Masses.append(point)
 			
-	#Cropping the data for now.
-	crop=50
+	#Cropping the data if requested.
 	lN_LInputs=lN_LInputs[:crop]
 	N_LInputs=N_LInputs[:crop]
 	lN_Masses=lN_Masses[:crop]
@@ -210,19 +209,19 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F):
 	#MAKE THE FILE WRITER
 	#Column Titles
 	N_LInputs = np.array(N_LInputs); lN_LInputs = np.array(lN_LInputs); lN_Masses=np.array(lN_Masses); N_Masses=np.array(N_Masses); resN=np.array(resN); reslN=np.array(reslN)
-	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Vw']
+	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message']
 	# File path to save the CSV
 	file_path = f'Test_N{N}F{F}_Normal.csv'
 	save_arrays_to_csv(file_path, column_titles, 
 					N_Masses[:,0],N_Masses[:,1],N_Masses[:,2],N_Masses[:,3],
 					N_LInputs[:,0],N_LInputs[:,1],N_LInputs[:,2],N_LInputs[:,3],
-					resN[:,4],resN[:,0],resN[:,1],resN[:,2]
+					resN[:,4],resN[:,0],resN[:,1],resN[:,5]
 					)
 	file_path = f'Test_N{N}F{F}_largeN.csv'
 	save_arrays_to_csv(file_path, column_titles, 
 					lN_Masses[:,0],lN_Masses[:,1],lN_Masses[:,2],lN_Masses[:,3],
 					lN_LInputs[:,0],lN_LInputs[:,1],lN_LInputs[:,2],lN_LInputs[:,3],
-					reslN[:,4],reslN[:,0],reslN[:,1],reslN[:,2]
+					reslN[:,4],reslN[:,0],reslN[:,1],reslN[:,5]
 					)
 
 	print('Scan Finished')
@@ -368,16 +367,15 @@ if __name__ == "__main__":
 	fPi = np.linspace(800, 1000, num=3)
 	m2X = np.linspace(500**2, 2000**2, num=5)
 	
-	parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
+	#parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
 	
 
 	###SINGLE POINT###
 
 	#m2Sig = 90000.0; m2X = 250000.0; fPI = 900.0
-	m2Sig = 90000.0; m2Eta = 22500.0; m2X=	4000000.0;	fPI=850.0
+	m2Sig = 90000.0; m2Eta = 63333.333333333300; m2X=	250000.0;	fPI=1000.0
 	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X=2750000.0; fPI=833.3333333333330
 	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X = 250000.0; fPI=833.3333333333330
-	
 
 	#Large N 
 	#m2Eta = 8.19444444444445E-09 * fPI**4 * (F/N)**2

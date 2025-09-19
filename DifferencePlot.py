@@ -63,7 +63,7 @@ def plotDifference(reslN, resN):
     fig.set_xlabel(r'$\beta/H$',fontsize=13)
     fig.set_ylabel(r'$\alpha$',fontsize=15)
     plt.tight_layout()
-    #plt.show()
+    plt.show()
     
 
     plt.savefig('DifferencePlotN3F6.pdf',bbox_inches="tight")

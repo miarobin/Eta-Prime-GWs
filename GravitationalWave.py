@@ -190,6 +190,21 @@ def grid(V, tc=None, prnt=True, plot=True):
 	_Ts = np.array([T for I, T, A in zip(Is,Ts,As) if I<100])
 	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<100])
 	
+	if len(_As)==0:
+		return None, None, tc, 9 #An action has been found, but not less than I=100. Not sure exactly what this means but it's bad news.
+	if len(_As)<=3:
+		moreTs = np.linspace(min(_Ts),max(_Ts),num=10); _Ts=[];_As=[];_Is=[]
+		for _T in moreTs:
+			rollingAction=action(V,_T)
+			if rollingAction is not None and rollingAction>0:
+				_As.append(rollingAction)
+				_Ts.append(_T)
+				_Is.append(b*integrate.trapezoid(Integrand(_T), Ts)) #COULD MAKE MORE ACCURATE!
+		_Ts = np.array(_Ts); _As = np.array(_As); _Is = np.array(_Is)
+		
+		if len(_As)<=3:
+			return None, None, tc, 10
+	
 
 	#Either no nucleation or Ts have started to high.
 	if max(_Is)<0.34:
