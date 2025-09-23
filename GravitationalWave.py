@@ -10,6 +10,9 @@ import csv
 import TestCode
 import traceback
 
+class BadlyIRDivergent(Exception):
+    pass
+
 #Terminal Colour Escape Sequences
 RESET = "\033[0m"  # Reset all formatting
 RED = "\033[31m"   # Red color
@@ -40,10 +43,46 @@ def action(V,T,prnt=True):
 		if prnt:
 			print('Attempting to calculate tunnelling in the wrong direction.')
 		return None
+	
+	#A single temperature fit to try & smooth out IR divergences:
+	NgSig_eff4 = np.abs(3*V.lambdas - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)/V.F**2)**4/(24.)**4
+	NgPi_eff4 = np.abs(3*V.lambdas-V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.detPow/V.F)*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6))**4/(V.F**2-1)**6
+		
+	pSig = lambda sig: NgSig_eff4 * (T**5/(np.abs(V.MSq['Sig'][0](sig,T))+1e-3)**(3/2))
+	pPi = lambda sig: NgPi_eff4 * (T**5/(np.abs(V.MSq['Pi'][0](sig,T))+1e-3)**(3/2))
+
+	
+	sigmas = np.linspace(false_min,true_min,num=200)
+	cut = [i for i,sig in enumerate(sigmas) if pSig(sig)<4*np.pi and pPi(sig)<4*np.pi] #If far too big just throw away point completely. Maybe something like 16 pi?
+	if len(cut)<180:
+		raise BadlyIRDivergent("At least 10 % of points failed to be perturbative.")
+
+
+	_sigmas = sigmas[cut]
+		
+	weights=[]
+	for sig in _sigmas:
+		if pSig(sig)<1. and pPi(sig)<1.:
+			weights.append(1.)
+		else:
+			weights.append(1/max(pSig(sig),pPi(sig)))#Retains some data.
+
+	weightedV = interpolate.UnivariateSpline(_sigmas, V.Vtot(_sigmas,T),w=weights,s=len(_sigmas)*1.1)
+
+	'''
+	#DO SOME PLOTS!
+	plt.plot(sigmas,weightedV(sigmas)/V.fSIGMA**3,label='Weighted Vtot')
+	plt.plot(sigmas,V.Vtot(sigmas,T)/V.fSIGMA**3, label='Vtot')
+	plt.plot(_sigmas,weights,label='weights')
+	plt.plot(sigmas,-pSig(sigmas)/V.fSIGMA,label='Sigma effective')
+	plt.plot(sigmas,-pPi(sigmas)/V.fSIGMA,label='Pi effective')
+	plt.legend()
+	plt.show()
+	'''
 
 	try:
 		#Initialise instanton in CosmoTransitions.
-		Instanton = SingleFieldInstanton(true_min, false_min, lambda phi: V.Vtot(phi,T), alpha=2)
+		Instanton = SingleFieldInstanton(true_min, false_min, weightedV, alpha=2)
 		Profile = Instanton.findProfile()
 		
 		#Find the action & return it.
@@ -108,8 +147,8 @@ def grid(V, tc=None, prnt=True, plot=True):
 	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
 	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc*(2/3), bounds=[(tc*(1/2),maxT-1)], method='Nelder-Mead')
 	if minTy.fun/V.fSigma()**4<1:
-		#Sometimes minTy is a terrible estimate so manually setting a minimum. 
-		minT = max(minTy.x[0],maxT*.8) 
+		#Sometimes minTy is a terrible estimate so manually setting a minimum based on where we cutoff the noise monitoring. 
+		minT = max(minTy.x[0],tc*.8) 
 	else:
 		return None, None, tc, 2
 	print(f'maximum T = {maxT}, minimum T = {minT}')
@@ -137,7 +176,11 @@ def grid(V, tc=None, prnt=True, plot=True):
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
 	Test_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for _T in Test_Ts:
-		rollingAction = action(V, _T)
+		try:
+			rollingAction = action(V, _T)
+		except BadlyIRDivergent as e:
+			print(e) #Don't really mind about IR divergences at this point since we only want an initial minimum T.
+			rollingAction=None
 		#Checking it's a sensible result (NB without these conditions it's an absolute numerical disaster.
 		if rollingAction is not None and rollingAction>50 and rollingAction/_T>50:
 			if _T< maxT:
@@ -145,9 +188,15 @@ def grid(V, tc=None, prnt=True, plot=True):
 			break
 	
 	#FINE SAMPLE.
-	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+50); As = []; Ts = []
+	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+50); As = []; Ts = []; IRDiv = False
 	for i,_T in enumerate(Test_Ts):
-		rollingAction = action(V, _T)
+		try:
+			rollingAction = action(V, _T)
+		except BadlyIRDivergent as e:
+			print(e)
+			IRDiv=True #If the PT fails to nucleate because of IR divergences, we return a different error code.
+			rollingAction=None
+			
 		if rollingAction is not None and rollingAction>0:
 			As.append(rollingAction)
 			Ts.append(_T)
@@ -195,7 +244,13 @@ def grid(V, tc=None, prnt=True, plot=True):
 	if len(_As)<=3:
 		moreTs = np.linspace(min(_Ts),max(_Ts),num=10); _Ts=[];_As=[];_Is=[]
 		for _T in moreTs:
-			rollingAction=action(V,_T)
+			try:
+				rollingAction=action(V,_T)
+			except BadlyIRDivergent as e:
+				print(e)
+				IRDiv=True
+				rollingAction=None #Same steps as above.
+				
 			if rollingAction is not None and rollingAction>0:
 				_As.append(rollingAction)
 				_Ts.append(_T)
@@ -216,7 +271,10 @@ def grid(V, tc=None, prnt=True, plot=True):
 			plt.plot(_Ts, _Is)
 			plt.xlabel('Temperature'); plt.ylabel('I(T)')
 			plt.show()
-		return None, None, tc, 5
+		if IRDiv:
+			return None, None, tc, 11 #PT failed probably due to IR divergences.
+		else:
+			return None, None, tc, 5 #PT failed as it just fails to nucleate in time.
 
 	interpolator = interpolate.Akima1DInterpolator(_Ts,_Is)
 	#NOTE ERROR HERE FROM NOT BEING ABLE TO INTEGRATE ALL THE WAY TO TC!! Should be small from exponential suppression.
@@ -256,13 +314,16 @@ def grid(V, tc=None, prnt=True, plot=True):
 
 			plt.plot(xs,V.Vtot(xs,tc)-V.Vtot(0,tc),linestyle='-.',label=f"T={round(tc,4)} Tc Vtot")
 			plt.plot(xs,V.Vtot(xs,tn)-V.Vtot(0,tn),linestyle='-.',label=f"T={round(tn,4)} Tn Vtot")
+			plt.plot(xs,V.Vtot(xs,tn-2)-V.Vtot(0,tn-2),linestyle='-.',label=f"T={round(tn,4)-2} Vtot")
 			
 			plt.plot(xs,V.V1T(xs,tc)-V.V1T(0,tc),linestyle='--',label=f"T={round(tc,4)} Tc V1T")
 			plt.plot(xs,V.V1T(xs,tn)-V.V1T(0,tn),linestyle='--',label=f"T={round(tn,4)} Tn V1T")
+			plt.plot(xs,V.V1T(xs,tn-2)-V.V1T(0,tn-2),linestyle='--',label=f"T={round(tn,4)-2} V1T")
 			
 			if V.Polyakov:
 				plt.plot(xs,V.VGluonic(xs,tc)-V.VGluonic(0,tc),linestyle=':',label=f"T={round(tc,4)} Tc VGluonic")
 				plt.plot(xs,V.VGluonic(xs,tn)-V.VGluonic(0,tn),linestyle=':',label=f"T={round(tn,4)} Tn VGluonic")
+				plt.plot(xs,V.VGluonic(xs,tn-2)-V.VGluonic(0,tn-2),linestyle=':',label=f"T={round(tn,4)-2} VGluonic")
 		
 			plt.legend()
 			plt.xlabel('sigma')

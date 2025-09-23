@@ -369,7 +369,7 @@ class Potential:
         #Checking for the convergence of dressedMasses around the critical temperature.
         counter = 0
         for sig,T in failPoints:
-            if abs((self.tc-T)/self.tc)<0.25:
+            if T<self.tc and abs((self.tc-T)/self.tc)<0.2:
                 counter += 1
         
             if counter > 10: #10 is arbitrary right now! Adjust as sensible.

@@ -70,13 +70,13 @@ def SolveMasses(V, plot=False):
                         (V.lambdas + 2 * V.lambdaa + c2) * Ib_spline(M_sigma2 / T**2)
                         + ((V.F**2+1)*V.lambdas + (V.F**2-4)*V.lambdaa - c3) * Ib_spline(M_X2 / T**2)
                         + (V.lambdas - c2) * Ib_spline(M_eta2 / T**2)
-                        + ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * Ib_spline(M_Pi2 / T**2)),#RATTI SAYS F^2-1 SANNINO F^2+1!!
+                        + ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * Ib_spline(M_Pi2 / T**2)),#Van der Woude SAYS F^2-1 SANNINO F^2+1!!
 
                     V.mSq['Pi'][0](sigma) + prefactor * (
                         (V.lambdas + 2 * V.lambdaa + c2) * Ib_spline(M_eta2 / T**2)
                         + ((V.F**2+1)*V.lambdas + (V.F**2-4)*V.lambdaa - c3) * Ib_spline(M_Pi2 / T**2)
                         + (V.lambdas - c2) * Ib_spline(M_sigma2 / T**2)
-                        + ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * Ib_spline(M_X2 / T**2))#RATTI SAYS F^2-1 SANNINO F^2+1!!
+                        + ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * Ib_spline(M_X2 / T**2))#Van der Woude SAYS F^2-1 SANNINO F^2+1!!
                 ])
 
                 bagEquations.lhs = lhs
@@ -142,7 +142,7 @@ def SolveMasses(V, plot=False):
             sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-08)
             RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1) #RMS
 
-            if sol.success and RMS[i,j]<0.01:
+            if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):#arbitrary for now.
                 M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                 MSqSigData[i,j]=M_sigma2
@@ -154,7 +154,7 @@ def SolveMasses(V, plot=False):
             else:
                 #Try with numerical jacobian as well:
                 sol = root(bagEquations, initial_guess, method='hybr')
-                if sol.success and RMS[i,j]<np.sqrt(V.fSIGMA):
+                if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):
                     M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                     MSqSigData[i,j]=M_sigma2
@@ -184,16 +184,16 @@ def SolveMasses(V, plot=False):
     
     
     
-    _MSqSigData = interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X,Y), method='linear')
-    _MSqEtaData = interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X,Y), rescale=True)
-    _MSqXData = interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X,Y), rescale=True)
-    _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y), rescale=True)
+    _MSqSigData = interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X,Y))
+    _MSqEtaData = interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X,Y))
+    _MSqXData = interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X,Y))
+    _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y))
     
 
-    rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA,ky=2,kx=2, maxit=45)
-    rectiEta = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData/V.fSIGMA,ky=2,kx=2, maxit=45)
-    rectiX = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData/V.fSIGMA,ky=2,kx=2, maxit=45)
-    rectiPi = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData/V.fSIGMA,ky=2,kx=2, maxit=45)
+    rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2, maxit=45)
+    rectiEta = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData/V.fSIGMA, ky=2,kx=2, maxit=45)
+    rectiX = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData/V.fSIGMA, ky=2,kx=2, maxit=45)
+    rectiPi = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData/V.fSIGMA, ky=2,kx=2, maxit=45)
     
 
     _RMS = gaussian_filter(RMS,sigma=5,truncate=4) #Spread out the weights a little.
@@ -223,7 +223,7 @@ def SolveMasses(V, plot=False):
         fig, ax = plt.subplots(2,2)
         plt.rcParams['figure.figsize'] = [12, 8]
         
-        TIndexSample = [0, 15, 25, 50, 99]
+        TIndexSample = [0, 15, 24, 25, 26, 35, 50]
         colours = ["red", "firebrick", "darkorange", "crimson", "rosybrown", "gold", "palevioletred"]
         
         for i,Tindex in enumerate(TIndexSample):
@@ -257,8 +257,8 @@ def SolveMasses(V, plot=False):
         
 
         tc = V.criticalT()
-        for sig,T in failPoints:#Flag up failure points within 15% of the critical temperature.
-            if abs((tc-T)/tc)<0.25:
+        for sig,T in failPoints:#Flag up failure points below 25% of the critical temperature.
+            if T<tc and abs((tc-T)/tc)<0.25:
                 plt.scatter(T/V.fSIGMA,sig/V.fSIGMA,marker='d',color='orange')
                 
         plt.show()
@@ -282,7 +282,7 @@ def SolveMasses(V, plot=False):
 
 
 def plotMassData(massData, V):
-        #Make sure these are exactly the same ranges as above!
+    #Make sure these are exactly the same ranges as above!
     TRange = np.linspace(0,V.fSIGMA*1.5,num=200)
     sigmaRange = np.linspace(0.01, V.fSIGMA*1.25,num=200)
     
@@ -359,10 +359,10 @@ def plotInterpMasses(massDict, V):
     X,Y=np.meshgrid(TRange,sigmaRange)
     
     #Mass functions:
-    MSqSig = lambda sig, T: grd['Sig'](T,sig)
-    MSqEta = lambda sig, T: grd['Eta'](T,sig)
-    MSqX = lambda sig, T: grd['X'](T,sig)
-    MSqPi = lambda sig, T: grd['Pi'](T,sig)
+    MSqSig = lambda sig, T: massDict['Sig'](T,sig)
+    MSqEta = lambda sig, T: massDict['Eta'](T,sig)
+    MSqX = lambda sig, T: massDict['X'](T,sig)
+    MSqPi = lambda sig, T: massDict['Pi'](T,sig)
     
     #Mass data:
     MSqSigVals = np.array([[MSqSig(T, sigma)[0][0] for T in Ts] for sigma in sigmas])

@@ -215,13 +215,13 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=50):
 	save_arrays_to_csv(file_path, column_titles, 
 					N_Masses[:,0],N_Masses[:,1],N_Masses[:,2],N_Masses[:,3],
 					N_LInputs[:,0],N_LInputs[:,1],N_LInputs[:,2],N_LInputs[:,3],
-					resN[:,4],resN[:,0],resN[:,1],resN[:,5]
+					resN[:,4],resN[:,0],resN[:,1],resN[:,2],resN[:,5]
 					)
 	file_path = f'Test_N{N}F{F}_largeN.csv'
 	save_arrays_to_csv(file_path, column_titles, 
 					lN_Masses[:,0],lN_Masses[:,1],lN_Masses[:,2],lN_Masses[:,3],
 					lN_LInputs[:,0],lN_LInputs[:,1],lN_LInputs[:,2],lN_LInputs[:,3],
-					reslN[:,4],reslN[:,0],reslN[:,1],reslN[:,5]
+					reslN[:,4],reslN[:,0],reslN[:,1],reslN[:,2],reslN[:,5]
 					)
 
 	print('Scan Finished')
@@ -364,8 +364,8 @@ if __name__ == "__main__":
 	m2Sig = np.linspace(3E2**2, 4E3**2/np.sqrt(2), num=5)
 	m2Eta = np.linspace(1E2**2, 0.5E3**2, num=10)
 	
-	fPi = np.linspace(800, 1000, num=3)
-	m2X = np.linspace(500**2, 2000**2, num=5)
+	fPi = np.array([1000.])
+	m2X = np.linspace(500**2, 2500**2, num=5)
 	
 	#parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
 	
@@ -373,9 +373,11 @@ if __name__ == "__main__":
 	###SINGLE POINT###
 
 	#m2Sig = 90000.0; m2X = 250000.0; fPI = 900.0
-	m2Sig = 90000.0; m2Eta = 63333.333333333300; m2X=	250000.0;	fPI=1000.0
+	#m2Sig = 90000.0; m2Eta = 90000.0; m2X=	250000.0;	fPI=900.0
 	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X=2750000.0; fPI=833.3333333333330
 	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X = 250000.0; fPI=833.3333333333330
+	#m2Sig = 90000.0; m2Eta =	36666.66666666670; m2X =	3250000.0; fPI =	1000.0
+	m2Sig = 90000.0;	m2Eta = 196666.6666666670;	m2X = 3250000.0;	fPI = 1000.0
 
 	#Large N 
 	#m2Eta = 8.19444444444445E-09 * fPI**4 * (F/N)**2
@@ -388,7 +390,7 @@ if __name__ == "__main__":
 	
 	print(populateN(*N_Linput, N, F, Polyakov=True,plot=True))
 	print(populatelN(*lN_Linput, N, F, Polyakov=True,plot=True))
-	
+
 
 	#VAN DER WOUDE COMPARISON
 	#m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
