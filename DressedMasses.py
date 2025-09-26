@@ -17,9 +17,9 @@ plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["font.size"]= 12
 
 
-def SolveMasses(V, plot=False):
+def SolveMasses(V, plot=False, noisyRun=False):
     #ADD T=0 HANDLING!! 
-    TRange = np.linspace(0,V.fSIGMA*1.5,num=200)
+    TRange = np.linspace(0,V.fSIGMA*1.25,num=200)
     sigmaRange = np.linspace(0.01, V.fSIGMA*1.25,num=200)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
@@ -134,9 +134,6 @@ def SolveMasses(V, plot=False):
                               V.mSq['X'][0](sigma)+ (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
                                V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
 
-            #print(f'T={T},sigma={sigma}')
-            #print(f'mine={jac([15,15,15,15])}')
-            #print(f'scipy.jacobian={differentiate.jacobian(bagEquations,[15,15,15,15])}')
             
             
             sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-08)
@@ -195,28 +192,85 @@ def SolveMasses(V, plot=False):
     rectiX = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData/V.fSIGMA, ky=2,kx=2, maxit=45)
     rectiPi = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData/V.fSIGMA, ky=2,kx=2, maxit=45)
     
-
-    _RMS = gaussian_filter(RMS,sigma=5,truncate=4) #Spread out the weights a little.
-    valuesRMS = _RMS.ravel()
-    _xs = X.ravel()
-    _ys = Y.ravel()
-    
-    #FOR NOISY DATA WE MIGHT WANT THE SMOOTHING SPLINE LATER, BUT IT DOESN'T WORK SO WELL FOR GOOD DATA!
-    
+    #FIRST TRY WITH AN EXACT SPLINE FIT.
     dressedMasses = {
         #Sigma Mass
-        #'Sig': interpolate.SmoothBivariateSpline(_xs,_ys,rectiSig.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs))),
         'Sig' : rectiSig,
-		#Eta Prime Mass
-        #'Eta': interpolate.SmoothBivariateSpline(_xs,_ys,rectiEta.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs))),
-        'Eta' :  rectiEta,
-		#X Mass
-		#'X': interpolate.SmoothBivariateSpline(_xs,_ys,rectiX.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs))),
-		'X' : rectiX,
+        #Eta Prime Mass
+        'Eta' : rectiEta,
+        #X Mass
+        'X' : rectiX,
         #Pi Mass
-		#'Pi': interpolate.SmoothBivariateSpline(_xs,_ys,rectiPi.ev(_xs,_ys),s=len(_xs)+(0/2)*np.sqrt(2*len(_xs)))
-		'Pi' : rectiPi
+        'Pi' : rectiPi
         }
+    V.setMSq(dressedMasses)
+
+    #CHECK IF RUN IS NOISY OR NOT.
+    tc = V.criticalT(prnt=False)
+
+    #Checking for the convergence of dressedMasses around the critical temperature.
+    counter = 0; noisyPoint=False
+    if tc is None: noisyPoint = True #Quick initial check.
+    if not noisyPoint:
+        for sig,T in failPoints:
+            if T<tc and abs((tc-T)/tc)<0.25:
+                counter += 1
+                
+            if counter > 5: #5 is arbitrary right now! Adjust as sensible.
+                print("Dressed Masses not converging properly around phase transition region on first pass.")
+                noisyPoint=True
+                V.tc = None #Old critical temperature is invalid. Needs setting again.
+                break
+
+    if noisyPoint:
+        failPoints=np.array(failPoints)
+        #Histogram of failed points with temperature.
+        hist = np.zeros(TRange.shape);starti = 0
+        for iT,T in enumerate(TRange):
+            if starti==0 and T>np.sqrt(V.fSIGMA): starti = iT #Starting index for histogram
+            hist[iT] = len([1 for sig,Tf in failPoints if abs(Tf-T)<1e-4])
+
+        #Now we have the histogram...
+        exit = False; i=starti
+        while not exit:
+            if hist[i]==0 and np.sum(hist[:i])/len(failPoints)>0.2: 
+                minT = TRange[i]
+                exit = True
+            
+            elif hist[i]==0 and hist[i-1]>hist[i] and np.sum(hist[:i])/len(failPoints)>0.2:
+                minT = TRange[i]
+                exit = True
+            i+=1
+            if i>=200:
+                raise Potential2.InvalidPotential("Dressed Masses not converging properly around phase transition region.")
+
+        #And now a minimum T which it makes sense to talk about anything relating to the PT.
+        print(f'minimum T = {minT}')
+        V.minT = minT
+
+
+        _RMS = gaussian_filter(RMS[i:,:],sigma=.5,truncate=4) #Spread out the weights a little.
+        valuesRMS = _RMS.ravel()
+        _xs = X[i:,:].ravel()
+        _ys = Y[i:,:].ravel()
+        
+        valuesRMS[valuesRMS>1/np.sqrt(V.fSIGMA)] = 1/np.sqrt(V.fSIGMA)
+        weights = 1.-valuesRMS*np.sqrt(V.fSIGMA)+1e-4
+        
+        _RMS[_RMS>1/np.sqrt(V.fSIGMA)]=1/np.sqrt(V.fSIGMA)
+        _RMSw = 1.-_RMS*np.sqrt(V.fSIGMA)+1e-4
+        
+        dressedMasses = {
+        #Sigma Mass
+            'Sig': interpolate.SmoothBivariateSpline(_xs,_ys,rectiSig.ev(_xs,_ys),w=weights, s=len(_xs)+(1/2)*np.sqrt(2*len(_xs)),kx=2,ky=2),
+            #Eta Prime Mass
+            'Eta': interpolate.SmoothBivariateSpline(_xs,_ys,rectiEta.ev(_xs,_ys),w=weights,s=len(_xs)+(1/2)*np.sqrt(2*len(_xs)),kx=2,ky=2),
+            #X Mass
+            'X': interpolate.SmoothBivariateSpline(_xs,_ys,rectiX.ev(_xs,_ys),w=weights,s=len(_xs)+(1/2)*np.sqrt(2*len(_xs)),kx=2,ky=2),
+            #Pi Mass
+            'Pi': interpolate.SmoothBivariateSpline(_xs,_ys,rectiPi.ev(_xs,_ys),w=weights,s=len(_xs)+(1/2)*np.sqrt(2*len(_xs)),kx=2,ky=2)
+            }
+    
     
     if plot:
         #Plot 1: Data vs interpolated        
@@ -228,21 +282,28 @@ def SolveMasses(V, plot=False):
         
         for i,Tindex in enumerate(TIndexSample):
             T = TRange[Tindex]
-            ax[0,0].scatter(sigmaRange, MSqSigData[Tindex,:], color=colours[i], label=f"T={T}",alpha=0.66)
-            ax[0,1].scatter(sigmaRange, MSqEtaData[Tindex,:], color=colours[i],alpha=0.66)
-            ax[1,0].scatter(sigmaRange, MSqXData[Tindex,:], color=colours[i],alpha=0.66)
-            ax[1,1].scatter(sigmaRange, MSqPiData[Tindex,:], color=colours[i],alpha=0.66)
+            ax[0,0].scatter(sigmaRange, MSqSigData[Tindex,:]/V.fSIGMA**2, color=colours[i], label=f"T={T}",alpha=0.66)
+            ax[0,1].scatter(sigmaRange, MSqEtaData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66)
+            ax[1,0].scatter(sigmaRange, MSqXData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66)
+            ax[1,1].scatter(sigmaRange, MSqPiData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66)
             
-            ax[0,0].scatter(sigmaRange, _MSqSigData[Tindex,:], color=colours[i], label=f"T={T}",alpha=0.66,marker='1')
-            ax[0,1].scatter(sigmaRange, _MSqEtaData[Tindex,:], color=colours[i],alpha=0.66,marker='1')
-            ax[1,0].scatter(sigmaRange, _MSqXData[Tindex,:], color=colours[i],alpha=0.66,marker='1')
-            ax[1,1].scatter(sigmaRange, _MSqPiData[Tindex,:], color=colours[i],alpha=0.66,marker='1')
+            ax[0,0].scatter(sigmaRange, _MSqSigData[Tindex,:]/V.fSIGMA**2, color=colours[i], label=f"T={T}",alpha=0.66,marker='1')
+            ax[0,1].scatter(sigmaRange, _MSqEtaData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66,marker='1')
+            ax[1,0].scatter(sigmaRange, _MSqXData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66,marker='1')
+            ax[1,1].scatter(sigmaRange, _MSqPiData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66,marker='1')
 
             
-            ax[0,0].plot(sigmaRange, dressedMasses['Sig'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
-            ax[0,1].plot(sigmaRange, dressedMasses['Eta'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
-            ax[1,0].plot(sigmaRange, dressedMasses['X'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
-            ax[1,1].plot(sigmaRange, dressedMasses['Pi'](T, sigmaRange).flatten()*V.fSIGMA, color=colours[i])
+            ax[0,0].plot(sigmaRange, dressedMasses['Sig'](T, sigmaRange).flatten()/V.fSIGMA, color=colours[i])
+            ax[0,1].plot(sigmaRange, dressedMasses['Eta'](T, sigmaRange).flatten()/V.fSIGMA, color=colours[i])
+            ax[1,0].plot(sigmaRange, dressedMasses['X'](T, sigmaRange).flatten()/V.fSIGMA, color=colours[i])
+            ax[1,1].plot(sigmaRange, dressedMasses['Pi'](T, sigmaRange).flatten()/V.fSIGMA, color=colours[i])
+            
+            #if noisyRun:
+            #    ax[0,0].plot(sigmaRange, _RMSw[Tindex,:], color=colours[i])
+            #    ax[0,1].plot(sigmaRange, _RMSw[Tindex,:], color=colours[i])
+            #    ax[1,0].plot(sigmaRange, _RMSw[Tindex,:], color=colours[i])
+            #    ax[1,1].plot(sigmaRange, _RMSw[Tindex,:], color=colours[i])
+                
 
         ax[0,0].set_xlabel(r'$\sigma/f_\pi$',fontsize=15)
         ax[0,0].set_ylabel(r'$m_\sigma^2$',fontsize=15)
@@ -253,37 +314,78 @@ def SolveMasses(V, plot=False):
         fig.legend()
         
         #Plot 2: Data grids for effective masses
-        plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V)
+        if noisyPoint: 
+            plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V, minT=minT)
+        else:
+            plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V)
         
 
         tc = V.criticalT()
-        for sig,T in failPoints:#Flag up failure points below 25% of the critical temperature.
-            if T<tc and abs((tc-T)/tc)<0.25:
-                plt.scatter(T/V.fSIGMA,sig/V.fSIGMA,marker='d',color='orange')
-                
+        if tc is not None:
+            for sig,T in failPoints:#Flag up failure points below 25% of the critical temperature.
+                if T<tc and abs((tc-T)/tc)<0.25:
+                    plt.scatter(T/V.fSIGMA,sig/V.fSIGMA,marker='d',color='orange')
+                    
         plt.show()
         
-        fig, ax = plt.subplots()
-        plt.rcParams['figure.figsize'] = [12, 8]
+
+        #RMS ERROR AND PERTURBATIVITY
+
+        fig, ax = plt.subplots(nrows=1,ncols=2)
         
-        im0 = ax.contourf(X/V.fSIGMA, Y/V.fSIGMA, _RMS.T)
-        cbar = plt.colorbar(im0)
-        cbar.set_label(r'RMS $[MeV^2]$',fontsize=14)
-        ax.set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
-        ax.set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
+        im0 = ax[0].contourf(X/V.fSIGMA, Y/V.fSIGMA, RMS.T)
+        cbar0 = plt.colorbar(im0)
+        cbar0.set_label(r'RMS $[MeV^2]$',fontsize=14)
+        ax[0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+        ax[0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
+        
+        #IR Problem:
+        NgSig_eff4 = np.abs(3*V.lambdas - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)/V.F**2)**4/(24.)**4
+        NgPi_eff4 = np.abs(3*V.lambdas-V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.detPow/V.F)*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6))**4/(V.F**2-1)**6
+            
+        pSig = lambda sig,T: NgSig_eff4 * (T**5/(np.abs(V.MSq['Sig'][0](sig,T))+1e-3)**(3/2))
+        pPi = lambda sig,T: NgPi_eff4 * (T**5/(np.abs(V.MSq['Pi'][0](sig,T))+1e-3)**(3/2))
+
+        perturbativity = pSig(X,Y) + pPi(X,Y)
+        perturbativity[pSig(X,Y)>4*np.pi]=4*np.pi
+        perturbativity[pPi(X,Y)>4*np.pi]=4*np.pi
+        
+        im1 = ax[1].contourf(X/V.fSIGMA, Y/V.fSIGMA, perturbativity.T)
+        cbar1 = plt.colorbar(im1)
+        cbar1.set_label(r'Effective Coupling $g_eff$',fontsize=14)
+        ax[1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+        ax[1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
+
+
+        
+        
+        #Plots location of second minimum with T.
+        RHS_mins=np.array([V.findminima(T) for T in TRange]) 
+        _RHS_mins = RHS_mins[RHS_mins!=None]
+        _Ts = TRange[RHS_mins!=None]
+        for T,mins in zip(_Ts,_RHS_mins):
+            if V.Vtot(mins,T)>V.Vtot(0,T):
+                ax[1].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='firebrick')
+            else:
+                ax[1].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='blueviolet')
+                
         fig.suptitle(f"$f_\pi={V.fSIGMA}$")
         plt.show()
         
-        #if counter>10*len(TRange)*len(sigmaRange)/100:
-        #    raise Potential2.InvalidPotential('More than X% of points failed')
+
+    
+    if noisyRun:
+        return dressedMasses, np.array(failPoints), minT
+    else:
+        return dressedMasses, np.array(failPoints), None
     
 
-    return dressedMasses, np.array(failPoints)
 
 
-def plotMassData(massData, V):
+
+def plotMassData(massData, V, minT=None):
     #Make sure these are exactly the same ranges as above!
-    TRange = np.linspace(0,V.fSIGMA*1.5,num=200)
+    TRange = np.linspace(0,V.fSIGMA*1.25,num=200)
     sigmaRange = np.linspace(0.01, V.fSIGMA*1.25,num=200)
     
     MSqSigData=massData[0]
@@ -340,19 +442,26 @@ def plotMassData(massData, V):
     ax[1,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
 
     #Plot a vertical line at the critical temperature.
-    tc=V.criticalT(prnt=False)
+    print(minT)
+    tc=V.criticalT(prnt=False,minT=minT)
     if tc is not None:
         ax[0,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[0,1].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[1,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[1,1].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         
+    if minT is not None:
+        ax[0,0].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
+        ax[0,1].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
+        ax[1,0].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
+        ax[1,1].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
+        
     fig.suptitle(f"$f_\pi={V.fSIGMA}$")
 
 
-def plotInterpMasses(massDict, V):
+def plotInterpMasses(massDict, V, minT=None):
     #Make sure these are exactly the same ranges as above!
-    TRange = np.linspace(0,V.fSIGMA*1.5,num=150)
+    TRange = np.linspace(0,V.fSIGMA*1.25,num=150)
     sigmaRange = np.linspace(0.01, V.fSIGMA*1.25,num=150)
     
     #Data grids for effective masses
@@ -417,7 +526,7 @@ def plotInterpMasses(massDict, V):
     ax[1,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
 
     #Plots location of critical temperature
-    tc=V.criticalT(prnt=False)
+    tc=V.criticalT(prnt=False,minT=minT)
     if tc is not None:
 
         ax[0,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)

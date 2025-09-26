@@ -91,7 +91,6 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 
 def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
-	
 	#Building the potential...
 	try:
 		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov)
@@ -106,7 +105,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 	
 	if plot:
 		#Plotting the dressed masses
-		DressedMasses.SolveMasses(V,plot=True)
+		DressedMasses.SolveMasses(V,plot=True,noisyRun=True)
 		#Plots the potential as a function of temperature
 		def plotV(V, Ts):
 			for T in Ts:
@@ -125,9 +124,8 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 	#	a) Nucleation temperature Tn,
 	#	b) An interpolated function grd of action over temperature w/ temperature, 
 	#	c) and an error code.
-	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot)
+	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot,ext_minT=V.minT)
 	
-
 	
 	if Tn is not None:
 		#I'm not even sure how this is an error but anyway:
@@ -166,7 +164,7 @@ def populatelN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
 
 
 
-def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=50):
+def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=100):
 	
 	#MAKE THE ARRAY
 	data = []
@@ -187,13 +185,15 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=50):
 		lN_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"largeN")),N,F,"largeN"]
 		N_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"Normal")),N,F,"Normal"]
 		#Only keeping point if BOTH largeN and Normal are valid. <---- May want to change this later.
-		if (lN_Linput[0] is not None) and (N_Linput[0] is not None): 
+		if (lN_Linput[0] is not None):
 			lN_LInputs.append(lN_Linput)
-			N_LInputs.append(N_Linput)
 			lN_Masses.append(point)
+			
+		if (N_Linput[0] is not None):
+			N_LInputs.append(N_Linput)
 			N_Masses.append(point)
 			
-	#Cropping the data if requested.
+	#Cropping the data.
 	lN_LInputs=lN_LInputs[:crop]
 	N_LInputs=N_LInputs[:crop]
 	lN_Masses=lN_Masses[:crop]
@@ -361,13 +361,13 @@ if __name__ == "__main__":
 	###LARGE SCAN###
 	N=3; F=6
 
-	m2Sig = np.linspace(3E2**2, 4E3**2/np.sqrt(2), num=5)
-	m2Eta = np.linspace(1E2**2, 0.5E3**2, num=10)
+	m2Sig = np.linspace(3E2**2, 5E2**2, num=5)
+	m2Eta = np.linspace(10**2, 0.5E3**2, num=10)
 	
 	fPi = np.array([1000.])
 	m2X = np.linspace(500**2, 2500**2, num=5)
 	
-	#parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
+	parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
 	
 
 	###SINGLE POINT###
@@ -376,9 +376,10 @@ if __name__ == "__main__":
 	#m2Sig = 90000.0; m2Eta = 90000.0; m2X=	250000.0;	fPI=900.0
 	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X=2750000.0; fPI=833.3333333333330
 	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X = 250000.0; fPI=833.3333333333330
-	#m2Sig = 90000.0; m2Eta =	36666.66666666670; m2X =	3250000.0; fPI =	1000.0
-	m2Sig = 90000.0;	m2Eta = 196666.6666666670;	m2X = 3250000.0;	fPI = 1000.0
-
+	#m2Sig = 90000.0; m2Eta =	250000.0; m2X =	1750000.0; fPI =	1000.0
+	m2Sig = 140000.0; m2Eta = 2500.0; m2X =2750000.0; fPI = 1000.0
+	#m2Sig = 47500.0;m2Eta=	167500.0;m2X=	6250000.0
+	
 	#Large N 
 	#m2Eta = 8.19444444444445E-09 * fPI**4 * (F/N)**2
 	lN_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"largeN"))]
@@ -389,10 +390,12 @@ if __name__ == "__main__":
 
 	
 	print(populateN(*N_Linput, N, F, Polyakov=True,plot=True))
-	print(populatelN(*lN_Linput, N, F, Polyakov=True,plot=True))
+	#print(populatelN(*lN_Linput, N, F, Polyakov=True,plot=True))
 
 
 	#VAN DER WOUDE COMPARISON
 	#m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
 	
 	#print(populateN(m2,c,ls,la, N, F, Polyakov=False,plot=True))
+	
+		

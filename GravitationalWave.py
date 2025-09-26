@@ -77,8 +77,8 @@ def action(V,T,prnt=True):
 	plt.plot(sigmas,-pSig(sigmas)/V.fSIGMA,label='Sigma effective')
 	plt.plot(sigmas,-pPi(sigmas)/V.fSIGMA,label='Pi effective')
 	plt.legend()
-	plt.show()
-	'''
+	plt.show()'''
+
 
 	try:
 		#Initialise instanton in CosmoTransitions.
@@ -131,7 +131,7 @@ def plotAs(As, Ts):
 
 #Finds an interpolated function of 3D Action/T as a function of T, and Tn if it exists.
 	#NOTE Print just shows you all of the individual broken points in detail so it can be manually fixed.
-def grid(V, tc=None, prnt=True, plot=True):
+def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	#Range of T's to consider.
 	if tc==None:
 		tc = V.criticalT(prnt=plot)
@@ -148,7 +148,10 @@ def grid(V, tc=None, prnt=True, plot=True):
 	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc*(2/3), bounds=[(tc*(1/2),maxT-1)], method='Nelder-Mead')
 	if minTy.fun/V.fSigma()**4<1:
 		#Sometimes minTy is a terrible estimate so manually setting a minimum based on where we cutoff the noise monitoring. 
-		minT = max(minTy.x[0],tc*.8) 
+		if ext_minT is not None:
+			minT = max(minTy.x[0],tc*.75,ext_minT) 
+		else:
+			minT = max(minTy.x[0],tc*.75)
 	else:
 		return None, None, tc, 2
 	print(f'maximum T = {maxT}, minimum T = {minT}')
