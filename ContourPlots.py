@@ -143,7 +143,8 @@ def LOWDATAplotVersusParameters(reslN, resN):
         ax[1].scatter(xlN[reslN[:,-1]==17],ylN[reslN[:,-1]==17],color='darkred')
         ax[1].scatter(xlN[reslN[:,-1]==(3 or 5)],ylN[reslN[:,-1]==(3 or 5)],color='red')
         
-        ax[0].legend()
+        #ax[0].legend()
+        plt.tight_layout()
         plt.show()
         
 #Load up the data.
