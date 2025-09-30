@@ -105,7 +105,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 	
 	if plot:
 		#Plotting the dressed masses
-		DressedMasses.SolveMasses(V,plot=True,noisyRun=True)
+		DressedMasses.SolveMasses(V,plot=True)
 		#Plots the potential as a function of temperature
 		def plotV(V, Ts):
 			for T in Ts:
@@ -362,7 +362,7 @@ if __name__ == "__main__":
 	N=3; F=6
 
 	m2Sig = np.linspace(3E2**2, 5E2**2, num=5)
-	m2Eta = np.linspace(10**2, 0.5E3**2, num=10)
+	m2Eta = np.linspace(10**2, 1E2**2, num=10)
 	
 	fPi = np.array([1000.])
 	m2X = np.linspace(500**2, 2500**2, num=5)

@@ -16,21 +16,33 @@ plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["font.size"]= 12
 
+NUMBEROFPOINTS = 200
+EPSILON = 0.01
 
-def SolveMasses(V, plot=False, noisyRun=False):
-    #ADD T=0 HANDLING!! 
-    TRange = np.linspace(0,V.fSIGMA*1.25,num=200)
-    sigmaRange = np.linspace(0.01, V.fSIGMA*1.25,num=200)
+def SolveMasses(V, plot=False):
+    
+    #Distinct Feynman rule structures.
+    c1 = (V.c/V.F**2)*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)
+    c2 = (V.c/V.F)*V.fSIGMA**(V.F*V.detPow-4)*V.detPow*(V.F*V.detPow-2)*(V.F*V.detPow-3)
+    c3 = (V.c/V.F)*V.fSIGMA**(V.F*V.detPow-4)*V.detPow*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6)
+    ctilde = (V.F**2-1)
+
+
+    #Setting up the scan.
+    TRange = np.linspace(0,V.fSIGMA*1.25,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*1.25,num=NUMBEROFPOINTS)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
     MSqEtaData = np.zeros((len(TRange),len(sigmaRange)))
     MSqPiData = np.zeros((len(TRange),len(sigmaRange)))
     MSqXData = np.zeros((len(TRange),len(sigmaRange)))
-    RMS = np.zeros((len(TRange),len(sigmaRange))); counter=0; failPoints = []
+    RMS = np.zeros((len(TRange),len(sigmaRange))); failPoints = []
+    
+
     
     for i,T in enumerate(TRange):
         for j,sigma in enumerate(sigmaRange):
-            if T<1.:
+            if T<EPSILON:
                 MSqSigData[i,j] = V.mSq['Sig'][0](sigma)
                 MSqEtaData[i,j] = V.mSq['Eta'][0](sigma)
                 MSqPiData[i,j] = V.mSq['Pi'][0](sigma)
@@ -42,36 +54,32 @@ def SolveMasses(V, plot=False, noisyRun=False):
                 M_sigma2, M_eta2, M_X2, M_Pi2 = vars
 
                 prefactor = T**2 / (4 * np.pi**2)
-                
-                #Distinct Feynman rule structures
-                c1 = (V.c/V.F**2)*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)
-                c2 = (V.c/V.F)*V.fSIGMA**(V.F*V.detPow-4)*V.detPow*(V.F*V.detPow-2)*(V.F*V.detPow-3)
-                c3 = (V.c/V.F)*V.fSIGMA**(V.F*V.detPow-4)*V.detPow*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6)
-                ctilde = (V.F**2-1)
-
 
                 lhs = np.array([M_sigma2, M_eta2, M_X2, M_Pi2])
-                #is just exactly as in the paper
+
                 rhs = np.array([
-                    #Sigma Thermal Effective Mass
+                    #Sigma Thermal Dressed Mass.
                     V.mSq['Sig'][0](sigma) + prefactor * (
                         (3 * V.lambdas - c1) * Ib_spline(M_sigma2 / T**2)
                         + ((V.F**2 - 1) * (V.lambdas + 2 * V.lambdaa) + c2*ctilde) * Ib_spline(M_X2 / T**2)
                         + (V.lambdas + c1) * Ib_spline(M_eta2 / T**2)
                         + ((V.F**2 - 1) * V.lambdas - c2*ctilde) * Ib_spline(M_Pi2 / T**2)),
 
+                    #Eta Prime Thermal Dressed Mass.
                     V.mSq['Eta'][0](sigma) + prefactor * (
                         (3 * V.lambdas - c1) * Ib_spline(M_eta2 / T**2)
                         + ((V.F**2 - 1) * (V.lambdas + 2 * V.lambdaa) + c2*ctilde) * Ib_spline(M_Pi2 / T**2)
                         + (V.lambdas + c1) * Ib_spline(M_sigma2 / T**2)
                         + ((V.F**2 - 1) * V.lambdas - c2*ctilde) * Ib_spline(M_X2 / T**2)),
                         
+                    #X Thermal Dressed Mass.
                     V.mSq['X'][0](sigma) + prefactor * (
                         (V.lambdas + 2 * V.lambdaa + c2) * Ib_spline(M_sigma2 / T**2)
                         + ((V.F**2+1)*V.lambdas + (V.F**2-4)*V.lambdaa - c3) * Ib_spline(M_X2 / T**2)
                         + (V.lambdas - c2) * Ib_spline(M_eta2 / T**2)
                         + ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * Ib_spline(M_Pi2 / T**2)),#Van der Woude SAYS F^2-1 SANNINO F^2+1!!
 
+                    #Pi Thermal Dressed Mass.
                     V.mSq['Pi'][0](sigma) + prefactor * (
                         (V.lambdas + 2 * V.lambdaa + c2) * Ib_spline(M_eta2 / T**2)
                         + ((V.F**2+1)*V.lambdas + (V.F**2-4)*V.lambdaa - c3) * Ib_spline(M_Pi2 / T**2)
@@ -82,25 +90,20 @@ def SolveMasses(V, plot=False, noisyRun=False):
                 bagEquations.lhs = lhs
                 bagEquations.rhs = rhs
                 
-
-                return lhs - rhs  # residuals = LHS - RHS
+                #residuals = LHS - RHS
+                return lhs - rhs 
             
 
+            #Also useful to define the jacobian to assist the scipy root function.
             def jac(vars):
-                if T==0:
+                if T<EPSILON:
                     return np.array([[1.,0.,0.,0.],
                                     [0.,1.,0.,0.],
                                     [0.,0.,1.,0.],
                                     [0.,0.,0.,1.]])
                 
                 M_sigma2, M_eta2, M_X2, M_Pi2 = vars
-                prefactor = T**0 / (4 * np.pi**2)
-
-                #Distinct Feynman rule structures
-                c1 = (V.c/V.F**2)*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)
-                c2 = (V.c/V.F)*V.fSIGMA**(V.F*V.detPow-4)*V.detPow*(V.F*V.detPow-2)*(V.F*V.detPow-3)
-                c3 = (V.c/V.F)*V.fSIGMA**(V.F*V.detPow-4)*V.detPow*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6)
-                ctilde = (V.F**2-1)
+                prefactor = 1. / (4 * np.pi**2)
                 
                 res = - prefactor * np.array([
                     #dM2Sig
@@ -128,16 +131,18 @@ def SolveMasses(V, plot=False, noisyRun=False):
                 return res
                      
 
-            # Initial guess (MW adjusted initial guess as it helps improve convergence.)
+            # Initial guess using the Debye masses.
             initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
                              V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
                               V.mSq['X'][0](sigma)+ (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
                                V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
 
             
-            
+            #Scipy root function to solve the coupled equations.
             sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-08)
-            RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1) #RMS
+            
+            #Root mean squared error with a cutoff at 1.
+            RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1)
 
             if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):#arbitrary for now.
                 M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
@@ -180,13 +185,13 @@ def SolveMasses(V, plot=False, noisyRun=False):
     valuesPi = MSqPiData.ravel()
     
     
-    
+    #First interpolator (bad) getting the data into the right shape.
     _MSqSigData = interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X,Y))
     _MSqEtaData = interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X,Y))
     _MSqXData = interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X,Y))
     _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y))
     
-
+    #Very accurate interpolator to the data (which may be noisy itself so beware).
     rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2, maxit=45)
     rectiEta = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData/V.fSIGMA, ky=2,kx=2, maxit=45)
     rectiX = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData/V.fSIGMA, ky=2,kx=2, maxit=45)
@@ -222,6 +227,7 @@ def SolveMasses(V, plot=False, noisyRun=False):
                 V.tc = None #Old critical temperature is invalid. Needs setting again.
                 break
 
+
     if noisyPoint:
         failPoints=np.array(failPoints)
         #Histogram of failed points with temperature.
@@ -233,7 +239,7 @@ def SolveMasses(V, plot=False, noisyRun=False):
         #Now we have the histogram...
         exit = False; i=starti
         while not exit:
-            if hist[i]==0 and np.sum(hist[:i])/len(failPoints)>0.2: 
+            if hist[i]==0 and np.sum(hist[:i])/len(failPoints)>0.2:  #Checks to see if we've cleared 20% of failed points.
                 minT = TRange[i]
                 exit = True
             
@@ -243,37 +249,35 @@ def SolveMasses(V, plot=False, noisyRun=False):
             i+=1
             if i>=200:
                 raise Potential2.InvalidPotential("Dressed Masses not converging properly around phase transition region.")
+            
 
         #And now a minimum T which it makes sense to talk about anything relating to the PT.
         print(f'minimum T = {minT}')
         V.minT = minT
 
+        
 
-        _RMS = gaussian_filter(RMS[i:,:],sigma=.5,truncate=4) #Spread out the weights a little.
-        valuesRMS = _RMS.ravel()
-        _xs = X[i:,:].ravel()
-        _ys = Y[i:,:].ravel()
-        
-        valuesRMS[valuesRMS>1/np.sqrt(V.fSIGMA)] = 1/np.sqrt(V.fSIGMA)
-        weights = 1.-valuesRMS*np.sqrt(V.fSIGMA)+1e-4
-        
-        _RMS[_RMS>1/np.sqrt(V.fSIGMA)]=1/np.sqrt(V.fSIGMA)
-        _RMSw = 1.-_RMS*np.sqrt(V.fSIGMA)+1e-4
-        
+        rectiSig = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqSigData[i:,:]/V.fSIGMA, ky=2,kx=2, maxit=45)
+        rectiEta = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqEtaData[i:,:]/V.fSIGMA, ky=2,kx=2, maxit=45)
+        rectiX = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqXData[i:,:]/V.fSIGMA, ky=2,kx=2, maxit=45)
+        rectiPi = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqPiData[i:,:]/V.fSIGMA, ky=2,kx=2, maxit=45)
+
         dressedMasses = {
         #Sigma Mass
-            'Sig': interpolate.SmoothBivariateSpline(_xs,_ys,rectiSig.ev(_xs,_ys),w=weights, s=len(_xs)+(1/2)*np.sqrt(2*len(_xs)),kx=2,ky=2),
-            #Eta Prime Mass
-            'Eta': interpolate.SmoothBivariateSpline(_xs,_ys,rectiEta.ev(_xs,_ys),w=weights,s=len(_xs)+(1/2)*np.sqrt(2*len(_xs)),kx=2,ky=2),
-            #X Mass
-            'X': interpolate.SmoothBivariateSpline(_xs,_ys,rectiX.ev(_xs,_ys),w=weights,s=len(_xs)+(1/2)*np.sqrt(2*len(_xs)),kx=2,ky=2),
-            #Pi Mass
-            'Pi': interpolate.SmoothBivariateSpline(_xs,_ys,rectiPi.ev(_xs,_ys),w=weights,s=len(_xs)+(1/2)*np.sqrt(2*len(_xs)),kx=2,ky=2)
-            }
+        'Sig' : rectiSig,
+        #Eta Prime Mass
+        'Eta' : rectiEta,
+        #X Mass
+        'X' : rectiX,
+        #Pi Mass
+        'Pi' : rectiPi
+        }
+        V.setMSq(dressedMasses)
     
-    
+
+
     if plot:
-        #Plot 1: Data vs interpolated        
+        #Plot 1: Individual plots of data vs interpolated.       
         fig, ax = plt.subplots(2,2)
         plt.rcParams['figure.figsize'] = [12, 8]
         
@@ -297,12 +301,7 @@ def SolveMasses(V, plot=False, noisyRun=False):
             ax[0,1].plot(sigmaRange, dressedMasses['Eta'](T, sigmaRange).flatten()/V.fSIGMA, color=colours[i])
             ax[1,0].plot(sigmaRange, dressedMasses['X'](T, sigmaRange).flatten()/V.fSIGMA, color=colours[i])
             ax[1,1].plot(sigmaRange, dressedMasses['Pi'](T, sigmaRange).flatten()/V.fSIGMA, color=colours[i])
-            
-            #if noisyRun:
-            #    ax[0,0].plot(sigmaRange, _RMSw[Tindex,:], color=colours[i])
-            #    ax[0,1].plot(sigmaRange, _RMSw[Tindex,:], color=colours[i])
-            #    ax[1,0].plot(sigmaRange, _RMSw[Tindex,:], color=colours[i])
-            #    ax[1,1].plot(sigmaRange, _RMSw[Tindex,:], color=colours[i])
+        
                 
 
         ax[0,0].set_xlabel(r'$\sigma/f_\pi$',fontsize=15)
@@ -313,7 +312,7 @@ def SolveMasses(V, plot=False, noisyRun=False):
 
         fig.legend()
         
-        #Plot 2: Data grids for effective masses
+        #Plot 2: Data grids for effective masses.
         if noisyPoint: 
             plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V, minT=minT)
         else:
@@ -329,7 +328,7 @@ def SolveMasses(V, plot=False, noisyRun=False):
         plt.show()
         
 
-        #RMS ERROR AND PERTURBATIVITY
+        #Plot 3: RMS error and perturbativity.
 
         fig, ax = plt.subplots(nrows=1,ncols=2)
         
@@ -372,9 +371,8 @@ def SolveMasses(V, plot=False, noisyRun=False):
         fig.suptitle(f"$f_\pi={V.fSIGMA}$")
         plt.show()
         
-
     
-    if noisyRun:
+    if noisyPoint:
         return dressedMasses, np.array(failPoints), minT
     else:
         return dressedMasses, np.array(failPoints), None

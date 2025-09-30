@@ -195,7 +195,7 @@ def get_detPow(N, F, termType):
 
 def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     #See appendix D in draft for these formulae.
-    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>0.001:
+    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>1e-6:
         raise NonLinear(f"Lagrangian is non-linear with F={F}, N={N} and detPow={detPow}.")    
 
     m2 = (_m2Sig/2) - (_m2Eta/2)*(1/(F*detPow))*(4-F*detPow)
@@ -295,22 +295,16 @@ class Potential:
         except(InvalidPotential):
             print("Imaginary fSigma")
 
-        
-
-        
-        ##CHECK IT CONFINES
-        #QCD Beta function = blah blah blah...
-        
 
         
 		#Checking to make sure the Lagrangian is linear.
-        if abs(self.F*self.detPow-np.round(self.F*self.detPow)) > 0.0001:
+        if abs(self.F*self.detPow-np.round(self.F*self.detPow)) > 1e-6:
             raise NonLinear(f"Choice of N = {self.N}, F = {self.F}, detPow = {detPow} gives non-linear Lagrangian.")
         
+
         if Polyakov:
             ##GLUONIC FITS
             data = np.genfromtxt(f'GridDataF{self.F}N{self.N}Corrected.csv', delimiter=',', dtype=float, skip_header=1)
-            #self.linear = interpolate.LinearNDInterpolator(data[:,0:2],data[:,2])
             self.num = round(len(data)/2)
             self.T_switch = data[self.num,0]
             self.linear_small = interpolate.SmoothBivariateSpline(data[:self.num,0],data[:self.num,1],data[:self.num,2]/1e7, kx=4,ky=3)
@@ -349,6 +343,7 @@ class Potential:
 					}
         self.MSq = None
             
+
         #Temperature dependent masses:
         DressedMasses.SolveMasses(self)
         

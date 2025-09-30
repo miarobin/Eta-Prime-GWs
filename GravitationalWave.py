@@ -139,9 +139,12 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 		if tc == None:
 			#Message 1: tc fails.
 			return None, None, None, 1
+	if ext_minT:
+		if tc<ext_minT:
+			return None, None, tc, 13 #No possibility for PT.
 
 	#Maximum temperature of the action scan. CT fails if T is too close to tc.
-	maxT = tc*0.95 #Also want some OK-ish supercooling to get a GW signal.
+	maxT = tc*0.99 #Also want some OK-ish supercooling to get a GW signal.
 	
 	
 	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
@@ -238,10 +241,13 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 
 	Is = [b*integrate.trapezoid(Integrand(T), Ts) for T in Ts]
 	
-	_Is = np.array([I for I, T, A in zip(Is,Ts,As) if I<100])
-	_Ts = np.array([T for I, T, A in zip(Is,Ts,As) if I<100])
-	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<100])
+	_Is = np.array([I for I, T, A in zip(Is,Ts,As) if I<150])
+	_Ts = np.array([T for I, T, A in zip(Is,Ts,As) if I<150])
+	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<150])
 	
+	if max(Is) > 150 and max(_Is)<0.34:
+		return None, None, tc, 12 #StepSize is too small!
+
 	if len(_As)==0:
 		return None, None, tc, 9 #An action has been found, but not less than I=100. Not sure exactly what this means but it's bad news.
 	if len(_As)<=3:
