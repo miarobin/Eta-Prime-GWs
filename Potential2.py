@@ -219,7 +219,8 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         return (None,None,None,None)
     
     #From pi sigma -> pi sigma scattering
-    if np.abs(ls+2*la - c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3))>8*np.pi: #I THINK 8 BUT SHOULD CHECK
+    #  === MARTHA ===  3rd term is missing dividing by F (fixed)
+    if np.abs(ls+2*la - c/F *fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3))>8*np.pi: #I THINK 8 BUT SHOULD CHECK
         print(f'Point is Invalid as unitarity is violated in sigma sigma -> pi pi')
         return (None,None,None,None)
     if np.abs(ls+2*la + c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3))>8*np.pi:
@@ -227,6 +228,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         return (None,None,None,None)
 
     #From pi pi -> pi pi scattering
+    # === MARTHA ===  This is different from what it is written down in overleaf
     if np.abs(3*ls-c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>16*np.pi:
         print(f'Point is Invalid as unitarity is violated in X X -> X X')
         return (None,None,None,None) 
@@ -240,6 +242,9 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     dV = lambda sigma: -m2*sigma - c*detPow*sigma**(F*detPow-1)/F + ls*sigma**3/2
     ddV = lambda sigma: -m2 - c*detPow*(F*detPow-1)*sigma**(F*detPow-2)/F + 3*ls*sigma**2/2
     
+    tol = 1e-8
+    
+    #  === MARTHA === if lambda_sigma is less than zero, it makes msigma^2 less than zero, making V unbounded from below
     if int(round(F*detPow))==2:
         #CHECKS
         if ls<0:
@@ -247,19 +252,22 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
             return (None,None,None,None)
 
 
-
+     #  === MARTHA === Global minimum Vs symmetric point
     if V(fPI)>V(0):
         print(f'Point is Invalid as symmetric point is true minimum')
         return (None,None,None,None)
-    if dV(fPI)>fPI:
+    
+     #  === MARTHA === Stationary at fPI
+    if abs(dV(fPI)) > tol:
         print(dV(fPI))
-        print(f'Point is Invalid as fPI = {fPI} does not minimize potential')
+        print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
         plt.title(f'detPow={detPow}')
         plt.plot(np.arange(0,2*fPI),V(np.arange(0,2*fPI)),label='V')
         plt.plot(np.arange(0,2*fPI),dV(np.arange(0,2*fPI)),label='dV')
         plt.legend()
         plt.show()
         return (None,None,None,None)
+    #   === MARTHA === Local minimum
     if ddV(fPI)<0:
         print(f'Point is Invalid as fPI is not minimum')
         return (None,None,None,None)
@@ -301,20 +309,48 @@ class Potential:
         if abs(self.F*self.detPow-np.round(self.F*self.detPow)) > 0.0001:
             raise NonLinear(f"Choice of N = {self.N}, F = {self.F}, detPow = {detPow} gives non-linear Lagrangian.")
         
+        
+        #  === MARTHA ===  Changed to automatically set the scale
         if Polyakov:
             ##GLUONIC FITS
             data = np.genfromtxt(f'GridDataF{self.F}N{self.N}Corrected.csv', delimiter=',', dtype=float, skip_header=1)
             #self.linear = interpolate.LinearNDInterpolator(data[:,0:2],data[:,2])
-            self.num = round(len(data)/2)
-            self.T_switch = data[self.num,0]
-            self.linear_small = interpolate.SmoothBivariateSpline(data[:self.num,0],data[:self.num,1],data[:self.num,2]/1e7, kx=4,ky=3)
-            self.linear_large = interpolate.SmoothBivariateSpline(data[self.num:,0],data[self.num:,1],data[self.num:,2]/1e10, kx=4,ky=3)
-    
+            
+            # Split by temperature midpoint
+            T_mid = 0.5 * (min(data[:,0]) + max(data[:,0]))
+            low_mask = data[:,0] < T_mid
+            high_mask = data[:,0] >= T_mid
+
+            data_low = data[low_mask]
+            data_high = data[high_mask]
+
+            # Automatic normalization
+            scale_low = np.max(np.abs(data_low[:,2]))
+            scale_high = np.max(np.abs(data_high[:,2]))
+        
+            
+            #self.num = round(len(data)/2)
+            #self.T_switch = data[self.num,0]
+            #self.linear_small = interpolate.SmoothBivariateSpline(data[:self.num,0],data[:self.num,1],data[:self.num,2]/1e7, kx=4,ky=3)
+            #self.linear_large = interpolate.SmoothBivariateSpline(data[self.num:,0],data[self.num:,1],data[self.num:,2]/1e10, kx=4,ky=3)
+            self.T_switch = T_mid
+            self.linear_small = interpolate.SmoothBivariateSpline(
+                data_low[:,0], data_low[:,1], data_low[:,2]/scale_low, kx=4, ky=3
+            )
+            self.linear_large = interpolate.SmoothBivariateSpline(
+                data_high[:,0], data_high[:,1], data_high[:,2]/scale_high, kx=4, ky=3
+            )
+
+            # Save scales for later when evaluating potential
+            self.scale_low = scale_low
+            self.scale_high = scale_high
         
 
 
         #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
         #                                            and their respective DoF]}
+        
+        #  === MARTHA === The tree level masses
         if self.F*self.detPow>=2:
             self.mSq = {
                 #Sigma Mass	
@@ -338,6 +374,7 @@ class Potential:
 						+ (1/2) * self.lambdas * sig ** 2,
 						self.F**2 - 1]
 						}
+            
             
             #Temperature dependent masses:
             dressedMasses, failPoints = DressedMasses.SolveMasses(self)
