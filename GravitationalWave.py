@@ -19,8 +19,8 @@ RED = "\033[31m"   # Red color
 GREEN = "\033[32m" # Green color
 CYAN = "\033[36m" # Cyan color
 
-#Set g_star
-_g_star = 47.50; MPl = 2.435E18;  
+#Set constants
+MPl = 2.435E18;  
 
 
 #Calculate the action S3 for a given temperature T using CosmoTransitions SingleFieldInstanton class.
@@ -235,7 +235,9 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	#Previous interpolator just interpolates S_3/T but new interpolator interpolates the integrand of eq 3.10 of 2309.16755.
 	Ts = np.array(Ts); As = np.array(As)
 
-	b = 12*np.pi* (30/(_g_star*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
+
+	#ADD WALL VELOCITY!
+	b = 12*np.pi* (30/(V._g_star*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
 	Integrand = lambda T: np.array([(1/Ts[i])**2 * (As[i]/Ts[i])**(3/2) * np.exp(-As[i]/Ts[i] + 4*np.log(MPl)) * (1/T - 1/Ts[i])**3 if T<Ts[i] else 0 for i in range(len(Ts))])
 
 
@@ -451,7 +453,7 @@ def alpha(V, Tn):
 	delV = abs(V.Vtot(0,Tn) - V.Vtot(minima,Tn))
 	ddelVdT = abs(V.dVdT(0,Tn) - V.dVdT(minima,Tn))
 	#Note g_star is defined at the top of the document.
-	return (30/(_g_star*np.pi**2*Tn**4)) * (-delV + Tn*ddelVdT/4)
+	return (30/(V._g_star*np.pi**2*Tn**4)) * (-delV + Tn*ddelVdT/4)
 	
 	
 def gravitationalWave(V):
