@@ -25,13 +25,13 @@ import DressedMasses
         OUTPUTS: (detPow)
                 (float)
     
-    1. Converts physical particle masses to Lagrangian parameters in "masses_to_lagrangian_Csaki" and "masses_to_lagrangian_Normal". See appendix D of the draft.
+    1. Converts physical particle masses to Lagrangian parameters in "masses_to_lagrangian". See appendix D of the draft.
     
-        masses_to_lagrangian_Csaki/masses_to_lagrangian_Normal: 
+        masses_to_lagrangian/masses_to_lagrangian: 
         INPUTS:  (_m2Sig, _m2Eta, _m2X, _m2Pi, N, F)
                 (float, float, float, float, int, int)
         OUTPUTS: (m2, c, ls, la)
-        RAISES: NotImplemented (as each N, F case must be handcoded)
+        RAISES: NotImplemented (as each N, F case must be handcoded), NonUnitary (if unitarity is broken) and ...
         
     2. Creates a 'Potential' class, which has the following properties:
     
@@ -173,11 +173,19 @@ import DressedMasses
 #Maximum value of sigma for Martha's interpolator.
 GLUONIC_CUTOFF = 1000
 
+TOL = 1e-8
+
 class NotImplemented(Exception):
     pass
 class NonLinear(Exception):
 	pass
 class InvalidPotential(Exception):
+    pass
+class NonUnitary(Exception):
+    pass
+class BoundedFromBelow(Exception):
+    pass
+class NonTunnelling(Exception):
     pass
 
 #CONVERT between physical inputs and Lagrangian parameters
@@ -195,7 +203,7 @@ def get_detPow(N, F, termType):
 
 def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     #See appendix D in draft for these formulae.
-    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>1e-6:
+    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>TOL:
         raise NonLinear(f"Lagrangian is non-linear with F={F}, N={N} and detPow={detPow}.")    
 
     m2 = (_m2Sig/2) - (_m2Eta/2)*(1/(F*detPow))*(4-F*detPow)
@@ -203,36 +211,34 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     ls = (_m2Sig - _m2Eta*(1/(F*detPow))*(2-F*detPow))/fPI**2
     la = (_m2X - 2*_m2Eta*(1/(F*detPow)))/fPI**2
     
-    #REQUIREMENT ALL m^2>0
-    #NOTE THAT THIS MAY HAVE A ROUNDING ERROR FOR NORMAL, BUT SHOULD NEVER APPEAR IN THEORY
-    '''if detPow!= 1 and c*(detPow-1)<0:
-        print(f'Point is Invalid as m2Pi<0 at the vev')
-        return (None,None,None,None)'''
     
     #UNITARITY BOUNDS AND EFT EXPANSION
     #From sigma sigma -> sigma sigma scattering
     if np.abs(3*ls - c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>16*np.pi:
         print(f'Point is Invalid as unitarity is violated in sigma sigma -> sigma sigma')
-        return (None,None,None,None)
+        raise NonUnitary('Failed in sigma sigma -> sigma sigma scattering')
+        
     if np.abs(3*ls + c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>8*np.pi:#I think 8 but should check!
         print(f'Point is Invalid as unitarity is violated in sigma eta prime -> sigma eta prime')
-        return (None,None,None,None)
+        raise NonUnitary('Failed in sigma eta prime -> sigma eta prime scattering')
     
     #From pi sigma -> pi sigma scattering
     if np.abs(ls+2*la - c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3)/F)>8*np.pi: #I THINK 8 BUT SHOULD CHECK
         print(f'Point is Invalid as unitarity is violated in sigma sigma -> pi pi')
-        return (None,None,None,None)
+        raise NonUnitary('Failed in sigma sigma -> pi pi scattering')
+    
     if np.abs(ls+2*la + c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3)/F)>8*np.pi:
         print(f'Point is Invalid as unitarity is violated in sigma sigma -> X X')
-        return (None,None,None,None)
+        raise NonUnitary('Failed in sigma X -> sigma X scattering')
 
     #From pi pi -> pi pi scattering
     if np.abs(3*ls-c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>16*np.pi:
         print(f'Point is Invalid as unitarity is violated in X X -> X X')
-        return (None,None,None,None) 
+        raise NonUnitary('Failed in X X -> X X scattering')
+
     if np.abs(3*ls+c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>8*np.pi: #I think 8 but should check!
         print(f'Point is Invalid as unitarity is violated in X pi -> X pi')
-        return (None,None,None,None)
+        raise NonUnitary('Failed in X pi -> X pi scattering')
 
         
     #CHECKS
@@ -244,13 +250,12 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         #CHECKS
         if ls<0:
             print(f'Point is Invalid as $\lambda_\sigma$<0')
-            return (None,None,None,None)
+            raise BoundedFromBelow('Tree level sigma potential is not bounded from below')
 
 
 
-    if V(fPI)>V(0):
-        print(f'Point is Invalid as symmetric point is true minimum')
-        return (None,None,None,None)
+    if V(fPI)>V(0)+TOL:
+        raise NonTunnelling('sigma=0 minimum is true minimum')
     if dV(fPI)>fPI:
         print(dV(fPI))
         print(f'Point is Invalid as fPI = {fPI} does not minimize potential')
@@ -259,15 +264,16 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         plt.plot(np.arange(0,2*fPI),dV(np.arange(0,2*fPI)),label='dV')
         plt.legend()
         plt.show()
-        return (None,None,None,None)
+        raise NonTunnelling('sigma=0 minimum is true minimum')
 
     if ddV(fPI)<0:
         print(f'Point is Invalid as fPI is not minimum')
-        return (None,None,None,None)
+        raise NonTunnelling('Point is Invalid as fPI is not stable')
+                               
     
     if dV(4*np.pi*fPI)<0:
         print(f'Point is Invalid as potential unbounded from below by cutoff')
-        return (None,None,None,None)
+        raise BoundedFromBelow('Point is not bounded from below by cutoff')
     
     return (m2, c, ls, la)
 
@@ -287,7 +293,7 @@ class Potential:
         self.tc = None
         self.minT = None #Smallest temperature it makes sense to talk about the potential.
         
-        self._g_star = 106.75 + 2(self.N**2 -1) + 2*self.F**2 
+        self._g_star = 106.75 + 2*(self.N**2 -1) + (7/8)*(self.F*self.N*4)
         
 
         if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:
@@ -306,7 +312,7 @@ class Potential:
 
         if Polyakov:
             ##GLUONIC FITS
-            data = np.genfromtxt(f'GridDataF{self.F}N{self.N}Corrected.csv', delimiter=',', dtype=float, skip_header=1)
+            data = np.genfromtxt(f'GridDataF{int(self.F)}N{int(self.N)}Corrected.csv', delimiter=',', dtype=float, skip_header=1)
             self.num = round(len(data)/2)
             self.T_switch = data[self.num,0]
             self.linear_small = interpolate.SmoothBivariateSpline(data[:self.num,0],data[:self.num,1],data[:self.num,2]/1e7, kx=4,ky=3)

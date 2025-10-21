@@ -98,6 +98,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 		print(e)
 		return (0, 0, 0, 0, 0, 16) #Dressed mass calculation has failed for this.
 	
+	
 	#Calculating the zero temperature, tree level, analytic minimum.
 	fSig = V.fSigma()
 	print(f'fSigma={fSig}')
@@ -151,20 +152,41 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 	
 	
 	
-def populateN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
+def populateN(m2Sig, m2Eta, m2X, m2Pi, N, F, Polyakov=True,plot=False):
 	#Wrapper function for normal case.
 	detPow = Potential2.get_detPow(N,F,"Normal")
+	
+	try:
+		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,m2Pi,N,F,detPow)
+	except Potential2.NonUnitary as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 20)
+	except Potential2.NonTunnelling as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
+	except Potential2.BoundedFromBelow as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+	
 	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)
-def populatelN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
+	return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)]
+
+def populatelN(m2Sig, m2Eta, m2X, m2Pi, N, F, Polyakov=True,plot=False):
 	#Wrapper for the largeN case.
 	detPow = Potential2.get_detPow(N,F,"largeN")
+	
+	try:
+		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,m2Pi,N,F,detPow)
+	except Potential2.NonUnitary as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 20)
+	except Potential2.NonTunnelling as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
+	except Potential2.BoundedFromBelow as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)
+	return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)]
 
 
 
-def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=100):
+def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=250):
 	
 	#MAKE THE ARRAY
 	data = []
@@ -174,54 +196,34 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=100):
 				for l in fPI:
 					if k>j and k>i:
 						data.append([i,j,k,l,N,F])
-	#Arrays to store the Lagrangian inputs
-	lN_LInputs = []; N_LInputs = []
-	#Arrays to store the zero-temperature masses
-	lN_Masses = []; N_Masses = []
-	for i in range(len(data)):
-		point = data[i]
-		print(point)
-		#Calculating the Lagrangian inputs. See appendix D of draft.
-		lN_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"largeN")),N,F,"largeN"]
-		N_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"Normal")),N,F,"Normal"]
-		#Only keeping point if BOTH largeN and Normal are valid. <---- May want to change this later.
-		if (lN_Linput[0] is not None):
-			lN_LInputs.append(lN_Linput)
-			lN_Masses.append(point)
-			
-		if (N_Linput[0] is not None):
-			N_LInputs.append(N_Linput)
-			N_Masses.append(point)
-			
+						
 	#Cropping the data.
-	lN_LInputs=lN_LInputs[:crop]
-	N_LInputs=N_LInputs[:crop]
-	lN_Masses=lN_Masses[:crop]
-	N_Masses=N_Masses[:crop]
-	
+	data = np.array(data)
+	data = data[:crop]
         
 	#Multithreading with X cores.
 	with Pool(CORES) as p:
 		#Populating the result arrays.
-		resN = p.starmap(populateN, N_LInputs)
-		reslN = p.starmap(populatelN, lN_LInputs)
+		resN = p.starmap(populateN, data)
+		reslN = p.starmap(populatelN, data)
 	
+	resN=np.array(resN); reslN=np.array(reslN)
+
 	#MAKE THE FILE WRITER
 	#Column Titles
-	N_LInputs = np.array(N_LInputs); lN_LInputs = np.array(lN_LInputs); lN_Masses=np.array(lN_Masses); N_Masses=np.array(N_Masses); resN=np.array(resN); reslN=np.array(reslN)
 	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message']
 	# File path to save the CSV
 	file_path = f'Test_N{N}F{F}_Normal.csv'
 	save_arrays_to_csv(file_path, column_titles, 
-					N_Masses[:,0],N_Masses[:,1],N_Masses[:,2],N_Masses[:,3],
-					N_LInputs[:,0],N_LInputs[:,1],N_LInputs[:,2],N_LInputs[:,3],
-					resN[:,4],resN[:,0],resN[:,1],resN[:,2],resN[:,5]
+					data[:,0],data[:,1],data[:,2],data[:,3],
+					resN[:,0],resN[:,1],resN[:,2],resN[:,3],
+					resN[:,8],resN[:,4],resN[:,5],resN[:,6],resN[:,9]
 					)
 	file_path = f'Test_N{N}F{F}_largeN.csv'
 	save_arrays_to_csv(file_path, column_titles, 
-					lN_Masses[:,0],lN_Masses[:,1],lN_Masses[:,2],lN_Masses[:,3],
-					lN_LInputs[:,0],lN_LInputs[:,1],lN_LInputs[:,2],lN_LInputs[:,3],
-					reslN[:,4],reslN[:,0],reslN[:,1],reslN[:,2],reslN[:,5]
+					data[:,0],data[:,1],data[:,2],data[:,3],
+					reslN[:,0],reslN[:,1],reslN[:,2],reslN[:,3],
+					reslN[:,8],reslN[:,4],reslN[:,5],reslN[:,6],reslN[:,9]
 					)
 
 	print('Scan Finished')
@@ -362,7 +364,7 @@ if __name__ == "__main__":
 	N=3; F=6
 
 	m2Sig = np.linspace(3E2**2, 5E2**2, num=5)
-	m2Eta = np.linspace(10**2, 1E2**2, num=10)
+	m2Eta = np.linspace(10**2, 2E2**2, num=15)
 	
 	fPi = np.array([1000.])
 	m2X = np.linspace(500**2, 2500**2, num=5)

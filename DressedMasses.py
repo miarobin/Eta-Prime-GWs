@@ -77,14 +77,14 @@ def SolveMasses(V, plot=False):
                         (V.lambdas + 2 * V.lambdaa + c2) * Ib_spline(M_sigma2 / T**2)
                         + ((V.F**2+1)*V.lambdas + (V.F**2-4)*V.lambdaa - c3) * Ib_spline(M_X2 / T**2)
                         + (V.lambdas - c2) * Ib_spline(M_eta2 / T**2)
-                        + ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * Ib_spline(M_Pi2 / T**2)),#Van der Woude SAYS F^2-1 SANNINO F^2+1!!
+                        + ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * Ib_spline(M_Pi2 / T**2)),
 
                     #Pi Thermal Dressed Mass.
                     V.mSq['Pi'][0](sigma) + prefactor * (
                         (V.lambdas + 2 * V.lambdaa + c2) * Ib_spline(M_eta2 / T**2)
                         + ((V.F**2+1)*V.lambdas + (V.F**2-4)*V.lambdaa - c3) * Ib_spline(M_Pi2 / T**2)
                         + (V.lambdas - c2) * Ib_spline(M_sigma2 / T**2)
-                        + ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * Ib_spline(M_X2 / T**2))#Van der Woude SAYS F^2-1 SANNINO F^2+1!!
+                        + ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * Ib_spline(M_X2 / T**2))
                 ])
 
                 bagEquations.lhs = lhs
@@ -120,12 +120,12 @@ def SolveMasses(V, plot=False):
                     [(V.lambdas + 2 * V.lambdaa + c2) * dIb_spline(M_sigma2 / T**2),
                     (V.lambdas - c2) * dIb_spline(M_eta2 / T**2),
                     ((V.F**2+1)*V.lambdas + (V.F**2-4)*V.lambdaa - c3) * dIb_spline(M_X2 / T**2) - 1/prefactor,
-                    ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * dIb_spline(M_Pi2 / T**2)],#RATTI SAYS F^2-1 SANNINO F^2+1!!
+                    ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * dIb_spline(M_Pi2 / T**2)],#VdW SAYS F^2-1 SANNINO F^2+1!!
                     #dM2Pi
                     [(V.lambdas - c2) * dIb_spline(M_sigma2 / T**2),
                     (V.lambdas + 2 * V.lambdaa + c2) * dIb_spline(M_eta2 / T**2),
                     ((V.F**2-1)*V.lambdas + V.F**2 * V.lambdaa + c3) * dIb_spline(M_X2 / T**2),
-                    ((V.F**2+1)*V.lambdas + (V.F**2-4)*V.lambdaa - c3) * dIb_spline(M_Pi2 / T**2) - 1/prefactor]#RATTI SAYS F^2-1 SANNINO F^2+1!!
+                    ((V.F**2+1)*V.lambdas + (V.F**2-4)*V.lambdaa - c3) * dIb_spline(M_Pi2 / T**2) - 1/prefactor]#VdW SAYS F^2-1 SANNINO F^2+1!!
                     ])
 
                 return res
@@ -134,7 +134,7 @@ def SolveMasses(V, plot=False):
             # Initial guess using the Debye masses.
             initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
                              V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
-                              V.mSq['X'][0](sigma)+ (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
+                              V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
                                V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
 
             
@@ -254,8 +254,6 @@ def SolveMasses(V, plot=False):
         #And now a minimum T which it makes sense to talk about anything relating to the PT.
         print(f'minimum T = {minT}')
         V.minT = minT
-
-        
 
         rectiSig = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqSigData[i:,:]/V.fSIGMA, ky=2,kx=2, maxit=45)
         rectiEta = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqEtaData[i:,:]/V.fSIGMA, ky=2,kx=2, maxit=45)
@@ -640,7 +638,8 @@ if __name__ == "__main__":
 
    	#NORMAL (fixed c = 8.19444444444445E-09)
     N=3; F=6
-    m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X = 250000.0; fPI=833.3333333333330
+    m2Sig = 90000.0; m2Eta = 100.; m2X = 1750000.0; fPI=1000.
+    #m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X = 250000.0; fPI=833.3333333333330
     #m2Sig = 90000.0; m2Eta = 131111.11111111100; m2X = 400000.0; fPI = 1000.0 #VERY BROKEN!
     N_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"Normal"))]
 
@@ -651,7 +650,7 @@ if __name__ == "__main__":
     #fPI=88
     #V = Potential2.Potential(m2,c,ls,la,3,3,1,Polyakov=False)
 
-    grd,_ = SolveMasses(V, plot=True)
+    SolveMasses(V, plot=True)
     
 
 
