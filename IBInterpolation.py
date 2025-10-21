@@ -121,6 +121,7 @@ if __name__ == "__main__":
     plt.ylabel('IB(R2)')
     plt.legend()
     plt.grid(True)
+    plt.savefig(f"Temporal-Plots/Intervssol.pdf", dpi=300)
     plt.show()
 
     save_arrays_to_csv('IBData.csv',['R2','IB'], R2_vals, IB_vals)

@@ -298,7 +298,7 @@ class Potential:
         self.tc = None
         self.minT = None #Smallest temperature it makes sense to talk about the potential.
         
-        self._g_star = 106.75 + 2*(self.N**2 -1) + (7/8)*(self.F*self.N*4)
+        self._g_star = 106.75 + 2*(self.N**2 -1) + 2*self.F**2 
         
 
         if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:

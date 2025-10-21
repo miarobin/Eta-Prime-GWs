@@ -322,7 +322,7 @@ def SolveMasses(V, plot=False):
             for sig,T in failPoints:#Flag up failure points below 25% of the critical temperature.
                 if T<tc and abs((tc-T)/tc)<0.25:
                     plt.scatter(T/V.fSIGMA,sig/V.fSIGMA,marker='d',color='orange')
-                    
+        plt.savefig(f"Temporal-Plots.Vcritical.pdf", dpi=300)            
         plt.show()
         
 
@@ -366,7 +366,8 @@ def SolveMasses(V, plot=False):
             else:
                 ax[1].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='blueviolet')
                 
-        fig.suptitle(f"$f_\pi={V.fSIGMA}$")
+        fig.suptitle(r"$f_\pi={V.fSIGMA}$")
+        plt.savefig("Temporal-Plot/secondminimum.pdf",dpi=300)
         plt.show()
         
     
@@ -452,7 +453,7 @@ def plotMassData(massData, V, minT=None):
         ax[1,0].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         ax[1,1].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         
-    fig.suptitle(f"$f_\pi={V.fSIGMA}$")
+    fig.suptitle(r"$f_\pi={V.fSIGMA}$")
 
 
 def plotInterpMasses(massDict, V, minT=None):
@@ -533,6 +534,7 @@ def plotInterpMasses(massDict, V, minT=None):
         
 
     fig.suptitle(f"$f_\pi={V.fSIGMA}$")
+    plt.savefig(f"Temporal-Plots/locationcriticaltemp.pdf", dpi=300)
     plt.show()
         
 
@@ -632,6 +634,7 @@ if __name__ == "__main__":
     plt.ylabel('IB(R2)')
     plt.legend()
     plt.grid(True)
+    plt.savefig(f"Temporal-Plots/R2functions.pdf", dpi=300)
     plt.show()    
     
     '''Test of dressed mass code'''
@@ -655,7 +658,7 @@ if __name__ == "__main__":
 
 
 
-
+'''
 
     #ALL KIND OF REDUNDANT!
     
@@ -705,9 +708,12 @@ if __name__ == "__main__":
     
 
     fig.suptitle(f"$f_\pi={fPI}$")
+    #plt.savefig(f"")
     plt.show()
     
+'''
 
+print("finish running")
     
 
  
