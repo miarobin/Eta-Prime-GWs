@@ -384,7 +384,7 @@ class Potential:
         #Temperature dependent masses:
         DressedMasses.SolveMasses(self)
         
-       '''     
+    '''     
             
             #Temperature dependent masses:
             dressedMasses, failPoints = DressedMasses.SolveMasses(self)
@@ -452,7 +452,7 @@ class Potential:
 					self.F**2 - 1]
 					}
         
-       ''''   
+    '''   
 
         
         
