@@ -25,13 +25,13 @@ import DressedMasses
         OUTPUTS: (detPow)
                 (float)
     
-    1. Converts physical particle masses to Lagrangian parameters in "masses_to_lagrangian_Csaki" and "masses_to_lagrangian_Normal". See appendix D of the draft.
+    1. Converts physical particle masses to Lagrangian parameters in "masses_to_lagrangian". See appendix D of the draft.
     
-        masses_to_lagrangian_Csaki/masses_to_lagrangian_Normal: 
+        masses_to_lagrangian/masses_to_lagrangian: 
         INPUTS:  (_m2Sig, _m2Eta, _m2X, _m2Pi, N, F)
                 (float, float, float, float, int, int)
         OUTPUTS: (m2, c, ls, la)
-        RAISES: NotImplemented (as each N, F case must be handcoded)
+        RAISES: NotImplemented (as each N, F case must be handcoded), NonUnitary (if unitarity is broken) and ...
         
     2. Creates a 'Potential' class, which has the following properties:
     
@@ -173,11 +173,19 @@ import DressedMasses
 #Maximum value of sigma for Martha's interpolator.
 GLUONIC_CUTOFF = 1000
 
+TOL = 1e-8
+
 class NotImplemented(Exception):
     pass
 class NonLinear(Exception):
 	pass
 class InvalidPotential(Exception):
+    pass
+class NonUnitary(Exception):
+    pass
+class BoundedFromBelow(Exception):
+    pass
+class NonTunnelling(Exception):
     pass
 
 #CONVERT between physical inputs and Lagrangian parameters
@@ -195,7 +203,7 @@ def get_detPow(N, F, termType):
 
 def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     #See appendix D in draft for these formulae.
-    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>0.001:
+    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>TOL:
         raise NonLinear(f"Lagrangian is non-linear with F={F}, N={N} and detPow={detPow}.")    
 
     m2 = (_m2Sig/2) - (_m2Eta/2)*(1/(F*detPow))*(4-F*detPow)
@@ -203,38 +211,36 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     ls = (_m2Sig - _m2Eta*(1/(F*detPow))*(2-F*detPow))/fPI**2
     la = (_m2X - 2*_m2Eta*(1/(F*detPow)))/fPI**2
     
-    #REQUIREMENT ALL m^2>0
-    #NOTE THAT THIS MAY HAVE A ROUNDING ERROR FOR NORMAL, BUT SHOULD NEVER APPEAR IN THEORY
-    '''if detPow!= 1 and c*(detPow-1)<0:
-        print(f'Point is Invalid as m2Pi<0 at the vev')
-        return (None,None,None,None)'''
     
     #UNITARITY BOUNDS AND EFT EXPANSION
     #From sigma sigma -> sigma sigma scattering
     if np.abs(3*ls - c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>16*np.pi:
         print(f'Point is Invalid as unitarity is violated in sigma sigma -> sigma sigma')
-        return (None,None,None,None)
+        raise NonUnitary('Failed in sigma sigma -> sigma sigma scattering')
+        
     if np.abs(3*ls + c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>8*np.pi:#I think 8 but should check!
         print(f'Point is Invalid as unitarity is violated in sigma eta prime -> sigma eta prime')
-        return (None,None,None,None)
+        raise NonUnitary('Failed in sigma eta prime -> sigma eta prime scattering')
     
     #From pi sigma -> pi sigma scattering
     #  === MARTHA ===  3rd term is missing dividing by F (fixed)
     if np.abs(ls+2*la - c/F *fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3))>8*np.pi: #I THINK 8 BUT SHOULD CHECK
         print(f'Point is Invalid as unitarity is violated in sigma sigma -> pi pi')
-        return (None,None,None,None)
-    if np.abs(ls+2*la + c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3))>8*np.pi:
+        raise NonUnitary('Failed in sigma sigma -> pi pi scattering')
+    
+    if np.abs(ls+2*la + c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3)/F)>8*np.pi:
         print(f'Point is Invalid as unitarity is violated in sigma sigma -> X X')
-        return (None,None,None,None)
+        raise NonUnitary('Failed in sigma X -> sigma X scattering')
 
     #From pi pi -> pi pi scattering
     # === MARTHA ===  This is different from what it is written down in overleaf
     if np.abs(3*ls-c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>16*np.pi:
         print(f'Point is Invalid as unitarity is violated in X X -> X X')
-        return (None,None,None,None) 
+        raise NonUnitary('Failed in X X -> X X scattering')
+
     if np.abs(3*ls+c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>8*np.pi: #I think 8 but should check!
         print(f'Point is Invalid as unitarity is violated in X pi -> X pi')
-        return (None,None,None,None)
+        raise NonUnitary('Failed in X pi -> X pi scattering')
 
         
     #CHECKS
@@ -249,16 +255,13 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         #CHECKS
         if ls<0:
             print(f'Point is Invalid as $\lambda_\sigma$<0')
-            return (None,None,None,None)
+            raise BoundedFromBelow('Tree level sigma potential is not bounded from below')
 
 
-     #  === MARTHA === Global minimum Vs symmetric point
-    if V(fPI)>V(0):
-        print(f'Point is Invalid as symmetric point is true minimum')
-        return (None,None,None,None)
-    
-     #  === MARTHA === Stationary at fPI
-    if abs(dV(fPI)) > tol:
+
+    if V(fPI)>V(0)+TOL:
+        raise NonTunnelling('sigma=0 minimum is true minimum')
+    if dV(fPI)>fPI:
         print(dV(fPI))
         print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
         plt.title(f'detPow={detPow}')
@@ -266,11 +269,16 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         plt.plot(np.arange(0,2*fPI),dV(np.arange(0,2*fPI)),label='dV')
         plt.legend()
         plt.show()
-        return (None,None,None,None)
-    #   === MARTHA === Local minimum
+        raise NonTunnelling('sigma=0 minimum is true minimum')
+
     if ddV(fPI)<0:
         print(f'Point is Invalid as fPI is not minimum')
-        return (None,None,None,None)
+        raise NonTunnelling('Point is Invalid as fPI is not stable')
+                               
+    
+    if dV(4*np.pi*fPI)<0:
+        print(f'Point is Invalid as potential unbounded from below by cutoff')
+        raise BoundedFromBelow('Point is not bounded from below by cutoff')
     
     return (m2, c, ls, la)
 
@@ -288,6 +296,9 @@ class Potential:
         self.detPow = detPow
         self.Polyakov = Polyakov
         self.tc = None
+        self.minT = None #Smallest temperature it makes sense to talk about the potential.
+        
+        self._g_star = 106.75 + 2*(self.N**2 -1) + (7/8)*(self.F*self.N*4)
         
 
         if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:
@@ -297,16 +308,10 @@ class Potential:
         except(InvalidPotential):
             print("Imaginary fSigma")
 
-        
-
-        
-        ##CHECK IT CONFINES
-        #QCD Beta function = blah blah blah...
-        
 
         
 		#Checking to make sure the Lagrangian is linear.
-        if abs(self.F*self.detPow-np.round(self.F*self.detPow)) > 0.0001:
+        if abs(self.F*self.detPow-np.round(self.F*self.detPow)) > 1e-6:
             raise NonLinear(f"Choice of N = {self.N}, F = {self.F}, detPow = {detPow} gives non-linear Lagrangian.")
         
         
@@ -375,6 +380,11 @@ class Potential:
 						self.F**2 - 1]
 						}
             
+        self.MSq = None   
+        #Temperature dependent masses:
+        DressedMasses.SolveMasses(self)
+        
+       '''     
             
             #Temperature dependent masses:
             dressedMasses, failPoints = DressedMasses.SolveMasses(self)
@@ -415,7 +425,52 @@ class Potential:
         #Checking validity of the potential.
         if self.F*self.detPow<2:
             raise InvalidPotential("F*detPow is too small. Diverging effective masses.")
-	
+        
+
+        #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
+        #                                            and their respective DoF]}
+        self.mSq = {
+            #Sigma Mass	
+            'Sig': [lambda sig: - self.m2 
+					- self.c * self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
+					+ (3/2) * self.lambdas * sig ** 2,
+                    1.],
+            #Eta Prime Mass
+            'Eta': [lambda sig: - self.m2 
+					+ self.c *self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
+					+ (1/2) * self.lambdas * sig ** 2,
+                    1.],
+			#X Mass
+			'X': [lambda sig: - self.m2 
+					+ self.c * self.detPow / self.F * sig**(self.F*self.detPow - 2)
+					+ (1/2) * (self.lambdas+2*self.lambdaa) * sig ** 2,
+					self.F**2 - 1],
+			#Pi Mass
+			'Pi': [lambda sig: - self.m2 
+					- self.c * self.detPow / self.F * sig**(self.F*self.detPow - 2)
+					+ (1/2) * self.lambdas * sig ** 2,
+					self.F**2 - 1]
+					}
+        
+       ''''   
+
+        
+        
+    def setMSq(self, dressedMasses):
+        self.MSq = {
+            #Sigma Mass	
+            'Sig': [lambda sig, T: dressedMasses['Sig'].ev(T,sig)*self.fSIGMA,
+                    1.],
+            #Eta Prime Mass
+            'Eta': [lambda sig, T: dressedMasses['Eta'].ev(T,sig)*self.fSIGMA,
+                    1.],
+            #X Mass
+            'X': [lambda sig, T: dressedMasses['X'].ev(T,sig)*self.fSIGMA,
+                    self.F**2 - 1],
+            #Pi Mass
+            'Pi': [lambda sig, T: dressedMasses['Pi'].ev(T,sig)*self.fSIGMA,
+                    self.F**2 - 1]
+        }
 		
     def V(self,sig): 
         ##The tree level, zero temperature potential.
@@ -482,9 +537,6 @@ class Potential:
     def VGluonic(self, sig, T):
         #Wrapper function for _Vg.
         sig = np.array(sig)
-        #Avoiding any computational issues with the zero temperature limit.
-        if T==0:
-            return np.zeros(sig.shape)
         return np.reshape(self._Vg(sig, T),sig.shape)
 	
 
@@ -577,16 +629,22 @@ class Potential:
 
 
 
-    def	criticalT(self, guessIn=None,prnt=True):
+    def	criticalT(self, guessIn=None,prnt=True,minT=None):
         if self.tc is not None:
             return self.tc
         #Critical temperature is when delta V is zero (i.e. both minima at the same height) THIS HAS TO BE QUITE ACCURATE!
 		
         #Scale with which we can compare potential magnitudes (think large values of sigma, V~sigma^4)
         scale = self.fSigma()
+        
+        if minT is not None:
+            minTemp=minT
+        else:
+            minTemp = np.sqrt(scale)
+                    
 		
         #First a coarse scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-        Ts_init = np.linspace(np.sqrt(scale),scale*1.25,num=450); deltaVs_init=[]
+        Ts_init = np.linspace(minTemp,scale*1.25,num=450); deltaVs_init=[]
 
         for T in Ts_init:
             #Computing the difference between symmetric and broken minima.
@@ -770,4 +828,15 @@ def Ib(X):
 		
 if __name__ == "__main__":
     print('hello world')
+    
+    print(masses_to_lagrangian(694**2,535**2,792**2,np.sqrt(3/2)*108,3,3,1))
+    F=3
+    la = 2/F
+    ls = 0.3+la
+    c = 1000*np.sqrt(6)/2
+    m2 = 481.234**2
 
+    fpi = (c + np.sqrt(c**2 + 2*F**2*m2*la))/(F*ls)
+    
+    print(fpi)
+    
