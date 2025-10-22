@@ -162,6 +162,29 @@ def max_al(cb2,cs2,upper_limit=1):
     return sol.root
 
 
+def find_kappa (alN, cb2, cs2, psiN, vw=None):
+    if vw is None:
+        vw = find_vw (alN, cb2, cs2, psiN)
+    nu , mu = 1+1/cb2 ,1+1/cs2
+    kappa, wp, vm, vp = 0, 1, 0, 0
+    if vw < 1:
+        vm = min (np.sqrt(cb2), vw)
+        al = solve_alpha(vw, alN, cb2, cs2, psiN)
+        vp = get_vp(vm, al, cb2)
+        wp = w_from_alpha(al, alN, nu, mu)
+        sol = integrate_plasma((vw - vp)/(1 - vw * vp), vw, wp, cs2)
+        v , xi , w = sol.t, sol.y[0], sol .y[1]
+        kappa += 4*simpson((xi * v)**2*w/(1 - v**2), xi)/(vw**3*alN)
+    if vw **2 > cb2 :
+        w0 = psiN * wp**(nu / mu)*((1 - vm**2)/(1 - v**2))**(nu/2) if vw < 1 else 1+6*alN/(nu-2)
+        v0 = (vw - vm) /(1 - vw * vm) if vw < 1 else 3* alN /(nu-2+3*alN)
+        sol = integrate_plasma(v0, vw, w0, cb2, False)
+        v , xi , w = np.flip(sol.t), np.flip(sol.y[0]), np.flip(sol.y[1])
+        mask = np.append(xi[1:] > xi[: -1], True)
+        kappa += 4*simpson(((xi * v)**2*w/(1 - v **2))[mask], xi[mask]) /(vw**3*alN)
+    return kappa
+
+
 def testAgainstVdV():
     #Plotting Fig3 from 2312.09964.
     Tc=1000; cb2=1/3; cs2=1/3; vws=[]; N=30
@@ -195,7 +218,8 @@ def readAndEdit(filename, N, F, termType):
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     #Empty arrays to store the needed potential parameters from 'data'.
-    m2Sigs = []; m2Etas = []; m2Xs = []; fPIs = []; m2s = []; cs = []; lss = []; las = []; Tcs = []; Tns = []; Alphas = []; Betas = []; Vws = np.zeros(len(data))
+    m2Sigs = []; m2Etas = []; m2Xs = []; fPIs = []; m2s = []; cs = []; lss = []; las = []; Tcs = []; Tns = []; Alphas = []; Betas = []
+    VwsLN = np.zeros(len(data)); kappasLN = np.zeros(len(data))
     for item in data:
         #Zero T particle masses
         m2Sigs.append(item[0]); m2Etas.append(item[1]); m2Xs.append(item[2]); fPIs.append(item[3]); 
@@ -220,18 +244,19 @@ def readAndEdit(filename, N, F, termType):
             cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
             alN = find_alphaN(Tcs[i], Tns[i], cb2, N)
             
-            Vws[i] = find_vw(alN,cb2,cs2)
+            VwsLN[i] = find_vw(alN,cb2,cs2)
+            kappasLN[i] = find_kappa(alN, cb2, cs2, psiN, VwsLN[i])
 
             #Potential Parameters
             print(rf'$m^2$ = {m2s[i]}, $c$ = {cs[i]}, $\lambda_\sigma$ = {lss[i]}, $\lambda_a$ = {las[i]}')
             #Sound speed
             print(rf'$c_{{\text{{sound,sym}}}}^2$ = {cs2}, $c_{{\text{{sound,b}}}}^2$ = {cb2}')
             #GW Parameters
-            print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, Vw = {Vws[i]}')
+            print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, Vw = {VwsLN[i]}, kappa = {kappasLN[i]}')
             
-    save_arrays_to_csv(f'VwVdV_N{N}F{F}_{termType}.csv',
-                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'VwVdV'], 
-                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Vws)
+    save_arrays_to_csv(f'VwLN_N{N}F{F}_{termType}.csv',
+                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'VwLN', 'kappaLN'], 
+                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, VwsLN, kappasLN)
 
 if __name__ == "__main__":
     

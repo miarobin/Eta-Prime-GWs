@@ -158,6 +158,31 @@ def max_al(cb2,cs2,psiN,upper_limit=1):
     sol = root_scalar(func,bracket=((1-psiN)/3,upper_limit),rtol=1e-10,xtol=1e-10)
     return sol.root
 
+def find_kappa (alN, cb2, cs2, psiN, vw=None):
+    if vw is None:
+        vw = find_vw (alN, cb2, cs2, psiN)
+    nu , mu = 1+1/cb2 ,1+1/cs2
+    kappa, wp, vm, vp = 0, 1, 0, 0
+    if vw < 1:
+        vm = min (np.sqrt(cb2), vw)
+        al = solve_alpha(vw, alN, cb2, cs2, psiN)
+        vp = get_vp(vm, al, cb2)
+        wp = w_from_alpha(al, alN, nu, mu)
+        sol = integrate_plasma((vw - vp)/(1 - vw * vp), vw, wp, cs2)
+        v , xi , w = sol.t, sol.y[0], sol .y[1]
+        kappa += 4*simpson((xi * v)**2*w/(1 - v**2), xi)/(vw**3*alN)
+    if vw **2 > cb2 :
+        w0 = psiN * wp**(nu / mu)*((1 - vm**2)/(1 - v**2))**(nu/2) if vw < 1 else 1+6*alN/(nu-2)
+        v0 = (vw - vm) /(1 - vw * vm) if vw < 1 else 3* alN /(nu-2+3*alN)
+        sol = integrate_plasma(v0, vw, w0, cb2, False)
+        v , xi , w = np.flip(sol.t), np.flip(sol.y[0]), np.flip(sol.y[1])
+        mask = np.append(xi[1:] > xi[: -1], True)
+        kappa += 4*simpson(((xi * v)**2*w/(1 - v **2))[mask], xi[mask]) /(vw**3*alN)
+    return kappa
+
+
+
+
 def save_arrays_to_csv(file_path, column_titles, *arrays):
     # Transpose the arrays to align them by columns
     transposed_arrays = np.array(list(zip(*arrays)))
@@ -179,18 +204,20 @@ def readAndEdit(filename, N, F, termType):
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     #Empty arrays to store the needed potential parameters from 'data'.
-    m2Sigs = []; m2Etas = []; m2Xs = []; fPIs = []; m2s = []; cs = []; lss = []; las = []; Tcs = []; Tns = []; Alphas = []; Betas = []; VwsLN = []; VwsLTE = np.zeros(len(data))
+    m2Sigs = []; m2Etas = []; m2Xs = []; fPIs = []; m2s = []; cs = []; lss = []; las = []; Tcs = []; Tns = []; Alphas = []; Betas = []
+    VwsLTE = np.zeros(len(data)); kappasLTE = np.zeros(len(data))
+
     for item in data:
         #Zero T particle masses
         m2Sigs.append(item[0]); m2Etas.append(item[1]); m2Xs.append(item[2]); fPIs.append(item[3]); 
         #Potential Parameters
         m2s.append(item[4]); cs.append(item[5]); lss.append(item[6]); las.append(item[7]); Tcs.append(item[8]); 
         #GW Parameters
-        Tns.append(item[9]); Alphas.append(item[10]); Betas.append(item[11]); VwsLN.append(item[12])
+        Tns.append(item[9]); Alphas.append(item[10]); Betas.append(item[11])
 
     m2Sigs = np.array(m2Sigs); m2Etas = np.array(m2Etas); m2Xs = np.array(m2Xs); fPIs = np.array(fPIs)
     m2s = np.array(m2s); cs = np.array(cs); lss = np.array(lss); las = np.array(las); Tcs=np.array(Tcs)
-    Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas); VwsLN = np.array(VwsLN)
+    Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas)
 
     #Scanning over each row in 'data' and calculating new Vw.
     for i in range(len(m2s)):
@@ -202,20 +229,23 @@ def readAndEdit(filename, N, F, termType):
             
             cs2 = V.dVdT(0,Tns[i])/(Tns[i]*V.d2VdT2(0,Tns[i]))
             cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
-            ######alN = alpha(Tcs[i], Tns[i], cb2, N)
+            alN = alpha(Tcs[i], Tns[i], cb2, N)
             
             VwsLTE[i] = find_vw(alN,cb2,cs2)
+            kappasLTE[i] = find_kappa(alN, cb2, cs2, psiN, VwsLTE[i])
 
             #Potential Parameters
             print(rf'$m^2$ = {m2s[i]}, $c$ = {cs[i]}, $\lambda_\sigma$ = {lss[i]}, $\lambda_a$ = {las[i]}')
             #Sound speed
             print(rf'$c_{{\text{{sound,sym}}}}^2$ = {cs2}, $c_{{\text{{sound,b}}}}^2$ = {cb2}')
             #GW Parameters
-            print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, VwLN = {VwsLN[i]}, VwLTE = {VwsLTE[i]}')
+            print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, VwLTE = {VwsLTE[i]}, kappa = {kappasLTE[i]}')
             
-    save_arrays_to_csv(f'VwJor_N{N}F{F}_{termType}.csv',
-                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'VwsLN','VwsLTE'], 
-                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, VwsLN, VwsLTE)
+    save_arrays_to_csv(f'VwLTE_N{N}F{F}_{termType}.csv',
+                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'VwsLTE','kappasLTE'], 
+                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, VwsLTE, kappasLTE)
+
+
 
 if __name__ == "__main__":
     '''
@@ -239,7 +269,6 @@ if __name__ == "__main__":
     psiN = V.dVdT(minima[1],Tn)/V.dVdT(minima[0],Tn)
     print(f'Numerical Vw = {find_vw(alp,1/3,1/3,psiN)}')
     '''
-    
 
     
     readAndEdit('Test_N3F6_Normal.csv', 3, 6, False)
