@@ -298,7 +298,7 @@ class Potential:
         self.tc = None
         self.minT = None #Smallest temperature it makes sense to talk about the potential.
         
-        self._g_star = _g_starSM + 2*(self.N**2 -1) + (7/8)*(self.F*self.N*4)
+        self._g_star = lambda T: _g_starSM(T) + 2*(self.N**2 -1) + (7/8)*(self.F*self.N*4)
         
 
         if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:
@@ -735,14 +735,8 @@ def Ib(X):
 if __name__ == "__main__":
     print('hello world')
     
-    print(masses_to_lagrangian(694**2,535**2,792**2,np.sqrt(3/2)*108,3,3,1))
-    F=3
-    la = 2/F
-    ls = 0.3+la
-    c = 1000*np.sqrt(6)/2
-    m2 = 481.234**2
-
-    fpi = (c + np.sqrt(c**2 + 2*F**2*m2*la))/(F*ls)
+    plt.semilogx(Ts,g_stars)
+    plt.semilogx(Ts,_g_starSM(Ts),linestyle='dashed')
     
-    print(fpi)
+    plt.show()
     

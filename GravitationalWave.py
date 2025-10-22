@@ -237,7 +237,8 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 
 
 	#ADD WALL VELOCITY!
-	b = 12*np.pi* (30/(V._g_star*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
+	#NOTE TO FUTURE SELVES: defining SM part of g_star at the CRITICAL TEMPERATURE.
+	b = 12*np.pi* (30/(V._g_star(tc)*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
 	Integrand = lambda T: np.array([(1/Ts[i])**2 * (As[i]/Ts[i])**(3/2) * np.exp(-As[i]/Ts[i] + 4*np.log(MPl)) * (1/T - 1/Ts[i])**3 if T<Ts[i] else 0 for i in range(len(Ts))])
 
 
@@ -452,8 +453,8 @@ def alpha(V, Tn):
 	minima = V.findminima(Tn)
 	delV = abs(V.Vtot(0,Tn) - V.Vtot(minima,Tn))
 	ddelVdT = abs(V.dVdT(0,Tn) - V.dVdT(minima,Tn))
-	#Note g_star is defined at the top of the document.
-	return (30/(V._g_star*np.pi**2*Tn**4)) * (-delV + Tn*ddelVdT/4)
+	
+	return (30/(V._g_star(Tn)*np.pi**2*Tn**4)) * (-delV + Tn*ddelVdT/4)
 	
 	
 def gravitationalWave(V):
