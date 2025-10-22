@@ -172,8 +172,13 @@ import DressedMasses
 
 #Maximum value of sigma for Martha's interpolator.
 GLUONIC_CUTOFF = 1000
-
 TOL = 1e-8
+
+#Calculate g_star
+data_array = np.loadtxt('gstar_data.dat')
+Ts = data_array[:,0]
+g_stars = data_array[:,1]
+_g_starSM = interpolate.interp1d(Ts, g_stars)
 
 class NotImplemented(Exception):
     pass
@@ -293,7 +298,7 @@ class Potential:
         self.tc = None
         self.minT = None #Smallest temperature it makes sense to talk about the potential.
         
-        self._g_star = 106.75 + 2*(self.N**2 -1) + (7/8)*(self.F*self.N*4)
+        self._g_star = _g_starSM + 2*(self.N**2 -1) + (7/8)*(self.F*self.N*4)
         
 
         if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:
