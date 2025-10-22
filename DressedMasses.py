@@ -192,7 +192,7 @@ def SolveMasses(V, plot=False):
     _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y))
     
     #Very accurate interpolator to the data (which may be noisy itself so beware).
-    rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2) #, maxit=45)
+    rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2) #,maxit=45)
     rectiEta = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData/V.fSIGMA, ky=2,kx=2) #, maxit=45)
     rectiX = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData/V.fSIGMA, ky=2,kx=2) #, maxit=45)
     rectiPi = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData/V.fSIGMA, ky=2,kx=2) #, maxit=45)
@@ -302,11 +302,11 @@ def SolveMasses(V, plot=False):
         
                 
 
-        ax[0,0].set_xlabel(r'$\\sigma/f_\\pi$',fontsize=15)
-        ax[0,0].set_ylabel(r'$m_\\sigma^2$',fontsize=15)
+        ax[0,0].set_xlabel(r'$\sigma/f_\pi$',fontsize=15)
+        ax[0,0].set_ylabel(r'$m_\sigma^2$',fontsize=15)
         
-        ax[0,1].set_xlabel(r'$\\sigma/f_\\pi$',fontsize=15)
-        ax[0,1].set_ylabel(r'$m_\\eta^2$',fontsize=15)
+        ax[0,1].set_xlabel(r'$\sigma/f_\pi$',fontsize=15)
+        ax[0,1].set_ylabel(r'$m_\eta^2$',fontsize=15)
 
         fig.legend()
         
@@ -322,7 +322,7 @@ def SolveMasses(V, plot=False):
             for sig,T in failPoints:#Flag up failure points below 25% of the critical temperature.
                 if T<tc and abs((tc-T)/tc)<0.25:
                     plt.scatter(T/V.fSIGMA,sig/V.fSIGMA,marker='d',color='orange')
-        plt.savefig(f"Temporal-Plots.Vcritical.pdf", dpi=300)            
+        plt.savefig(f"Temporal-Plots/Vcritical.pdf", dpi=300)            
         plt.show()
         
 
@@ -333,8 +333,8 @@ def SolveMasses(V, plot=False):
         im0 = ax[0].contourf(X/V.fSIGMA, Y/V.fSIGMA, RMS.T)
         cbar0 = plt.colorbar(im0)
         cbar0.set_label(r'RMS $[MeV^2]$',fontsize=14)
-        ax[0].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-        ax[0].set_ylabel(r'$\sigma/f_\\pi$',fontsize=15)
+        ax[0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+        ax[0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
         
         #IR Problem:
         NgSig_eff4 = np.abs(3*V.lambdas - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)/V.F**2)**4/(24.)**4
@@ -350,8 +350,8 @@ def SolveMasses(V, plot=False):
         im1 = ax[1].contourf(X/V.fSIGMA, Y/V.fSIGMA, perturbativity.T)
         cbar1 = plt.colorbar(im1)
         cbar1.set_label(r'Effective Coupling $g_eff$',fontsize=14)
-        ax[1].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-        ax[1].set_ylabel(r'$\\sigma/f_\\pi$',fontsize=15)
+        ax[1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+        ax[1].set_ylabel(r'$sigma/f_\pi$',fontsize=15)
 
 
         
@@ -366,8 +366,8 @@ def SolveMasses(V, plot=False):
             else:
                 ax[1].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='blueviolet')
                 
-        fig.suptitle(r"$f_\\pi={V.fSIGMA}$")
-        plt.savefig("Temporal-Plot/secondminimum.pdf",dpi=300)
+        fig.suptitle(r"$f_\pi={V.fSIGMA}$")
+        plt.savefig("Temporal-Plots/secondminimum.pdf",dpi=300)
         plt.show()
         
     
@@ -398,9 +398,9 @@ def plotMassData(massData, V, minT=None):
         
     im0 = ax[0,0].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqSigData.T)
     cbar = plt.colorbar(im0)
-    cbar.set_label(r'$m_\\sigma^2$',fontsize=14)
-    ax[0,0].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-    ax[0,0].set_ylabel(r'$\\sigma/f_\\pi$',fontsize=15)
+    cbar.set_label(r'$m_\sigma^2$',fontsize=14)
+    ax[0,0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+    ax[0,0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
         
     RHS_mins=np.array([V.findminima(T) for T in TRange]) 
     _RHS_mins = RHS_mins[RHS_mins!=None]
@@ -415,8 +415,8 @@ def plotMassData(massData, V, minT=None):
     im1 = ax[0,1].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqEtaData.T)
     cbar = plt.colorbar(im1)
     cbar.set_label(r"$m_{\eta'}^2$",fontsize=14)
-    ax[0,1].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-    ax[0,1].set_ylabel(r'$\\sigma/f_\\pi$',fontsize=15)
+    ax[0,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+    ax[0,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
 
     ax[0,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
         
@@ -424,17 +424,17 @@ def plotMassData(massData, V, minT=None):
     im2 = ax[1,0].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqXData.T)
     cbar = plt.colorbar(im2)
     cbar.set_label(r'$m_X^2$',fontsize=14)
-    ax[1,0].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-    ax[1,0].set_ylabel(r'$\\sigma/f_\\pi$',fontsize=15)
+    ax[1,0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+    ax[1,0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
         
     ax[1,0].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
         
         
     im3 = ax[1,1].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqPiData.T)
     cbar = plt.colorbar(im3)
-    cbar.set_label(r'$m_\\pi^2$',fontsize=14)
-    ax[1,1].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-    ax[1,1].set_ylabel(r'$\sigma/f_\\pi$',fontsize=15)
+    cbar.set_label(r'$m_\pi^2$',fontsize=14)
+    ax[1,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+    ax[1,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
 
     ax[1,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
 
@@ -453,7 +453,7 @@ def plotMassData(massData, V, minT=None):
         ax[1,0].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         ax[1,1].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         
-    fig.suptitle(r"$f_\\pi={V.fSIGMA}$")
+    fig.suptitle(r"$f_\pi={V.fSIGMA}$")
 
 
 def plotInterpMasses(massDict, V, minT=None):
@@ -481,9 +481,9 @@ def plotInterpMasses(massDict, V, minT=None):
         
     im0 = ax[0,0].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqSigVals.T)
     cbar = plt.colorbar(im0)
-    cbar.set_label(r'$m_\\sigma^2$',fontsize=14)
-    ax[0,0].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-    ax[0,0].set_ylabel(r'$\\sigma/f_\\pi$',fontsize=15)
+    cbar.set_label(r'$m_\sigma^2$',fontsize=14)
+    ax[0,0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+    ax[0,0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
     
     #Plots location of second minimum with T.
     RHS_mins=np.array([V.findminima(T) for T in TRange]) 
@@ -498,9 +498,9 @@ def plotInterpMasses(massDict, V, minT=None):
 
     im1 = ax[0,1].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqEtaVals.T)
     cbar = plt.colorbar(im1)
-    cbar.set_label(r"$m_{\\eta'}^2$",fontsize=14)
-    ax[0,1].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-    ax[0,1].set_ylabel(r'$\\sigma/f_\\pi$',fontsize=15)
+    cbar.set_label(r"$m_{\eta'}^2$",fontsize=14)
+    ax[0,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+    ax[0,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
 
     ax[0,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
         
@@ -508,17 +508,17 @@ def plotInterpMasses(massDict, V, minT=None):
     im2 = ax[1,0].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqXVals.T)
     cbar = plt.colorbar(im2)
     cbar.set_label(r'$m_X^2$',fontsize=14)
-    ax[1,0].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-    ax[1,0].set_ylabel(r'$\\sigma/f_\\pi$',fontsize=15)
+    ax[1,0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+    ax[1,0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
         
     ax[1,0].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
         
         
     im3 = ax[1,1].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqPiVals.T)
     cbar = plt.colorbar(im3)
-    cbar.set_label(r'$m_\\pi^2$',fontsize=14)
-    ax[1,1].set_xlabel(r'Temperature $T/f_\\pi$',fontsize=15)
-    ax[1,1].set_ylabel(r'$\\sigma/f_\\pi$',fontsize=15)
+    cbar.set_label(r'$m_\pi^2$',fontsize=14)
+    ax[1,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
+    ax[1,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
 
     ax[1,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
 
@@ -533,7 +533,7 @@ def plotInterpMasses(massDict, V, minT=None):
         
         
 
-    fig.suptitle(f"$f_\\pi={V.fSIGMA}$")
+    fig.suptitle(r"$f_\pi={V.fSIGMA}$")
     plt.savefig(f"Temporal-Plots/locationcriticaltemp.pdf", dpi=300)
     plt.show()
         
@@ -677,7 +677,7 @@ if __name__ == "__main__":
     MSqXVals = np.array([[MSqX(T, sigma)[0][0] for T in Ts] for sigma in sigmas])
     MSqPiVals = np.array([[MSqPi(T, sigma)[0][0] for T in Ts] for sigma in sigmas])
 
-    #NOTE X and Y ARE SWAPPED BY CONTOURF!!
+    # X and Y ARE SWAPPED BY CONTOURF!!
 
     fig, ax = plt.subplots(2,2)
     plt.rcParams['figure.figsize'] = [12, 8]
