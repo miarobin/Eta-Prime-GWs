@@ -9,6 +9,7 @@ import os
 from mpl_toolkits.mplot3d import Axes3D
 import DressedMasses
 
+
 '''
     This file does the following:
     0. "get_detPow" takes a combination of number of flavours F, number of colours N and termType to produce the power
@@ -173,7 +174,25 @@ import DressedMasses
 #Maximum value of sigma for Martha's interpolator.
 GLUONIC_CUTOFF = 1000
 
-TOL = 1e-8
+TOL = 1e-5
+
+#Calculate g_star
+data_array = np.loadtxt('gstar_data.dat')
+TsMeV = data_array[:,0]
+g_stars = data_array[:,1]
+interp_g_starSM = interpolate.interp1d(TsMeV, g_stars)    
+ 
+ 
+ 
+def _g_starSM(TGeV):
+    TGeV = np.array(TGeV)
+    result = np.empty_like(TGeV)
+    mask = TGeV * 1000 >= max(TsMeV)
+    result[mask] = max(g_stars)
+    result[~mask] = interp_g_starSM(TGeV[~mask] * 1000)
+    return result
+ 
+ 
 
 class NotImplemented(Exception):
     pass
@@ -211,7 +230,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     ls = (_m2Sig - _m2Eta*(1/(F*detPow))*(2-F*detPow))/fPI**2
     la = (_m2X - 2*_m2Eta*(1/(F*detPow)))/fPI**2
     
-    
+    '''
     #UNITARITY BOUNDS AND EFT EXPANSION
     #From sigma sigma -> sigma sigma scattering
     if np.abs(3*ls - c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>16*np.pi:
@@ -241,7 +260,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     if np.abs(3*ls+c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>8*np.pi: #I think 8 but should check!
         print(f'Point is Invalid as unitarity is violated in X pi -> X pi')
         raise NonUnitary('Failed in X pi -> X pi scattering')
-
+    '''
         
     #CHECKS
     V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F*detPow)/F**2 + ls*sigma**4/8
@@ -254,14 +273,14 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     if int(round(F*detPow))==2:
         #CHECKS
         if ls<0:
-            print(f'Point is Invalid as $\lambda_\sigma$<0')
+            print(f'Point is Invalid as lambda_sigma<0')
             raise BoundedFromBelow('Tree level sigma potential is not bounded from below')
 
 
-
+    # stationary at fpi
     if V(fPI)>V(0)+TOL:
         raise NonTunnelling('sigma=0 minimum is true minimum')
-    if dV(fPI)>fPI:
+    if abs(dV(fPI))> TOL:
         print(dV(fPI))
         print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
         plt.title(f'detPow={detPow}')
@@ -270,12 +289,12 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         plt.legend()
         plt.show()
         raise NonTunnelling('sigma=0 minimum is true minimum')
-
+# Local minimum
     if ddV(fPI)<0:
         print(f'Point is Invalid as fPI is not minimum')
         raise NonTunnelling('Point is Invalid as fPI is not stable')
                                
-    
+#Cut off    
     if dV(4*np.pi*fPI)<0:
         print(f'Point is Invalid as potential unbounded from below by cutoff')
         raise BoundedFromBelow('Point is not bounded from below by cutoff')
@@ -285,7 +304,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
 
 #IT WOULD BE NICE TO HAVE fPI AS INPUT HERE FOR LATER SO WE DON'T HAVE TO RELY ON THE FORMULAE.
 class Potential:
-    def __init__(self, m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True):
+    def __init__(self, m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, fSIGMA=None):
 		#All the parameters needed to construct the potential.
         self.m2 = m2
         self.c = c
@@ -298,7 +317,8 @@ class Potential:
         self.tc = None
         self.minT = None #Smallest temperature it makes sense to talk about the potential.
         
-        self._g_star = 106.75 + 2*(self.N**2 -1) + 2*self.F**2 
+
+        self._g_star = lambda TGeV: _g_starSM(TGeV) + 2*(self.N**2 -1) + 7/8 * (self.F * self.N * 4) 
         
 
         if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:
@@ -308,7 +328,13 @@ class Potential:
         except(InvalidPotential):
             print("Imaginary fSigma")
 
-
+        if fSIGMA is not None:
+            self.fSIGMA = fSIGMA
+        else:
+            try:
+                self.fSIGMA = self.fSigma()
+            except(InvalidPotential):
+                print("Imaginary fSigma")
         
 		#Checking to make sure the Lagrangian is linear.
         if abs(self.F*self.detPow-np.round(self.F*self.detPow)) > 1e-6:
@@ -333,11 +359,6 @@ class Potential:
             scale_low = np.max(np.abs(data_low[:,2]))
             scale_high = np.max(np.abs(data_high[:,2]))
         
-            
-            #self.num = round(len(data)/2)
-            #self.T_switch = data[self.num,0]
-            #self.linear_small = interpolate.SmoothBivariateSpline(data[:self.num,0],data[:self.num,1],data[:self.num,2]/1e7, kx=4,ky=3)
-            #self.linear_large = interpolate.SmoothBivariateSpline(data[self.num:,0],data[self.num:,1],data[self.num:,2]/1e10, kx=4,ky=3)
             self.T_switch = T_mid
             self.linear_small = interpolate.SmoothBivariateSpline(
                 data_low[:,0], data_low[:,1], data_low[:,2]/scale_low, kx=4, ky=3
@@ -350,7 +371,6 @@ class Potential:
             self.scale_low = scale_low
             self.scale_high = scale_high
         
-
 
         #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
         #                                            and their respective DoF]}
@@ -383,79 +403,8 @@ class Potential:
         self.MSq = None   
         #Temperature dependent masses:
         DressedMasses.SolveMasses(self)
-        
-    '''     
-            
-            #Temperature dependent masses:
-            dressedMasses, failPoints = DressedMasses.SolveMasses(self)
-            self.MSq = {
-            #Sigma Mass	
-            #'Sig': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['Sig']),sig.shape),
-            'Sig': [lambda sig, T: dressedMasses['Sig'].ev(T,sig)*self.fSIGMA,
-                    1.],
-            #Eta Prime Mass
-            #'Eta': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['Eta']),sig.shape),
-            'Eta': [lambda sig, T: dressedMasses['Eta'].ev(T,sig)*self.fSIGMA,
-                    1.],
-            #X Mass
-            #'X': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['X']),sig.shape),
-            'X': [lambda sig, T: dressedMasses['X'].ev(T,sig)*self.fSIGMA,
-                    self.F**2 - 1],
-            #Pi Mass
-            #'Pi': [lambda sig, T: np.reshape(interpolate.bisplev(T,sig,dressedMasses['Pi']),sig.shape),
-            'Pi': [lambda sig, T: dressedMasses['Pi'].ev(T,sig)*self.fSIGMA,
-                    self.F**2 - 1]
-            }
-        
-        
-        #Calculating the critical temperature.
-        self.tc = self.criticalT(prnt=False)
-        if self.tc is None:
-            raise InvalidPotential("No critical temperature can be found.")
-        
-        #Checking for the convergence of dressedMasses around the critical temperature.
-        counter = 0
-        for sig,T in failPoints:
-            if abs((self.tc-T)/self.tc)<0.25:
-                counter += 1
-        
-            if counter > 10: #10 is arbitrary right now! Adjust as sensible.
-                raise InvalidPotential("Dressed Masses not converging properly around phase transition region!!")
-
-        #Checking validity of the potential.
-        if self.F*self.detPow<2:
-            raise InvalidPotential("F*detPow is too small. Diverging effective masses.")
-        
-
-        #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
-        #                                            and their respective DoF]}
-        self.mSq = {
-            #Sigma Mass	
-            'Sig': [lambda sig: - self.m2 
-					- self.c * self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
-					+ (3/2) * self.lambdas * sig ** 2,
-                    1.],
-            #Eta Prime Mass
-            'Eta': [lambda sig: - self.m2 
-					+ self.c *self.detPow / (self.F) * ( self.F*self.detPow - 1 ) * sig**(self.F*self.detPow - 2)
-					+ (1/2) * self.lambdas * sig ** 2,
-                    1.],
-			#X Mass
-			'X': [lambda sig: - self.m2 
-					+ self.c * self.detPow / self.F * sig**(self.F*self.detPow - 2)
-					+ (1/2) * (self.lambdas+2*self.lambdaa) * sig ** 2,
-					self.F**2 - 1],
-			#Pi Mass
-			'Pi': [lambda sig: - self.m2 
-					- self.c * self.detPow / self.F * sig**(self.F*self.detPow - 2)
-					+ (1/2) * self.lambdas * sig ** 2,
-					self.F**2 - 1]
-					}
-        
-    '''   
-
-        
-        
+  
+              
     def setMSq(self, dressedMasses):
         self.MSq = {
             #Sigma Mass	
@@ -523,14 +472,14 @@ class Potential:
             #Set the V_gluonic contribution to be constant after a large value of sigma where Martha's code has cut off: GLUONIC_CUTOFF.
             if sig>GLUONIC_CUTOFF:
                 #NOTE we have to rescale the interpolating function.
-                return self.linear_small.ev(T,GLUONIC_CUTOFF)*1e7 
+                return self.linear_small.ev(T,GLUONIC_CUTOFF)*self.scale_low
             else:
-                return self.linear_small.ev(T,sig)*1e7
+                return self.linear_small.ev(T,sig)*self.scale_low
         else:
             if sig>GLUONIC_CUTOFF:
-                return self.linear_large.ev(T,GLUONIC_CUTOFF)*1e10
+                return self.linear_large.ev(T,GLUONIC_CUTOFF)*self.scale_high
             else:
-                return self.linear_large.ev(T,sig)*1e10
+                return self.linear_large.ev(T,sig)*self.scale_high
             
             
 
@@ -596,11 +545,11 @@ class Potential:
         if rstart == None:
             rstart = self.fSigma()*.8
         #Roll down to minimum from the RHS:
-        res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',bounds=[(.5+rcounter*2,self.fSigma()*1.05)])
+        res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',bounds=[((.05*rcounter+0.5)*self.fSIGMA,self.fSIGMA*1.05)])
         #Now check to see if the algorithm succeeded
         if not res.success or res.x[0]<1+rcounter*2:
             #If so, try a new start closer to the axis to avoid overshooting.
-            if rcounter<=5:
+            if rcounter<=4:
                 if rstart is not None:
                     #Closer to axis by 20%.
                     return self.findminima(T,rstart=rstart*0.8,rcounter=rcounter+1)
@@ -815,16 +764,6 @@ def Ib_spline(X):
     y[x < _xbmin] = _tckb_negative(_xbmin)
     y[x > _xbmax] = 0
     return y.reshape(X.shape)
-
-
-def Ib(X):
-    #Integral solution for IB - cannot handle negative values.
-    if not isinstance(X, (int, float)):
-        raise ValueError("R2 must be a numeric value.")
-    
-    integrand = lambda x: (x**2 / np.sqrt(x**2 + X)) * (1 / (np.exp(np.sqrt(x**2 + X)) - 1))
-    result, error = quad(integrand, 0, np.inf, limit=100, epsabs=1e-10, epsrel=1e-10)
-    return result
 		
 if __name__ == "__main__":
     print('hello world')

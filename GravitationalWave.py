@@ -27,39 +27,41 @@ MPl = 2.435E18;
 def action(V,T,prnt=True):
 	#First find & classify the true & false minima
 	vT = V.findminima(T)
-	
+
 	#If rhs is none at this point it means there's only one minima. Return action as None.
 	if vT == None: 
 		print('No vT found')
 		return None
-	
+
 	true_min = min([0,vT], key=lambda phi: V.Vtot(phi,T))
 	false_min = max([0,vT], key=lambda phi: V.Vtot(phi,T))
-	
+
 	print(f'True Min = {true_min}, False Min = {false_min}, T = {T}')
-	
+
 
 	if false_min > true_min:
 		if prnt:
 			print('Attempting to calculate tunnelling in the wrong direction.')
 		return None
-	
-	#A single temperature fit to try & smooth out IR divergences:
-	NgSig_eff4 = np.abs(3*V.lambdas - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)/V.F**2)**4/(24.)**4
-	NgPi_eff4 = np.abs(3*V.lambdas-V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.detPow/V.F)*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6))**4/(V.F**2-1)**6
-		
-	pSig = lambda sig: NgSig_eff4 * (T**5/(np.abs(V.MSq['Sig'][0](sig,T))+1e-3)**(3/2))
-	pPi = lambda sig: NgPi_eff4 * (T**5/(np.abs(V.MSq['Pi'][0](sig,T))+1e-3)**(3/2))
 
-	
+	#A single temperature fit to try & smooth out IR divergences.
+
+	#4-point effective vertices.
+	gSig_eff = np.abs(3*V.lambdas - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)/V.F**2)/(24.)
+
+	gPi_eff = np.abs(V.lambdas*(V.F**2+1) + V.lambdaa*(V.F**2-4)
+				- V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.detPow/V.F)*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6))/((V.F**2-1) * (2**3))
+
+	pSig = lambda sig: gSig_eff * (T/(np.abs(V.MSq['Sig'][0](sig,T))+1e-12)**(1/2))
+	pPi = lambda sig: gPi_eff * (V.F**2-1) * (T/(np.abs(V.MSq['Pi'][0](sig,T))+1e-12)**(1/2))
+
 	sigmas = np.linspace(false_min,true_min,num=200)
-	cut = [i for i,sig in enumerate(sigmas) if pSig(sig)<4*np.pi and pPi(sig)<4*np.pi] #If far too big just throw away point completely. Maybe something like 16 pi?
+	cut = [i for i,sig in enumerate(sigmas) if pSig(sig)<16*np.pi and pPi(sig)<16*np.pi] #If far too big just throw away point completely. Maybe something like 16 pi?
 	if len(cut)<180:
 		raise BadlyIRDivergent("At least 10 % of points failed to be perturbative.")
 
-
 	_sigmas = sigmas[cut]
-		
+
 	weights=[]
 	for sig in _sigmas:
 		if pSig(sig)<1. and pPi(sig)<1.:
@@ -84,7 +86,7 @@ def action(V,T,prnt=True):
 		#Initialise instanton in CosmoTransitions.
 		Instanton = SingleFieldInstanton(true_min, false_min, weightedV, alpha=2)
 		Profile = Instanton.findProfile()
-		
+
 		#Find the action & return it.
 		action = Instanton.findAction(Profile)
 		if action < 0 and prnt:
@@ -92,10 +94,10 @@ def action(V,T,prnt=True):
 			return None
 		elif action < 0:
 			return None
-		
+
 		return action
-		
-	
+
+
 	#Sometimes CosmoTransitions throws these errors (not entirely sure why). Might be worth investigating these later. For now, just returning None.
 	except helper_functions.IntegrationError:
 		if prnt: print(RED + "CosmoTransitions has returned IntegrationError" + RESET)
@@ -111,7 +113,7 @@ def action(V,T,prnt=True):
 	except AssertionError:
 		if prnt: print(RED + "CosmoTransitions has returned PotentialError" + RESET)
 		return None
-	
+
 	
 #Plots the potential as a function of temperature
 def plotV(V, Ts):
@@ -237,7 +239,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 
 
 	#ADD WALL VELOCITY!
-	b = 12*np.pi* (30/(V._g_star*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
+	b = 12*np.pi* (30/(V._g_star(tc)*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
 	Integrand = lambda T: np.array([(1/Ts[i])**2 * (As[i]/Ts[i])**(3/2) * np.exp(-As[i]/Ts[i] + 4*np.log(MPl)) * (1/T - 1/Ts[i])**3 if T<Ts[i] else 0 for i in range(len(Ts))])
 
 
@@ -452,8 +454,7 @@ def alpha(V, Tn):
 	minima = V.findminima(Tn)
 	delV = abs(V.Vtot(0,Tn) - V.Vtot(minima,Tn))
 	ddelVdT = abs(V.dVdT(0,Tn) - V.dVdT(minima,Tn))
-	#Note g_star is defined at the top of the document.
-	return (30/(V._g_star*np.pi**2*Tn**4)) * (-delV + Tn*ddelVdT/4)
+	return (30/(V._g_star(Tn)*np.pi**2*Tn**4)) * (-delV + Tn*ddelVdT/4)
 	
 	
 def gravitationalWave(V):

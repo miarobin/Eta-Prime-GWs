@@ -646,7 +646,7 @@ if __name__ == "__main__":
     #m2Sig = 90000.0; m2Eta = 131111.11111111100; m2X = 400000.0; fPI = 1000.0 #VERY BROKEN!
     N_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"Normal"))]
 
-    V = Potential2.Potential(*N_Linput, N, F, Potential2.get_detPow(N,F,"Normal"))
+    V = Potential2.Potential(*N_Linput, N, F, Potential2.get_detPow(N,F,"Normal"), fSIGMA = fPI)
     
     ###VAN DER WOUDE COMPARISON
     #m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
@@ -713,7 +713,7 @@ if __name__ == "__main__":
     
 '''
 
-print("finish running")
+print("dressed mass finish running")
     
 
  

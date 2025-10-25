@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#SBATCH --cpus-per-task=8        # Number of CPU cores
+#SBATCH --cpus-per-task=1        # Number of CPU cores
 #SBATCH --mem=1G               # Memory limit
 # #SBATCH --mail-type=END,FAIL     # Mail events
 #SBATCH --mail-user=m.ulloacalzonzin@ufl.edu  # Where to send mail
 #SBATCH --time=01:00:00          # Max run time
-#SBATCH --output=slurm-%j.out    # Output file, %j = job ID
-#SBATCH --job-name=Dressed_Masses # Job name
+#SBATCH --output=%j.out    # Output file, %j = job ID
+#SBATCH --job-name=weight_function # Job name
 
 # Print info for debugging
 pwd
@@ -18,5 +18,4 @@ module load python/3.12
 
 
 # Run your Python script
-#python IBInterpolation.py
-python DressedMasses.py
+python InterpolatorCheck.py

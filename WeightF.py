@@ -23,8 +23,8 @@ def H_vacuum(Tv):
     
 def weight_V(T, Tv, Tp):
     Hv = H_vacuum(Tv)
-    arg = 1/Hv * np.maximum(0, 1 - T/Tp)
-    return arg
+    arg = 1/Hv * ( 1 - T/Tp)
+    return Hv * arg
 
 #Radiation to vacuum domination 2.11
 
@@ -45,7 +45,7 @@ def weight_RV(T, Tv, Tp):
     else:
         # smooth cubic interpolation between Tv and 2Tv
         alpha = (T - Tv)/(2*Tv - Tv)
-        alpha_smooth = alpha**2 * (3 - 2*alpha)  # "smoothstep" (C¹ continuous)
+        alpha_smooth = alpha**2 * (3 - 2*alpha)  # "smoothstep" 
         arg = alpha_smooth * w_rad + (1 - alpha_smooth) * w_vac
     return Hv * arg
 
@@ -81,7 +81,7 @@ plt.grid(which='both', alpha=0.3)
 plt.xlim(1e-2, 10)
 plt.ylim(1e-3, 1e1)
 plt.tight_layout()
-plt.savefig("Temporal-Plots/Ealmost.pdf", dpi=300)
+plt.savefig("Temporal-Plots/plotWeight.pdf", dpi=300)
 plt.show()
 print("save plot")
 
