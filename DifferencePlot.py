@@ -4,6 +4,8 @@ import matplotlib.colors
 from scipy import interpolate, optimize
 import csv
 from multiprocessing import Pool
+from debug_plot import debug_plot
+
 
 '''
     Identical function operation to "differencePlot" in Plotter.py. Just in a separate file allowing for more control over plotting parameters.
@@ -63,7 +65,8 @@ def plotDifference(reslN, resN):
     fig.set_xlabel(r'$\beta/H$',fontsize=13)
     fig.set_ylabel(r'$\alpha$',fontsize=15)
     plt.tight_layout()
-    plt.show()
+    debug_plot(name="debug", overwrite=False)
+    #plt.show()
     
 
     plt.savefig('DifferencePlotN3F6.pdf',bbox_inches="tight")
@@ -106,7 +109,8 @@ def plotArrows(reslN, resN):
     ax.set_xlabel(r'$\beta/H$',fontsize=13)
     ax.set_ylabel(r'$\alpha$',fontsize=15)
     plt.tight_layout()
-    plt.show()
+    debug_plot(name="debug", overwrite=False)
+    #plt.show()
     
     
 	

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --cpus-per-task=30       # Number of CPU cores
+#SBATCH --cpus-per-task=1       # Number of CPU cores
 # #SBATCH --mem=12G               # Memory limit
 #SBATCH --mem-per-cpu=2G
 # #SBATCH --mail-type=END,FAIL     # Mail events

@@ -2,9 +2,13 @@ import numpy as np
 from scipy.integrate import quad
 from scipy.optimize import root
 import time
+import matplotlib
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import csv
+from debug_plot import debug_plot
+
 
 
 # Numerical derivative using central difference
@@ -122,7 +126,8 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(True)
     plt.savefig(f"Temporal-Plots/Intervssol.pdf", dpi=300)
-    plt.show()
+    debug_plot(name="debug", overwrite=False)
+    #plt.show()
 
     save_arrays_to_csv('IBData.csv',['R2','IB'], R2_vals, IB_vals)
     save_arrays_to_csv('dIBData.csv',['R2','dIB'], R2_vals, dIB_vals)

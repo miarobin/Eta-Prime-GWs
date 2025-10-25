@@ -8,6 +8,8 @@ from itertools import takewhile
 import os
 from mpl_toolkits.mplot3d import Axes3D
 import DressedMasses
+from debug_plot import debug_plot
+
 
 
 '''
@@ -287,7 +289,8 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         plt.plot(np.arange(0,2*fPI),V(np.arange(0,2*fPI)),label='V')
         plt.plot(np.arange(0,2*fPI),dV(np.arange(0,2*fPI)),label='dV')
         plt.legend()
-        plt.show()
+        debug_plot(name="debug", overwrite=False)
+        #plt.show()
         raise NonTunnelling('sigma=0 minimum is true minimum')
 # Local minimum
     if ddV(fPI)<0:
@@ -402,7 +405,7 @@ class Potential:
             
         self.MSq = None   
         #Temperature dependent masses:
-        DressedMasses.SolveMasses(self)
+        _,self.RMS,_ = DressedMasses.SolveMasses(self)
   
               
     def setMSq(self, dressedMasses):
@@ -545,9 +548,9 @@ class Potential:
         if rstart == None:
             rstart = self.fSigma()*.8
         #Roll down to minimum from the RHS:
-        res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',bounds=[((.05*rcounter+0.5)*self.fSIGMA,self.fSIGMA*1.05)])
+        res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',bounds=[((0.5-.05*rcounter)*self.fSIGMA,self.fSIGMA*1.05)])
         #Now check to see if the algorithm succeeded
-        if not res.success or res.x[0]<1+rcounter*2:
+        if not res.success or res.x[0]<(0.5-.05*rcounter)*self.fSIGMA:
             #If so, try a new start closer to the axis to avoid overshooting.
             if rcounter<=4:
                 if rstart is not None:
@@ -560,7 +563,8 @@ class Potential:
         elif res.x[0]<10:
             return None
         else: return res.x[0]
-
+ 
+ 
     def deltaV(self,T, rstart=None, num_res=None):
         #Finds the difference between the symmetric and broken minima.
         ##POSITIVE IF SIGMA = 0 IS FALSE MINIMUM/STATIONARY POINT; NEGATIVE IF SIGMA = 0 IS TRUE MINIMUM; NONE IF ONLY ONE MINIMA AT SIGMA = 0.
@@ -575,7 +579,6 @@ class Potential:
             else:
                 return None
 			
-
 
 
     def	criticalT(self, guessIn=None,prnt=True,minT=None):
@@ -593,7 +596,7 @@ class Potential:
                     
 		
         #First a coarse scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-        Ts_init = np.linspace(minTemp,scale*1.25,num=450); deltaVs_init=[]
+        Ts_init = np.linspace(minTemp,scale*2.0,num=450); deltaVs_init=[]
 
         for T in Ts_init:
             #Computing the difference between symmetric and broken minima.
@@ -611,11 +614,14 @@ class Potential:
                 plt.scatter(self.findminima(T),T)
                 plt.scatter(0,T)
                 plt.xlabel('RHS Minima'); plt.ylabel('T')
-            plt.show()	
+            debug_plot(name="debug", overwrite=False)
+            #plt.show()	
 
         if len(deltaVs_init)<3:
             print('Coarse scan finds nothing')
             return None
+        
+        
         #JUST taking deltaV's which are greater than zero BUT decreasing. Note the reason for this is often going further can confuse python later.
         
         #NOTE TO SELF! THIS MIGHT END UP BEING A PROBLEM!
@@ -629,7 +635,8 @@ class Potential:
         if prnt:
             plt.plot(deltaVs_init[:,1], deltaVs_init[:,0])
             plt.xlabel('Delta V'); plt.ylabel('Temperature')
-            plt.show()
+            debug_plot(name="debug", overwrite=False)
+            #plt.show()
 
             print(f"Coarse grain scan finds {T_init} being closest Delta V to 0")
 
@@ -639,7 +646,8 @@ class Potential:
                 if self.findminima(T) is not None:
                     plt.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
             plt.legend()
-            plt.show()	
+            debug_plot(name="debug", overwrite=False)
+            #plt.show()	
 
 	
 		#Find delta V for a finer scan of temperatures & interpolate between them. 
@@ -660,7 +668,8 @@ class Potential:
             plt.plot(deltaVs[:,0], abs(func(deltaVs[:,0])))
             plt.plot(deltaVs[:,0], deltaVs[:,1],color = 'red')
             plt.xlabel('Temperature'); plt.ylabel('DeltaV')
-            plt.show()
+            debug_plot(name="debug", overwrite=False)
+            #plt.show()
 		
 		#Choose a 'guess' to be slightly closer to the higher temperature range.
         if guessIn==None:

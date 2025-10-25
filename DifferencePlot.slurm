@@ -6,7 +6,7 @@
 #SBATCH --mail-user=m.ulloacalzonzin@ufl.edu  # Where to send mail
 #SBATCH --time=01:00:00          # Max run time
 #SBATCH --output=%j.out    # Output file, %j = job ID
-#SBATCH --job-name=InterpolatorCheck # Job name
+#SBATCH --job-name=DifferencePlot # Job name
 
 # Print info for debugging
 pwd
@@ -18,4 +18,4 @@ module load python/3.12
 
 
 # Run your Python script
-python InterpolatorCheck.py
+python DifferencePlot.py

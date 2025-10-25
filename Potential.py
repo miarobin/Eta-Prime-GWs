@@ -6,6 +6,7 @@ from sympy import diff
 from scipy import interpolate, integrate
 from itertools import takewhile
 import os
+from debug_plot import debug_plot
 
 #FOR A LINEAR POTENTIAL (i.e. a symmetric and a non-symmetric phase)
 
@@ -248,7 +249,8 @@ class Potential:
 				plt.scatter(self.findminima(T),T)
 				plt.scatter(0,T)
 				plt.xlabel('Delta V'); plt.ylabel('T')
-			plt.show()	
+			debug_plot(name="debug", overwrite=False)
+			#plt.show()	
 		print(5)
 		#JUST taking deltaV's which are greater than zero BUT decreasing. Note the reason for this is often going further can confuse python later.
 		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
@@ -261,7 +263,8 @@ class Potential:
 		if prnt:
 			plt.plot(deltaVs_init[:,1], deltaVs_init[:,0])
 			plt.xlabel('Delta V'); plt.ylabel('Temperature')
-			plt.show()
+			debug_plot(name="debug", overwrite=False)
+			#plt.show()
 
 			print(f"Coarse grain scan finds {T_init} being closest Delta V to 0")
 
@@ -271,7 +274,8 @@ class Potential:
 				if self.findminima(T) is not None:
 					plt.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
 			plt.legend()
-			plt.show()	
+			debug_plot(name="debug", overwrite=False)
+			#plt.show()	
 		print(6)
 	
 		#Find delta V for a finer scan of temperatures & interpolate between them. 
@@ -291,7 +295,8 @@ class Potential:
 			plt.plot(deltaVs[:,0], abs(func(deltaVs[:,0])))
 			plt.plot(deltaVs[:,0], deltaVs[:,1],color = 'red')
 			plt.xlabel('Temperature'); plt.ylabel('DeltaV')
-			plt.show()
+			debug_plot(name="debug", overwrite=False)
+			#plt.show()
 		
 		#Choose a 'guess' to be slightly closer to the higher temperature range.
 		if guessIn==None:
@@ -326,7 +331,8 @@ class Potential:
 		#Plot the potential at T0:
 		if plot:
 			plt.plot(np.linspace(-2*v,0.5*v, num=100), self.Vtot(np.linspace(-3*v,0.5*v, num=100),T0))
-			plt.show()
+			debug_plot(name="debug", overwrite=False)
+   			#plt.show()
 		return T0
 			
 	
@@ -397,4 +403,5 @@ if __name__ == "__main__":
 		result.append(Jb_spline(mT))
 	print(result)
 	plt.plot(np.linspace(0.1,0.5),result)
-	plt.show()
+	debug_plot(name="debug", overwrite=False)
+	#plt.show()

@@ -1,7 +1,11 @@
 import numpy as np
 import scipy
+import matplotlib
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from scipy import interpolate
+from debug_plot import debug_plot
+
 
 
 GLUONIC_CUTOFF = 1000
@@ -103,5 +107,6 @@ for T in Ts:
     plt.title(f'T={T}')
     plt.legend()
     plt.savefig("Temporal-Plots/bunchplots.pdf")
-    plt.show()
+    debug_plot(name="debug", overwrite=False)
+    #plt.show()
         

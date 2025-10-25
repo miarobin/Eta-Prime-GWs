@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from debug_plot import debug_plot
 
 Mpl = 2.435e18  # GeV
 g = 106.75
@@ -82,7 +83,8 @@ plt.xlim(1e-2, 10)
 plt.ylim(1e-3, 1e1)
 plt.tight_layout()
 plt.savefig("Temporal-Plots/plotWeight.pdf", dpi=300)
-plt.show()
+#plt.show()
+debug_plot(name="debug", overwrite=False)
 print("save plot")
 
 
