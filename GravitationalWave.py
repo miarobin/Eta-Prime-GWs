@@ -22,6 +22,8 @@ CYAN = "\033[36m" # Cyan color
 #Set constants
 MPl = 2.435E18; 
 
+def IRProblem():
+	return None
 
 #Calculate the action S3 for a given temperature T using CosmoTransitions SingleFieldInstanton class.
 def action(V,T,prnt=True, plot=False):
