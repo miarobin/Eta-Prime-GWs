@@ -1,17 +1,27 @@
 ERROR MESSAGE MEANINGS:
 
-1 : Cannot find a critical temperature.
+BAD
+
 2 : Cannot find where \phi=0 swaps from local minima to maxima.
-3 : All tested actions are 0
 4 : Less than 3 tested actions are found. May need to decrease stepsize.
-5 : No I found greater than 0.34 therefore no transition before BBN.
 6 : ValueError trying to find I(T)=0.34.
 7 : Could not find a nucleation temperature. Somehow.
 8 : Should never happen. Somehow evaded all 'if's'
 9 : Action with super large I found. (TO DO work out what this means physically or if it's a mistake).
 10 : Very few actions with the right range of I found. May be a numerical issue.
-11 : PT failed likely due to IR divergences.
+12 : Action finding step size is too small.
 15 : Potential does not have 3 real solutions.
-16 : Potential has failed to build. Usually means dressed mass calculation is poorly convergent.
+16 : Potential has failed to build. Usually means dressed mass calculation is poorly convergent.??
 17 : S_3/T is not monotonically increasing with T, data too noisy.
 18 : Tc is ten times Tn, which is very suspicious.
+
+MEDIUM
+
+23 : Bad Dressed Mass Convergence.
+
+NORMAL
+
+0 : Phase transition was found.
+1 : Cannot find a critical temperature.
+3 : All tested actions are 0
+5 : No I found greater than 0.34 therefore no transition before BBN.

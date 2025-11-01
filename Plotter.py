@@ -71,7 +71,7 @@ CORES=8
 
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-5,V.fSigma()*1.25,num=100)/V.fSigma(),V.Vtot(np.linspace(-5,V.fSigma()*1.25,num=100),T)/V.fSigma()**4-V.Vtot(0,T)/V.fSigma()**4,label=f"T={T}")
+		plt.plot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100)/V.fSIGMA,V.Vtot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100),T)/V.fSIGMA**4-V.Vtot(0,T)/V.fSIGMA**4,label=f"T={T}")
 
 
 def save_arrays_to_csv(file_path, column_titles, *arrays):
@@ -90,23 +90,26 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
             writer.writerow(row)
 
 
-def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
-	
+def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=True, fSIGMA=None):
 	#Building the potential...
 	try:
-		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov)
+		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, fSIGMA=fSIGMA)
 	except Potential2.InvalidPotential as e:
 		print(e)
 		return (0, 0, 0, 0, 0, 16) #Dressed mass calculation has failed for this.
+	except Potential2.BadDressedMassConvergence as e:
+		return (0, 0, 0, 0, 0, 23)
+	
 	
 	#Calculating the zero temperature, tree level, analytic minimum.
-	fSig = V.fSigma()
+	fSig = V.fSIGMA
 	print(f'fSigma={fSig}')
-	print(f'm2_sig={V.mSq['Sig'][0](fSig)}, m2Eta={V.mSq['Eta'][0](fSig)}, m2X={V.mSq['X'][0](fSig)}, m2Pi={V.mSq['Pi'][0](fSig)}')
+	print(f'Masses: m2_sig={V.mSq['Sig'][0](fSig)}, m2Eta={V.mSq['Eta'][0](fSig)}, m2X={V.mSq['X'][0](fSig)}, m2Pi={V.mSq['Pi'][0](fSig)}')
+	
 	
 	if plot:
-		#Plotting the dressed masses
-		DressedMasses.SolveMasses(V,plot=True)
+		#Plotting the interpolated dressed masses
+		DressedMasses.plotInterpMasses(V)
 		#Plots the potential as a function of temperature
 		def plotV(V, Ts):
 			for T in Ts:
@@ -125,9 +128,8 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 	#	a) Nucleation temperature Tn,
 	#	b) An interpolated function grd of action over temperature w/ temperature, 
 	#	c) and an error code.
-	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot)
+	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot,ext_minT=V.minT)
 	
-
 	
 	if Tn is not None:
 		#I'm not even sure how this is an error but anyway:
@@ -139,7 +141,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 		
 		#Calculating wave parameters.
 		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
-		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}")
+		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}, message = {message}")
 		
 		#Returning wave parameters and zero-temperature particle masses.
 		return (Tn, alpha, betaH, 1, tc, message)
@@ -153,20 +155,43 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=False):
 	
 	
 	
-def populateN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
+def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False,plot=False):
 	#Wrapper function for normal case.
 	detPow = Potential2.get_detPow(N,F,"Normal")
+	
+	try:
+		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
+	except Potential2.NonUnitary as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 20)
+	except Potential2.NonTunnelling as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
+	except Potential2.BoundedFromBelow as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+
+	
 	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)
-def populatelN(mSq, c, ls, la, N, F, Polyakov=True,plot=False):
+	return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+
+def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True,plot=False):
 	#Wrapper for the largeN case.
 	detPow = Potential2.get_detPow(N,F,"largeN")
+	
+	try:
+		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
+	except Potential2.NonUnitary as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 20)
+	except Potential2.NonTunnelling as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
+	except Potential2.BoundedFromBelow as e:
+		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+
+
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	return populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot)
+	return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
 
 
 
-def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=50):
+def parallelScanComp(m2Sig,m2Eta,m2X, fPI, N, F, crop=250):
 	
 	#MAKE THE ARRAY
 	data = []
@@ -176,221 +201,101 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=50):
 				for l in fPI:
 					if k>j and k>i:
 						data.append([i,j,k,l,N,F])
-	#Arrays to store the Lagrangian inputs
-	lN_LInputs = []; N_LInputs = []
-	#Arrays to store the zero-temperature masses
-	lN_Masses = []; N_Masses = []
-	for i in range(len(data)):
-		point = data[i]
-		print(point)
-		#Calculating the Lagrangian inputs. See appendix D of draft.
-		lN_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"largeN")),N,F,"largeN"]
-		N_Linput = [*Potential2.masses_to_lagrangian(*point,Potential2.get_detPow(N,F,"Normal")),N,F,"Normal"]
-		#Only keeping point if BOTH largeN and Normal are valid. <---- May want to change this later.
-		if (lN_Linput[0] is not None) and (N_Linput[0] is not None): 
-			lN_LInputs.append(lN_Linput)
-			N_LInputs.append(N_Linput)
-			lN_Masses.append(point)
-			N_Masses.append(point)
-			
-	#Cropping the data if requested.
-	lN_LInputs=lN_LInputs[:crop]
-	N_LInputs=N_LInputs[:crop]
-	lN_Masses=lN_Masses[:crop]
-	N_Masses=N_Masses[:crop]
-	
+						
+	#Cropping the data.
+	data = np.array(data)
+	data = data[:crop]
         
 	#Multithreading with X cores.
 	with Pool(CORES) as p:
 		#Populating the result arrays.
-		resN = p.starmap(populateN, N_LInputs)
-		reslN = p.starmap(populatelN, lN_LInputs)
+		resN = p.starmap(populateN, data)
+		reslN = p.starmap(populatelN, data)
 	
+	resN=np.array(resN); reslN=np.array(reslN)
+
 	#MAKE THE FILE WRITER
 	#Column Titles
-	N_LInputs = np.array(N_LInputs); lN_LInputs = np.array(lN_LInputs); lN_Masses=np.array(lN_Masses); N_Masses=np.array(N_Masses); resN=np.array(resN); reslN=np.array(reslN)
 	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message']
 	# File path to save the CSV
 	file_path = f'Test_N{N}F{F}_Normal.csv'
 	save_arrays_to_csv(file_path, column_titles, 
-					N_Masses[:,0],N_Masses[:,1],N_Masses[:,2],N_Masses[:,3],
-					N_LInputs[:,0],N_LInputs[:,1],N_LInputs[:,2],N_LInputs[:,3],
-					resN[:,4],resN[:,0],resN[:,1],resN[:,5]
+					data[:,0],data[:,1],data[:,2],data[:,3],
+					resN[:,0],resN[:,1],resN[:,2],resN[:,3],
+					resN[:,8],resN[:,4],resN[:,5],resN[:,6],resN[:,9]
 					)
 	file_path = f'Test_N{N}F{F}_largeN.csv'
 	save_arrays_to_csv(file_path, column_titles, 
-					lN_Masses[:,0],lN_Masses[:,1],lN_Masses[:,2],lN_Masses[:,3],
-					lN_LInputs[:,0],lN_LInputs[:,1],lN_LInputs[:,2],lN_LInputs[:,3],
-					reslN[:,4],reslN[:,0],reslN[:,1],reslN[:,5]
+					data[:,0],data[:,1],data[:,2],data[:,3],
+					reslN[:,0],reslN[:,1],reslN[:,2],reslN[:,3],
+					reslN[:,8],reslN[:,4],reslN[:,5],reslN[:,6],reslN[:,9]
 					)
 
 	print('Scan Finished')
+
+def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop=None):
 	
-def getTcs_ChiralPT(m2Sig,m2Eta,m2X, fPI, N, F, num=30):
-	#Gets critical temperature associated with ChiralPT NOT incl. confinement.
+	#MAKE THE ARRAY
 	data = []
 	for i in m2Sig:
 		for j in m2Eta:
 			for k in m2X:
 				for l in fPI:
-					if k>i:
-						data.append([i,j,k,l,N,F])
-
-	data=np.array(data)
-	data = data[np.array(np.random.randint(0, high=len(data),size=num))]
+					data.append([i,j,k,l,N,F])
+						
+	#Cropping the data.
+	data = np.array(data)
+	if crop and crop<len(data):
+		data = data[:crop]
+        
+	#Multithreading with X cores.
+	with Pool(CORES) as p:
+		#Populating the result arrays.
+		resN = p.starmap(populateN, data)
 	
-	reslN = []; resNormal = []
-	for point in data:
-		try:
-			#largeN Term
-			detPowlN = Potential2.get_detPow(N,F,"largeN")
-			VlN=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,detPowlN),N,F,detPowlN,Polyakov=False)
-			if num==1:
-				tclN = VlN.criticalT(prnt=True)
-			else:
-				tclN = VlN.criticalT(prnt=False)
-			
-			if tclN is not None:
-				orderlN = 1 if VlN.findminima(tclN) else 2
-			else: orderlN = 0
-			
-			reslN.append([*Potential2.masses_to_lagrangian(*point, detPowlN)]+ [tclN, orderlN])
-			print(f'Large N: Tc={tclN}, fPi={point[3]}, Transition Order = {orderlN}')
-			
-		except (Potential2.InvalidPotential):
-			print('Large N term threw invalid potential.')
-			tclN=None
-			detPowlN = Potential2.get_detPow(N,F,"largeN")
-			reslN.append([*Potential2.masses_to_lagrangian(*point, detPowlN)]+ [None, 0])
-				
-		try:
-			#Normal Term
-			detPowN=Potential2.get_detPow(N,F,"Normal")
-			VNormal=Potential2.Potential(*Potential2.masses_to_lagrangian(*point,detPowN),N,F,detPowN,Polyakov=False)
-			if num==1:
-				tcNormal = VNormal.criticalT(prnt=True)
-			else:
-				tcNormal = VNormal.criticalT(prnt=False)
-			
-			if tcNormal is not None:
-				orderNormal = 1 if VNormal.findminima(tcNormal) else 2
-			else: orderNormal = 0
-			
+	resN=np.array(resN)
 
-			resNormal.append([*Potential2.masses_to_lagrangian(*point,detPowN)] + [tcNormal, orderNormal])
-			print(f'Normal: Tc={tcNormal}, fPi={point[3]}, Transition Order = {orderNormal}')
-					
-		except (Potential2.InvalidPotential):
-			print('Normal term threw invalid potential.')
-			tcNormal=None
-			detPowN=Potential2.get_detPow(N,F,"Normal")
-			resNormal.append([*Potential2.masses_to_lagrangian(*point,detPowN)] + [None, 0])
+	#MAKE THE FILE WRITER
+	#Column Titles
+	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message']
+	# File path to save the CSV
+	file_path = f'Test_N{N}F{F}_Normal.csv'
+	save_arrays_to_csv(file_path, column_titles, 
+					data[:,0],data[:,1],data[:,2],data[:,3],
+					resN[:,0],resN[:,1],resN[:,2],resN[:,3],
+					resN[:,8],resN[:,4],resN[:,5],resN[:,6],resN[:,9]
+					)
 
-		plot=False
-		if num==1: plot=True
-		if tclN != None and plot:
-			reslN=np.array(reslN)
-			print(f'\nPotential Parameters for Large N Case:')
-			print(f'Input Params')
-			print(f'm2Sig={data[0,0]},m2Eta={data[0,1]},m2X={data[0,2]},fPI={data[0,3]}')
-			print(f'Lagrangian Params')
-			print(f"m2={reslN[0,0]},ls={reslN[0,2]},la={reslN[0,3]},c={reslN[0,1]}")
-			print(f'PT Params')
-			print(f'Tc={reslN[0,4]}, Transition Order {reslN[0,5]}')
-			print(f"Tree Level Formula fPI={VlN.fSigma()}\n")
-			
-			
-			sigmas = np.linspace(-5,VlN.fSigma()*1.25,num=100)
-			plt.plot(sigmas,VlN.mSq['Sig'][0](sigmas,0),label='Sig')
-			plt.plot(sigmas,VlN.mSq['Eta'][0](sigmas,0),label='Eta')
-			plt.plot(sigmas,VlN.mSq['X'][0](sigmas,0),label='X')
-			plt.plot(sigmas,VlN.mSq['Pi'][0](sigmas,0),label='Pi')
-
-			plt.title('largeN at T=0 GeV')
-			plt.legend()
-			plt.show()
-			
-
-		if tcNormal != None and plot:
-			resNormal=np.array(resNormal)
-			
-			print(f'\nPotential Parameters for Normal Case')
-			print(f'Input Params')
-			print(f'm2Sig={data[0,0]},m2Eta={data[0,1]},m2X={data[0,2]},fPI={data[0,3]}')
-			print(f'Lagrangian Params')
-			print(f'm2={resNormal[0,0]},ls={resNormal[0,2]},la={resNormal[0,3]},c={resNormal[0,1]}')
-			print(f'PT Params')
-			print(f'Tc={resNormal[0,4]},Transition Order {resNormal[0,5]}')
-			print(f"Tree Level Formula fPI={VNormal.fSigma()}")
-	
-			fPiN=VNormal.fSigma()
-			xs = np.linspace(-5,fPiN*1.5,num=100)
-			plt.plot(xs, VNormal.V(xs)/fPiN**4-VNormal.V(0)/fPiN**4, label='$V_{{Tree}}$')
-			plt.plot(xs, VNormal.V1_cutoff(xs)/fPiN**4-VNormal.V1_cutoff(0)/fPiN**4, label='$V_{{1-loop}}$')
-			plt.plot(xs, VNormal.V1T(xs,tcNormal)/fPiN**4-VNormal.V1T(0,tcNormal)/fPiN**4, label='$V_{{thermal}}$ at $T=T_c$')
-			plt.plot(xs, VNormal.Vtot(xs,0)/fPiN**4-VNormal.Vtot(0,0)/fPiN**4, label='$V_{{tot}}$ at $T=0$')
-			plt.plot(xs, VNormal.Vtot(xs,tcNormal)/fPiN**4-VNormal.Vtot(0,tcNormal)/fPiN**4, label='$V_{{tot}}$ at $T=T_c$')
-			plt.plot(xs,VNormal.VIm(xs,tcNormal)/fPiN**4-VNormal.VIm(0,tcNormal)/fPiN**4,label=f"Imaginary at $T=T_c$")
-			plt.title('Normal')
-			plt.xlabel(rf'$\sigma$')
-			plt.ylabel(rf'$V/f_{{pi}}^4$')
-			plt.legend()
-			plt.show()
-			
-			sigmas = np.linspace(-5,VNormal.fSigma()*10,num=100)
-			plt.plot(sigmas,VNormal.mSq['Sig'][0](sigmas,0),label='Sig')
-			plt.plot(sigmas,VNormal.mSq['Eta'][0](sigmas,0),label='Eta')
-			plt.plot(sigmas,VNormal.mSq['X'][0](sigmas,0),label='X')
-			plt.plot(sigmas,VNormal.mSq['Pi'][0](sigmas,0),label='Pi')
-			plt.title('Normal at T=0 GeV')
-			plt.legend()
-			plt.show()
-
-
-	if num>1:
-		data = np.array(data); reslN = np.array(reslN); resNormal = np.array(resNormal)
-		save_arrays_to_csv(f'TclN_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a', 'Tc','TransitionOrder'], 
-						data[:,0], data[:,1], data[:,2], data[:,3], reslN[:,0], reslN[:,1], reslN[:,2], reslN[:,3], reslN[:,4], reslN[:,5])
-
-		save_arrays_to_csv(f'TcNormal_N{N}F{F}.csv', ['m2Sig','m2Eta','m2X','fPI','m2', 'c', 'lambda_sigma', 'lambda_a','Tc','TransitionOrder'], 
-						data[:,0], data[:,1], data[:,2], data[:,3], resNormal[:,0], resNormal[:,1], resNormal[:,2], resNormal[:,3], resNormal[:,4], resNormal[:,5])
+	print('Scan Finished')
 
 	
 if __name__ == "__main__":
 
 	###LARGE SCAN###
-	N=3; F=6
+	N=3; F=4
 
-	m2Sig = np.linspace(3E2**2, 4E3**2/np.sqrt(2), num=5)
-	m2Eta = np.linspace(1E2**2, 0.5E3**2, num=10)
+	m2Sig = np.linspace(1., 25., num=3)*1000**2
+	m2Eta = np.linspace(1., 25., num=3)*1000**2
+	m2X = np.linspace(1., 25., num=3)*1000**2
 	
-	fPi = np.linspace(800, 1000, num=3)
-	m2X = np.linspace(500**2, 2000**2, num=5)
+	fPi = np.linspace(0.5, 1.5,num=3)*1000*np.sqrt(F/2)
 	
-	#parallelScan(m2Sig,m2Eta,m2X,fPi,3,6)
 	
+	#parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
+	
+	
+	###SINGLE POINT FROM SCAN###
+	POINT_OF_INTEREST=79
 
-	###SINGLE POINT###
-
-	#m2Sig = 90000.0; m2X = 250000.0; fPI = 900.0
-	m2Sig = 90000.0; m2Eta = 63333.333333333300; m2X=	250000.0;	fPI=1000.0
-	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X=2750000.0; fPI=833.3333333333330
-	#m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X = 250000.0; fPI=833.3333333333330
-
-	#Large N 
-	#m2Eta = 8.19444444444445E-09 * fPI**4 * (F/N)**2
-	lN_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"largeN"))]
+	filename = 'Test_N3F4_Normal.csv'; delimiter = ','
+	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 	
-	#NORMAL (fixed c = 8.19444444444445E-09)
-	#m2Eta = 131111.11111111100
-	N_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"Normal"))]
-
+	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,_ = data[POINT_OF_INTEREST-2]
 	
-	print(populateN(*N_Linput, N, F, Polyakov=True,plot=True))
-	print(populatelN(*lN_Linput, N, F, Polyakov=True,plot=True))
+	print(f'm2Sig = {m2Sig}, m2Eta = {m2Eta}, m2X = {m2X}, fPI = {fPI}')
+	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
+	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 	
-
-	#VAN DER WOUDE COMPARISON
-	#m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
+	populateN(m2Sig, m2Eta, m2X, fPI, 3, 3, Polyakov=False, plot=True)
 	
-	#print(populateN(m2,c,ls,la, N, F, Polyakov=False,plot=True))
+		
