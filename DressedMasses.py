@@ -20,9 +20,10 @@ plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["font.size"]= 12
 
 NUMBEROFPOINTS = 200
-EPSILON = 0.01
+EPSILON = 0.1
 
-def SolveMasses(V, plot=False):
+
+def SolveMasses(V, plot=False ):
     plot=Potential2.PLOT_RUN
     
     #Distinct Feynman rule structures.
@@ -33,8 +34,8 @@ def SolveMasses(V, plot=False):
 
 
     #Setting up the scan.
-    TRange = np.linspace(0,V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
+    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
     MSqEtaData = np.zeros((len(TRange),len(sigmaRange)))
@@ -196,10 +197,10 @@ def SolveMasses(V, plot=False):
     _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y))
     
     #Very accurate interpolator to the data (which may be noisy itself so beware).
-    rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2) #,maxit=45)
-    rectiEta = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData/V.fSIGMA, ky=2,kx=2) #, maxit=45)
-    rectiX = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData/V.fSIGMA, ky=2,kx=2) #, maxit=45)
-    rectiPi = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData/V.fSIGMA, ky=2,kx=2) #, maxit=45)
+    rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2)
+    rectiEta = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData/V.fSIGMA, ky=2,kx=2)
+    rectiX = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqXData/V.fSIGMA, ky=2,kx=2)
+    rectiPi = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqPiData/V.fSIGMA, ky=2,kx=2)
     
     #FIRST TRY WITH AN EXACT SPLINE FIT.
     dressedMasses = {
@@ -215,7 +216,7 @@ def SolveMasses(V, plot=False):
     V.setMSq(dressedMasses)
 
     #CHECK IF RUN IS NOISY OR NOT.
-    tc = V.criticalT(prnt=False)
+    tc = V.criticalT(prnt=plot)
 
     #Checking for the convergence of dressedMasses around the critical temperature.
     counter = 0; noisyPoint=False
@@ -259,10 +260,10 @@ def SolveMasses(V, plot=False):
         print(f'minimum T = {minT}')
         V.minT = minT
 
-        rectiSig = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqSigData[i:,:]/V.fSIGMA, ky=2,kx=2) #, maxit=45)
-        rectiEta = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqEtaData[i:,:]/V.fSIGMA, ky=2,kx=2) #, maxit=45)
-        rectiX = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqXData[i:,:]/V.fSIGMA, ky=2,kx=2) #, maxit=45)
-        rectiPi = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqPiData[i:,:]/V.fSIGMA, ky=2,kx=2) #, maxit=45)
+        rectiSig = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqSigData[i:,:]/V.fSIGMA, ky=2,kx=2)
+        rectiEta = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqEtaData[i:,:]/V.fSIGMA, ky=2,kx=2)
+        rectiX = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqXData[i:,:]/V.fSIGMA, ky=2,kx=2)
+        rectiPi = interpolate.RectBivariateSpline(TRange[i:], sigmaRange, _MSqPiData[i:,:]/V.fSIGMA, ky=2,kx=2)
 
         dressedMasses = {
         #Sigma Mass
@@ -283,7 +284,7 @@ def SolveMasses(V, plot=False):
         fig, ax = plt.subplots(2,2)
         plt.rcParams['figure.figsize'] = [12, 8]
         
-        TIndexSample = [0, 15, 24, 25, 26, 35, 50]
+        TIndexSample = [0, 50, 100, 150, 165, 180, 195]
         colours = ["red", "firebrick", "darkorange", "crimson", "rosybrown", "gold", "palevioletred"]
         
         for i,Tindex in enumerate(TIndexSample):
@@ -320,7 +321,6 @@ def SolveMasses(V, plot=False):
         else:
             plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V)
         
-
         if tc is not None:
             for sig,T in failPoints:#Flag up failure points below 25% of the critical temperature.
                 if T<tc and abs((tc-T)/tc)<0.25:
@@ -341,17 +341,20 @@ def SolveMasses(V, plot=False):
         ax[0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
         
         #IR Problem:
-        NgSig_eff4 = np.abs(3*V.lambdas - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)/V.F**2)**4/(24.)**4
-        NgPi_eff4 = np.abs(3*V.lambdas-V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.detPow/V.F)*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6))**4/(V.F**2-1)**6
-            
-        pSig = lambda sig,T: NgSig_eff4 * (T**5/(np.abs(V.MSq['Sig'][0](sig,T))+1e-3)**(3/2))
-        pPi = lambda sig,T: NgPi_eff4 * (T**5/(np.abs(V.MSq['Pi'][0](sig,T))+1e-3)**(3/2))
-
-        perturbativity = pSig(X,Y) + pPi(X,Y)
-        perturbativity[pSig(X,Y)>4*np.pi]=4*np.pi
-        perturbativity[pPi(X,Y)>4*np.pi]=4*np.pi
+	#4-point effective vertices.
+        gSig_eff = np.abs(3*V.lambdas - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)/V.F**2)/(24.)
         
-        im1 = ax[1].contourf(X/V.fSIGMA, Y/V.fSIGMA, perturbativity.T)
+        gPi_eff = np.abs(V.lambdas*(V.F**2+1) + V.lambdaa*(V.F**2-4)
+                    - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.detPow/V.F)*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6))/((V.F**2-1) * (2**2))
+        
+        pSig = lambda sig,T: gSig_eff * (T/(np.abs(V.MSq['Sig'][0](sig,T))+1e-12)**(1/2))
+        pPi = lambda sig,T: gPi_eff * (V.F**2-1) * (T/(np.abs(V.MSq['Pi'][0](sig,T))+1e-12)**(1/2))
+
+        perturbativity = pSig(Y,X) + pPi(Y,X)
+        perturbativity[pSig(Y,X)>16*np.pi]=16*np.pi
+        perturbativity[pPi(Y,X)>16*np.pi]=16*np.pi
+        
+        im1 = ax[1].contourf(X/V.fSIGMA, Y/V.fSIGMA, perturbativity)
         cbar1 = plt.colorbar(im1)
         cbar1.set_label(r'Effective Coupling $g_eff$',fontsize=14)
         ax[1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
@@ -379,13 +382,14 @@ def SolveMasses(V, plot=False):
         return dressedMasses, RMS, minT
     else:
         return dressedMasses, RMS, None
+    
 
 
 
 
 def plotMassData(massData, V, minT=None):
     #Make sure these are exactly the same ranges as above!
-    TRange = np.linspace(0,V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
+    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
     sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData=massData[0]
@@ -393,6 +397,8 @@ def plotMassData(massData, V, minT=None):
     MSqXData=massData[2]
     MSqPiData=massData[3]
 
+
+    tc=V.criticalT(prnt=False,minT=minT)
     
     X,Y=np.meshgrid(TRange,sigmaRange)
         
@@ -442,8 +448,6 @@ def plotMassData(massData, V, minT=None):
     ax[1,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
 
     #Plot a vertical line at the critical temperature.
-    print(minT)
-    tc=V.criticalT(prnt=False,minT=minT)
     if tc is not None:
         ax[0,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[0,1].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
@@ -461,8 +465,8 @@ def plotMassData(massData, V, minT=None):
 
 def plotInterpMasses(V):
     #Make sure these are exactly the same ranges as above!
-    TRange = np.linspace(0,V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
+    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     massDict = V.MSq
     RMS = V.RMS
@@ -691,7 +695,7 @@ if __name__ == "__main__":
     #m2Sig = 90000.0; m2Eta = 131111.11111111100; m2X = 400000.0; fPI = 1000.0 #VERY BROKEN!
     N_Linput = [*Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,Potential2.get_detPow(N,F,"Normal"))]
 
-    V = Potential2.Potential(*N_Linput, N, F, Potential2.get_detPow(N,F,"Normal"), fSIGMA = fPI)
+    V = Potential2.Potential(*N_Linput, N, F, Potential2.get_detPow(N,F,"Normal"), fSIGMA=fPI)
     
     ###VAN DER WOUDE COMPARISON
     #m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
@@ -703,64 +707,3 @@ if __name__ == "__main__":
 
 
 
-'''
-
-    #ALL KIND OF REDUNDANT!
-    
-    Ts = np.linspace(0,V.fSigma()*1.25)
-    sigmas = np.linspace(0,V.fSigma()*1.25,num=100)
-    X,Y=np.meshgrid(Ts,sigmas)
-    
-    #Mass functions:
-    MSqSig = lambda sig, T: grd['Sig'](T,sig)
-    MSqEta = lambda sig, T: grd['Eta'](T,sig)
-    MSqX = lambda sig, T: grd['X'](T,sig)
-    MSqPi = lambda sig, T: grd['Pi'](T,sig)
-    
-    MSqSigVals = np.array([[MSqSig(T, sigma)[0][0] for T in Ts] for sigma in sigmas])
-    MSqEtaVals = np.array([[MSqEta(T, sigma)[0][0] for T in Ts] for sigma in sigmas])
-    MSqXVals = np.array([[MSqX(T, sigma)[0][0] for T in Ts] for sigma in sigmas])
-    MSqPiVals = np.array([[MSqPi(T, sigma)[0][0] for T in Ts] for sigma in sigmas])
-
-    # X and Y ARE SWAPPED BY CONTOURF!!
-
-    fig, ax = plt.subplots(2,2)
-    plt.rcParams['figure.figsize'] = [12, 8]
-    
-    im0 = ax[0,0].pcolormesh(X/fPI, Y/fPI, MSqSigVals.T)
-    cbar = plt.colorbar(im0)
-    cbar.set_label(r'Sigma Effective Mass Squared $[MeV^2]$',fontsize=14)
-    ax[0,0].set_ylabel(r'Temperature $T/f_\pi$',fontsize=15)
-    ax[0,0].set_xlabel(r'$\\sigma/f_\pi$',fontsize=15)
-    
-    im1 = ax[0,1].contourf(X/fPI, Y/fPI, MSqEtaVals.T)
-    cbar = plt.colorbar(im1)
-    cbar.set_label(r'Eta Effective Mass Squared $[MeV^2]$',fontsize=14)
-    ax[0,1].set_ylabel(r'Temperature $T/f_\pi$',fontsize=15)
-    ax[0,1].set_xlabel(r'$\\sigma/f_\pi$',fontsize=15)
-    
-    im2 = ax[1,0].contourf(X/fPI, Y/fPI, MSqXVals.T)
-    cbar = plt.colorbar(im2)
-    cbar.set_label(r'X Effective Mass Squared $[MeV^2]$',fontsize=14)
-    ax[1,0].set_ylabel(r'Temperature $T/f_\pi$',fontsize=15)
-    ax[1,0].set_xlabel(r'$\\sigma/f_\pi$',fontsize=15)
-    
-    im3 = ax[1,1].contourf(X/fPI, Y/fPI, MSqPiVals.T)
-    cbar = plt.colorbar(im3)
-    cbar.set_label(r'Pi Effective Mass Squared $[MeV^2]$',fontsize=14)
-    ax[1,1].set_ylabel(r'Temperature $T/f_\pi$',fontsize=15)
-    ax[1,1].set_xlabel(r'$\sigma/f_\pi$',fontsize=15)
-    
-
-    fig.suptitle(f"$f_\pi={fPI}$")
-    #plt.savefig(f"")
-    plt.show()
-    
-'''
-
-print("dressed mass finish running")
-    
-
- 
-
-    

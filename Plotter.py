@@ -82,7 +82,7 @@ print(f"Using {CORES} cores")
 
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-5,V.fSigma()*1.25,num=100)/V.fSigma(),V.Vtot(np.linspace(-5,V.fSigma()*1.25,num=100),T)/V.fSigma()**4-V.Vtot(0,T)/V.fSigma()**4,label=f"T={T}")
+		plt.plot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100)/V.fSIGMA,V.Vtot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100),T)/V.fSIGMA**4-V.Vtot(0,T)/V.fSIGMA**4,label=f"T={T}")
 
 
 def save_arrays_to_csv(file_path, column_titles, *arrays):
@@ -101,6 +101,7 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
             writer.writerow(row)
 
 
+
 def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, fSIGMA=None):
 	#Building the potential...
 	try:
@@ -109,11 +110,11 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, 
 		print(e)
 		return (0, 0, 0, 0, 0, 16) #Dressed mass calculation has failed for this.
 	except Potential2.BadDressedMassConvergence as e:
-		return (0,0,0,0, 0, 23)
-
-
+		return (0, 0, 0, 0, 0, 23)
+	
+	
 	#Calculating the zero temperature, tree level, analytic minimum.
-	fSig = V.fSigma()
+	fSig = V.fSIGMA
 	print(f'fSigma={fSig}')
 	print(f'Masses: m2_sig={V.mSq['Sig'][0](fSig)}, m2Eta={V.mSq['Eta'][0](fSig)}, m2X={V.mSq['X'][0](fSig)}, m2Pi={V.mSq['Pi'][0](fSig)}')
 
@@ -154,7 +155,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, 
 		
 		#Calculating wave parameters.
 		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
-		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}")
+		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}, message = {message}")
 		
 		#Returning wave parameters and zero-temperature particle masses.
 		return (Tn, alpha, betaH, 1, tc, message)
@@ -186,6 +187,8 @@ def populate_safe(*args, **kwargs):
     
     return safe_results
 
+	
+	
 	
 def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False,plot=False):
 	#Wrapper function for normal case.
@@ -220,6 +223,7 @@ def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True,plot=False):
 		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
 	
 
+
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
 	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
@@ -241,7 +245,6 @@ def populate_safe_wrapperlN(*args):
     except Exception as e:
         print(f"populatelN failed: {e}")
         return [0.0]*10
-
 
 
 def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=3):
@@ -267,7 +270,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=3):
 		resN = p.starmap(populate_safe_wrapperN, data)
 		reslN = p.starmap(populate_safe_wrapperlN, data)
 
-	
+
 	resN=np.array(resN); reslN=np.array(reslN)
 
 	#MAKE THE FILE WRITER
@@ -297,7 +300,6 @@ def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop= None ):
 		for j in m2Eta:
 			for k in m2X:
 				for l in fPI:
-					#if k>j and k>i:
 					data.append([i,j,k,l,N,F])
 						
 	#Cropping the data.
@@ -354,3 +356,4 @@ if __name__ == "__main__":
 	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
 	populateN(m2Sig, m2Eta, m2X, fPI, 3, 3, Polyakov=False, plot=True)
+

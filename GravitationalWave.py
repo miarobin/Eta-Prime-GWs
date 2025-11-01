@@ -62,7 +62,7 @@ def action(V,T,prnt=True, plot=False):
     cut = [i for i,sig in enumerate(sigmas) if pSig(sig)<16*np.pi and pPi(sig)<16*np.pi] #If far too big just throw away point completely. Maybe something like 16 pi?
  
     #Straight up how much of the tunneling potential fails to be perturbative.
-    NPFrac = len(cut)/numTests
+    PFrac = len(cut)/numTests
  
     if IRDivSmoothing:
     #A single temperature fit to try & smooth out IR divergences.
@@ -114,7 +114,7 @@ def action(V,T,prnt=True, plot=False):
         elif action < 0:
             return None, 0
             
-        return action, NPFrac
+        return action, PFrac
             
     
     #Sometimes CosmoTransitions throws these errors (not entirely sure why). Might be worth investigating these later. For now, just returning None.
@@ -137,7 +137,7 @@ def action(V,T,prnt=True, plot=False):
 #Plots the potential as a function of temperature
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-5,V.fSigma()*1.25,num=100),V.Vtot(np.linspace(-5,V.fSigma()*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+		plt.plot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100),V.Vtot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100),T)-V.Vtot(0,T),label=f"T={T}")
 	plt.legend()
 	debug_plot(name="debug", overwrite=False)
 	#plt.show()
@@ -173,7 +173,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	
 	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
 	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc*(2/3), bounds=[(tc*(1/2),maxT-1)], method='Nelder-Mead')
-	if minTy.fun/V.fSigma()**4<1:
+	if minTy.fun/V.fSIGMA**4<1:
 		#Sometimes minTy is a terrible estimate so manually setting a minimum based on where we cutoff the noise monitoring. 
 		if ext_minT is not None:
 			minT = max(minTy.x[0],tc*.75,ext_minT) 
@@ -184,7 +184,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	print(f'maximum T = {maxT}, minimum T = {minT}')
 	
 	if plot:
-		xs=np.linspace(-5,V.fSigma()*1.25,num=100)
+		xs=np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100)
 		plt.plot(xs,V.V(xs)-V.V(0),label=f"Vtree")
 
 		plt.plot(xs,V.Vtot(xs,minT)-V.Vtot(0,minT),linestyle='-.',label=f"T={round(minT,4)} Vtot")
@@ -208,7 +208,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	Test_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for i,_T in enumerate(Test_Ts):
 		try:
-			if plot and i%5==0:
+			if plot and i%15==0:
 				#Plots perturbativity every 5th evaluation.
 				rollingAction,_ = action(V, _T,plot=True)
 			else:
@@ -227,7 +227,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+50); As = []; Ts = []; IRDiv = False
 	for i,_T in enumerate(Test_Ts):
 		try:
-			if plot and i%5==0:
+			if plot and i%15==0:
 				#Plots perturbativity every 5th evaluation.
 				rollingAction,_ = action(V, _T,plot=True)
 			else:
@@ -360,7 +360,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 			print(res)
 			
 			tn=res.x[0]
-			xs=np.linspace(-5,V.fSigma()*1.25,num=100)
+			xs=np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100)
 			plt.plot(xs,V.V(xs)-V.V(0),label=f"Vtree")
 
 			plt.plot(xs,V.Vtot(xs,tc)-V.Vtot(0,tc),linestyle='-.',label=f"T={round(tc,4)} Tc Vtot")
