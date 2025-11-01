@@ -1,4 +1,6 @@
 import cosmoTransitions.finiteT as fT
+import matplotlib
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize, misc, signal
@@ -194,21 +196,34 @@ class Potential:
 		else:
 			return self.findminima(0,rstart=5000)
 
-	def findminima(self,T,rstart=None,rcounter=1, tolerance=None):
-		#For a linear sigma model. Returns the minimum away from the origin.
+	def findminima(self,T,rstart=None,rcounter=1):
+		#For a linear sigma model. Returns the minimum away from the origin if it exists, else None.
 		if rstart == None:
-			rstart = self.fSigmaApprox()
-		#Roll down to rhs minimum:
-		res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',tol=tolerance)
-		#Check the two rolls didn't find the same minimum:
-		if not res.success or res.x[0]<0.5:
-			#If so, try a new start
+			rstart = self.fSigma()*.8
+		
+		#Debugging statements
+		#print(f'rstart={rstart}, T={T}, fPI={self.fSIGMA}')
+		#print(f'min bound = {(0.5-.05*rcounter)*self.fSIGMA}, max bound = {self.fSIGMA*1.05}')
+		
+		#Roll down to minimum from the RHS:
+		res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',bounds=[((0.5-.05*rcounter)*self.fSIGMA,self.fSIGMA*1.05)])
+		#print(res)
+		#print(f'closeness criteria = {abs(res.x[0]-(0.5-.05*rcounter)*self.fSIGMA)/self.fSIGMA}, rcounter={rcounter}')
+
+		#Now check to see if the algorithm succeeded
+		if not res.success or abs(res.x[0]-(0.5-.05*rcounter)*self.fSIGMA)/self.fSIGMA < TOL or res.x[0]<(0.5-.05*rcounter)*self.fSIGMA:
+			#If so, try a new start closer to the axis to avoid overshooting.
 			if rcounter<=4:
 				if rstart is not None:
-					return self.findminima(T,rstart=rstart*0.9,rcounter=rcounter+1)
+					#Closer to axis by 20%.
+					return self.findminima(T,rstart=rstart*0.8,rcounter=rcounter+1)
 				else: return None
 			else:
+				print(f'T={T}')
 				return None
+		#Check the roll didn't find the zero sigma minimum.
+		elif res.x[0]<10:
+			return None
 		else: return res.x[0]
 
 	def deltaV(self,T, rstart=None, num_res=False):
@@ -226,65 +241,88 @@ class Potential:
 
 
 
-	def	criticalT(self, guessIn=None,prnt=True):
+	def criticalT(self, guessIn=None,prnt=True,minT=None):
+		prnt=True
+		if self.tc is not None:
+			return self.tc
 		#Critical temperature is when delta V is zero (i.e. both minima at the same height) THIS HAS TO BE QUITE ACCURATE!
 		
-		#Scale with which we can compare potential magnitudes (think large values of phi, V~phi^4)
-		scale = self.findminima(0)
-		print(3)
+		#Scale with which we can compare potential magnitudes (think large values of sigma, V~sigma^4)
+		scale = self.fSigma()
+		
+		if minT is not None:
+			minTemp=minT
+		else:
+			minTemp = np.sqrt(scale)
+					
 		
 		#First a coarse scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-		Ts_init = np.linspace(50,10000,num=400); deltaVs_init=[]
+		Ts_init = np.linspace(minTemp,scale*2.,num=450); deltaVs_init=[]
 
 		for T in Ts_init:
+			#Computing the difference between symmetric and broken minima.
 			deltaV =  self.deltaV(T, rstart=scale)
+			
+			#Basically starting from low T and increasing until deltaV flips signs (i.e. minima have crossed eachother)
 			if deltaV is not None and deltaV > 0: deltaVs_init.append([T,deltaV])
-			if deltaV < 0: break
-		print(deltaVs_init)
+			if deltaV is not None and deltaV < 0: break
+
 		deltaVs_init=np.array(deltaVs_init)
 		
-		print(4)
+
 		if prnt:
+			ax=plt.subplot()
 			for T,_ in deltaVs_init:
-				plt.scatter(self.findminima(T),T)
-				plt.scatter(0,T)
-				plt.xlabel('Delta V'); plt.ylabel('T')
-			debug_plot(name="debug", overwrite=False)
-			#plt.show()	
-		print(5)
+				ax.scatter(self.findminima(T),T)
+				ax.scatter(0,T)
+			ax.set_xlabel('RHS Minima'); plt.ylabel('T')
+			plt.show()  
+
+		if len(deltaVs_init)<3:
+			print('Coarse scan finds nothing')
+			return None
 		#JUST taking deltaV's which are greater than zero BUT decreasing. Note the reason for this is often going further can confuse python later.
-		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
-		k = list(takewhile(lambda x: deltaVs_init[x,1]>0, range(len(deltaVs_init[:,0]))))
+		
+		#NOTE TO SELF! THIS MIGHT END UP BEING A PROBLEM!
+		#j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
+		#k = list(takewhile(lambda x: deltaVs_init[x,1]>0, range(len(deltaVs_init[:,0]))))
+		#print(k)
 
-
-		deltaVs_init=deltaVs_init[k]
+		#deltaVs_init=deltaVs_init[k]
 		#This is the temperature with deltaV closest to zero:
 		T_init = deltaVs_init[-1,0]
 		if prnt:
-			plt.plot(deltaVs_init[:,1], deltaVs_init[:,0])
-			plt.xlabel('Delta V'); plt.ylabel('Temperature')
-			debug_plot(name="debug", overwrite=False)
-			#plt.show()
+			ax=plt.subplot()
+			ax.plot(deltaVs_init[:,1], deltaVs_init[:,0])
+			ax.set_xlabel('Delta V'); ax.set_ylabel('Temperature')
+			plt.show()
 
 			print(f"Coarse grain scan finds {T_init} being closest Delta V to 0")
 
 		def plotV(V, Ts):
+			ax=plt.subplot()
 			for T in Ts:
-				plt.plot(np.linspace(-10,self.fSigmaApprox()*.5,num=100),V.Vtot(np.linspace(-10,self.fSigmaApprox()*.5,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+				ax.plot(np.linspace(-10,self.fSIGMA*1.25,num=100),V.Vtot(np.linspace(-10,self.fSIGMA*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
 				if self.findminima(T) is not None:
-					plt.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
+					ax.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
 			plt.legend()
-			debug_plot(name="debug", overwrite=False)
-			#plt.show()	
-		print(6)
-	
-		#Find delta V for a finer scan of temperatures & interpolate between them. 
-		Ts = np.linspace(T_init*0.95,T_init*1.35,num=100); deltaVs = np.array([[T, self.deltaV(T, rstart=scale)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
+			plt.show()  
+		def splitV(V, T):
+			ax=plt.subplot()
+			ax.plot(np.linspace(-10,self.fSIGMA*1.25,num=1000),V.Vtot(np.linspace(-10,self.fSIGMA*1.25,num=1000),T)-V.Vtot(0,T),label=f"VTot at Tc={T}")
+			ax.plot(np.linspace(-10,self.fSIGMA*1.25,num=1000),V.V1T(np.linspace(-10,self.fSIGMA*1.25,num=1000),T)-V.V1T(0,T),label=f"V1T at Tc={T}")
+			ax.plot(np.linspace(-10,self.fSIGMA*1.25,num=1000),V.V(np.linspace(-10,self.fSIGMA*1.25,num=1000))-V.V(0),label=f"Vtree")
+			plt.legend()
+			plt.show()  
+			
+		#Find delta V for a finer scan of temperatures & interpolate between them.
+		Ts = np.linspace(T_init-10,T_init+10,num=150); deltaVs = np.array([[T, self.deltaV(T, rstart=scale*.8)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
 		
 		if len(deltaVs)<5: return None #Catches if there are just not enough points to make a verdict.
 		
 		
 		#Ensure each deltaV is decreasing with increasing T.
+		deltaVs = deltaVs[deltaVs[:, 1]!=None]
 		j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs[:,1])))[x]<=0, range(len(deltaVs[:,0])))); deltaVs=deltaVs[j]
 		
 		if len(deltaVs)<5: return None #Again, catching where there are too few points.
@@ -292,34 +330,46 @@ class Potential:
 		#Interpolates across the deltaVs. This will allow us to minimise later.
 		func = interpolate.UnivariateSpline(deltaVs[:,0], deltaVs[:,1], k=3, s=0)
 		if prnt:
-			plt.plot(deltaVs[:,0], abs(func(deltaVs[:,0])))
-			plt.plot(deltaVs[:,0], deltaVs[:,1],color = 'red')
-			plt.xlabel('Temperature'); plt.ylabel('DeltaV')
-			debug_plot(name="debug", overwrite=False)
-			#plt.show()
+			ax=plt.subplot()
+			ax.plot(deltaVs[:,0], abs(func(deltaVs[:,0])))
+			ax.plot(deltaVs[:,0], deltaVs[:,1],color = 'red')
+			ax.set_xlabel('Temperature'); ax.set_ylabel('DeltaV')
+			plt.show()
 		
 		#Choose a 'guess' to be slightly closer to the higher temperature range.
 		if guessIn==None:
 			guess = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.85 + min(deltaVs[:,0])
 		else: guess = guessIn
-		
+
 		#Minimise interpolated function (two methods in case one fails)
 		res = optimize.minimize(lambda x: abs(func(x)), guess,bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0])*1.2)])
 		if prnt: print(res)
-		if res.success and res.fun<scale**3:
+		if res.success and res.fun<scale**3 and self.findminima(res.x[0]) is not None:
 			
-			if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])			
+			if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])    
+			if prnt: splitV(self, res.x[0])     
 
+			self.tc = res.x[0]
+			return res.x[0]
+		elif res.fun<scale**2 and self.findminima(res.x[0]) is not None:
+			if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])    
+			if prnt: splitV(self, res.x[0])         
+
+			self.tc = res.x[0]
 			return res.x[0]
 		else:
-			res = optimize.minimize(lambda x: abs(func(x)), guess,method='Nelder-Mead',bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0]))])
+			#Sometimes this will just hit the boundary & fail.
+			res = optimize.minimize(lambda x: abs(func(x)), guess,method='Nelder-Mead',bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0])*1.1)])
 			if prnt: print(res)
-			if res.success and res.fun<5*scale**3:
-				if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])		
+			if res.success and res.fun<scale**3 and self.findminima(res.x[0]) is not None:
+				#print(f'minimum = {self.findminima(res.x[0])}, deltaV={self.deltaV(res.x[0])}')    
+				if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])
+				if prnt: splitV(self, res.x[0])
+				
+				self.tc = res.x[0]
 				return res.x[0]
 			else:
 				return None
-
 	#### These are supplemental ####
 		
 	def T0(self, plot=False):

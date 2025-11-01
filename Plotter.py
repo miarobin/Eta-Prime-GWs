@@ -14,7 +14,7 @@ from debug_plot import debug_plot
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = int(os.environ.get("SLURM_CPUS_PER_TASK", 1))  # default to 1 if not set
+CORES = int(os.environ.get("SLURM_CPUS_PER_TASK", 36))  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
@@ -101,68 +101,70 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
             writer.writerow(row)
 
 
-def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=True, fSIGMA=None):
-    #Building the potential...
-    try:
-        V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, fSIGMA=fSIGMA)
-    except Potential2.InvalidPotential as e:
-        print(e)
-        return (0, 0, 0, 0, 0, 16) #Dressed mass calculation has failed for this.
-    
-    
-    #Calculating the zero temperature, tree level, analytic minimum.
-    fSig = V.fSigma()
-    print(f'fSigma={fSig}')
-    print(f'Masses: m2_sig={V.mSq['Sig'][0](fSig)}, m2Eta={V.mSq['Eta'][0](fSig)}, m2X={V.mSq['X'][0](fSig)}, m2Pi={V.mSq['Pi'][0](fSig)}')
-    
-    
-    if plot:
-        #Plotting the interpolated dressed masses
-        DressedMasses.plotInterpMasses(V)
-        #Plots the potential as a function of temperature
-        def plotV(V, Ts):
-            plt.figure()
-            for T in Ts:
-                plt.plot(np.linspace(-5,fSig*1.2,num=300),V.Vtot(np.linspace(-5,fSig*1.2,num=300),T)-V.Vtot(0,T),label=f"T={T}")
-            plt.legend()
-            debug_plot(name="debug", overwrite=False)
-            #plt.show()
-            
-        #Do feel free to change this list of temperatures to something more sensible.
-        plotV(V,[0,100,150,200,225,250,400,450,500,510,fSig])
-        
-    if fSig == None:
-        #If fSig does not exist, then the potential does not have enough solutions for a tunneling. Return None.
-        return (0, 0, 0, 0, 0, 15)
-    
-    #Grid function computes:
-    #   a) Nucleation temperature Tn,
-    #   b) An interpolated function grd of action over temperature w/ temperature,
-    #   c) and an error code.
-    Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot,ext_minT=V.minT)
-    
-    
-    if Tn is not None:
-        #I'm not even sure how this is an error but anyway:
-        print(Tn)
-        if Tn<tc/10:
-            return (0,0,0,0,tc,18)
-        
-        #Bubbles nucleate before BBN! Yay!
-        
-        #Calculating wave parameters.
-        alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
-        print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}")
-        
-        #Returning wave parameters and zero-temperature particle masses.
-        return (Tn, alpha, betaH, 1, tc, message)
-    
-    else:
-        #If Tn is none, bubbles do not nucleate in time.
-        print(f'CT Returned None with message {message}')
-        
-        #Returns the failure state, the associated failure code, and the associated zero-temperature particle masses.
-        return (0, 0, 0, 0, tc, message)
+def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, fSIGMA=None):
+	#Building the potential...
+	try:
+		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, fSIGMA=fSIGMA)
+	except Potential2.InvalidPotential as e:
+		print(e)
+		return (0, 0, 0, 0, 0, 16) #Dressed mass calculation has failed for this.
+	except Potential2.BadDressedMassConvergence as e:
+		return (0,0,0,0, 0, 23)
+
+
+	#Calculating the zero temperature, tree level, analytic minimum.
+	fSig = V.fSigma()
+	print(f'fSigma={fSig}')
+	print(f'Masses: m2_sig={V.mSq['Sig'][0](fSig)}, m2Eta={V.mSq['Eta'][0](fSig)}, m2X={V.mSq['X'][0](fSig)}, m2Pi={V.mSq['Pi'][0](fSig)}')
+
+
+	if plot:
+		#Plotting the interpolated dressed masses
+		DressedMasses.plotInterpMasses(V)
+		#Plots the potential as a function of temperature
+		def plotV(V, Ts):
+			plt.figure()
+			for T in Ts:
+				plt.plot(np.linspace(-5,fSig*1.2,num=300),V.Vtot(np.linspace(-5,fSig*1.2,num=300),T)-V.Vtot(0,T),label=f"T={T}")
+			plt.legend()
+			debug_plot(name="debug", overwrite=False)
+			#plt.show()
+			
+		#Do feel free to change this list of temperatures to something more sensible.
+		plotV(V,[0,100,150,200,225,250,400,450,500,510,fSig])
+		
+	if fSig == None:
+		#If fSig does not exist, then the potential does not have enough solutions for a tunneling. Return None.
+		return (0, 0, 0, 0, 0, 15)
+
+	#Grid function computes:
+	#   a) Nucleation temperature Tn,
+	#   b) An interpolated function grd of action over temperature w/ temperature,
+	#   c) and an error code.
+	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot,ext_minT=V.minT)
+
+
+	if Tn is not None:
+		#I'm not even sure how this is an error but anyway:
+		print(Tn)
+		if Tn<tc/10:
+			return (0,0,0,0,tc,18)
+		
+		#Bubbles nucleate before BBN! Yay!
+		
+		#Calculating wave parameters.
+		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
+		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}")
+		
+		#Returning wave parameters and zero-temperature particle masses.
+		return (Tn, alpha, betaH, 1, tc, message)
+
+	else:
+		#If Tn is none, bubbles do not nucleate in time.
+		print(f'CT Returned None with message {message}')
+		
+		#Returns the failure state, the associated failure code, and the associated zero-temperature particle masses.
+		return (0, 0, 0, 0, tc, message)
 
 # --- safe wrapper around your existing populate() ---
 def populate_safe(*args, **kwargs):
@@ -197,6 +199,7 @@ def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False,plot=False):
 		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
 	except Potential2.BoundedFromBelow as e:
 		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+
 	
 	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
@@ -215,6 +218,7 @@ def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True,plot=False):
 		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
 	except Potential2.BoundedFromBelow as e:
 		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+	
 
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
@@ -325,20 +329,20 @@ def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop= None ):
 	
 if __name__ == "__main__":
 
-	###LARGE SCAN###
+	###LARGE SCAN###s
 	N=3; F=3
 
-	m2Sig = np.linspace(1., 25., num=3)*1000**2
-	m2Eta = np.linspace(1., 25., num=3)*1000**2
-	m2X = np.linspace(1., 25., num=3)*1000**2
+	m2Sig = np.linspace(1., 25., num=7)*1000**2
+	m2Eta = np.linspace(1., 25., num=7)*1000**2
+	m2X = np.linspace(1., 25., num=7)*1000**2
  
-	fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
+	fPi = np.linspace(0.5,1.5,num=7)*1000*np.sqrt(F/2)
 	
-	
+	#comment out parallelscan norm to plot
 	#parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
 	
 	###SINGLE POINT FROM SCAN###
-	POINT_OF_INTEREST=30    
+	POINT_OF_INTEREST=606   
 
 	filename = 'Test_N3F3_Normal.csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))

@@ -175,8 +175,12 @@ from debug_plot import debug_plot
 
 #Maximum value of sigma for Martha's interpolator.
 GLUONIC_CUTOFF = 1000
-
 TOL = 1e-5
+
+IRDIVSMOOTHING=False
+PLOT_RUN=True
+SIGMULT = 1.1
+TMULT= 1.5
 
 #Calculate g_star
 data_array = np.loadtxt('gstar_data.dat')
@@ -207,6 +211,8 @@ class NonUnitary(Exception):
 class BoundedFromBelow(Exception):
     pass
 class NonTunnelling(Exception):
+    pass
+class BadDressedMassConvergence(Exception):
     pass
 
 #CONVERT between physical inputs and Lagrangian parameters
@@ -269,7 +275,6 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     dV = lambda sigma: -m2*sigma - c*detPow*sigma**(F*detPow-1)/F + ls*sigma**3/2
     ddV = lambda sigma: -m2 - c*detPow*(F*detPow-1)*sigma**(F*detPow-2)/F + 3*ls*sigma**2/2
     
-    tol = 1e-8
     
     #  === MARTHA === if lambda_sigma is less than zero, it makes msigma^2 less than zero, making V unbounded from below
     if int(round(F*detPow))==2:
@@ -293,12 +298,12 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         #plt.show()
         raise NonTunnelling('sigma=0 minimum is true minimum')
 # Local minimum
-    if ddV(fPI)<0:
+    if ddV(fPI)<0 - TOL:
         print(f'Point is Invalid as fPI is not minimum')
         raise NonTunnelling('Point is Invalid as fPI is not stable')
                                
 #Cut off    
-    if dV(4*np.pi*fPI)<0:
+    if dV(4*np.pi*fPI)<0 :
         print(f'Point is Invalid as potential unbounded from below by cutoff')
         raise BoundedFromBelow('Point is not bounded from below by cutoff')
     
@@ -326,10 +331,7 @@ class Potential:
 
         if m2 is None or c is None or lambdas is None or lambdaa is None or N is None or F is None:
             raise InvalidPotential('Input parameter is None')
-        try:
-            self.fSIGMA = self.fSigma()
-        except(InvalidPotential):
-            print("Imaginary fSigma")
+    
 
         if fSIGMA is not None:
             self.fSIGMA = fSIGMA
@@ -404,8 +406,18 @@ class Potential:
 						}
             
         self.MSq = None   
+
         #Temperature dependent masses:
-        _,self.RMS,_ = DressedMasses.SolveMasses(self)
+        try:
+            _,self.RMS,_ = DressedMasses.SolveMasses(self)
+        except BadDressedMassConvergence as e:
+            raise e
+ 
+        self.tc = self.criticalT(prnt=PLOT_RUN)
+        
+        if self.tc is not None and self.minT is not None: #Should make a 'set' function.
+            if self.minT > self.tc:
+                raise BadDressedMassConvergence("Minimum converging T is greater than tc.")
   
               
     def setMSq(self, dressedMasses):
@@ -550,7 +562,7 @@ class Potential:
         #Roll down to minimum from the RHS:
         res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',bounds=[((0.5-.05*rcounter)*self.fSIGMA,self.fSIGMA*1.05)])
         #Now check to see if the algorithm succeeded
-        if not res.success or res.x[0]<(0.5-.05*rcounter)*self.fSIGMA:
+        if not res.success or res.x[0]< abs(res.x[0]-(0.5-.05*rcounter)*self.fSIGMA)/self.fSIGMA < TOL or (0.5-.05*rcounter)*self.fSIGMA:
             #If so, try a new start closer to the axis to avoid overshooting.
             if rcounter<=4:
                 if rstart is not None:
@@ -596,7 +608,7 @@ class Potential:
                     
 		
         #First a coarse scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-        Ts_init = np.linspace(minTemp,scale*2.0,num=450); deltaVs_init=[]
+        Ts_init = np.linspace(minTemp,scale*TMULT,num=450); deltaVs_init=[]
 
         for T in Ts_init:
             #Computing the difference between symmetric and broken minima.
@@ -642,7 +654,7 @@ class Potential:
 
         def plotV(V, Ts):
             for T in Ts:
-                plt.plot(np.linspace(-10,self.fSIGMA*1.25,num=100),V.Vtot(np.linspace(-10,self.fSIGMA*1.25,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+                plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=100),V.Vtot(np.linspace(-10,self.fSIGMA*SIGMULT,num=100),T)-V.Vtot(0,T),label=f"T={T}")
                 if self.findminima(T) is not None:
                     plt.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
             plt.legend()
@@ -679,13 +691,13 @@ class Potential:
         #Minimise interpolated function (two methods in case one fails)
         res = optimize.minimize(lambda x: abs(func(x)), guess,bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0])*1.2)])
         if prnt: print(res)
-        if res.success and res.fun<scale**3:
+        if res.success and res.fun<scale**3/2 and self.findminima(res.x[0]) is not None:
 			
             if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])			
 
             self.tc = res.x[0]
             return res.x[0]
-        elif res.fun<scale**2:
+        elif res.fun<scale**2 and self.findminima(res.x[0]) is not None:
             if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])			
 
             self.tc = res.x[0]
@@ -694,7 +706,7 @@ class Potential:
             #Sometimes this will just hit the boundary & fail.
             res = optimize.minimize(lambda x: abs(func(x)), guess,method='Nelder-Mead',bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0])*1.1)])
             if prnt: print(res)
-            if res.success and res.fun<5*scale**3 and self.findminima(res.x[0]) is not None:
+            if res.success and res.fun<scale**3/2 and self.findminima(res.x[0]) is not None:
                 #print(f'minimum = {self.findminima(res.x[0])}, deltaV={self.deltaV(res.x[0])}')	
                 if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])
                 
