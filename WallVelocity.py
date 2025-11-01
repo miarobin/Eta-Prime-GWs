@@ -204,7 +204,7 @@ def readAndEdit(filename, N, F, termType):
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     #Empty arrays to store the needed potential parameters from 'data'.
-    m2Sigs = []; m2Etas = []; m2Xs = []; fPIs = []; m2s = []; cs = []; lss = []; las = []; Tcs = []; Tns = []; Alphas = []; Betas = []
+    m2Sigs = []; m2Etas = []; m2Xs = []; fPIs = []; m2s = []; cs = []; lss = []; las = []; Tcs = []; Tns = []; Alphas = []; Betas = []; Messages = []
     VwsLTE = np.zeros(len(data)); kappasLTE = np.zeros(len(data))
 
     for item in data:
@@ -217,7 +217,7 @@ def readAndEdit(filename, N, F, termType):
 
     m2Sigs = np.array(m2Sigs); m2Etas = np.array(m2Etas); m2Xs = np.array(m2Xs); fPIs = np.array(fPIs)
     m2s = np.array(m2s); cs = np.array(cs); lss = np.array(lss); las = np.array(las); Tcs=np.array(Tcs)
-    Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas)
+    Tns = np.array(Tns); Alphas = np.array(Alphas); Betas = np.array(Betas); Messages = np.array(Messages)
 
     #Scanning over each row in 'data' and calculating new Vw.
     for i in range(len(m2s)):
@@ -242,8 +242,8 @@ def readAndEdit(filename, N, F, termType):
             print(rf'$\Psi$_N$ = {0}, $\alpha_N$ = {alN}, VwLTE = {VwsLTE[i]}, kappa = {kappasLTE[i]}')
             
     save_arrays_to_csv(f'VwLTE_N{N}F{F}_{termType}.csv',
-                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'VwsLTE','kappasLTE'], 
-                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, VwsLTE, kappasLTE)
+                           ['m2Sigs', 'm2Etas', 'm2X', 'fPi', 'm2', 'c', 'ls', 'la', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message', 'VwsLTE','kappasLTE'], 
+                            m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, Messages, VwsLTE, kappasLTE)
 
 
 
@@ -271,6 +271,30 @@ if __name__ == "__main__":
     '''
 
     
-    readAndEdit('Test_N3F6_Normal.csv', 3, 6, False)
+    readAndEdit('Test_N3F3_Normal2401.csv', 3, 3, "Normal")
+    '''
+    F=6; N=3
+    
+    m2=	65016.666666666700;	c= 1E-10;ls=0.13006666666666700;la=	1.7499666666666700	
+    Tc=264.3718266272440;Tn=	229.1092491831630
+    detPow = Potential2.get_detPow(N,F,'Normal')
+    V = Potential2.Potential(m2, c, ls, la, N, F, detPow)
+    
+    Ts = np.linspace(Tn, Tc)
+    Vws = []
+    for T in Ts:
+        minima = V.findminima(T)
+        psiN = V.dVdT(minima,T)/V.dVdT(0,T)
+                
+        cs2 = V.dVdT(0,T)/(T*V.d2VdT2(0,T))
+        cb2 = V.dVdT(minima,T)/(T*V.d2VdT2(minima,T))
+        alN = alpha(V, T, cb2)
+                    
+        Vws.append(find_vw(alN,cb2,cs2))
+        
+    plt.plot(Ts, Vws)
+    plt.show()'''
+    
+    
 
 
