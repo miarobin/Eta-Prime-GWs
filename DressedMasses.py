@@ -3,6 +3,8 @@ from scipy.integrate import quad
 from scipy.optimize import root
 from scipy import optimize, differentiate
 import time
+import matplotlib
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from scipy import interpolate
 import csv
@@ -10,6 +12,7 @@ import Potential2
 import cosmoTransitions
 from IBInterpolation import IB
 from scipy.ndimage import gaussian_filter
+from debug_plot import debug_plot
 
 
 plt.rcParams["font.family"] = "serif"
@@ -20,8 +23,9 @@ NUMBEROFPOINTS = 200
 EPSILON = 0.1
 
 
-def SolveMasses(V, plot=False):
+def SolveMasses(V, plot=False ):
     plot=Potential2.PLOT_RUN
+    
     #Distinct Feynman rule structures.
     c1 = (V.c/V.F**2)*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)
     c2 = (V.c/V.F)*V.fSIGMA**(V.F*V.detPow-4)*V.detPow*(V.F*V.detPow-2)*(V.F*V.detPow-3)
@@ -274,7 +278,6 @@ def SolveMasses(V, plot=False):
         V.setMSq(dressedMasses)
     
 
-
     if plot:
         tc = V.criticalT()
         #Plot 1: Individual plots of data vs interpolated.       
@@ -322,8 +325,9 @@ def SolveMasses(V, plot=False):
             for sig,T in failPoints:#Flag up failure points below 25% of the critical temperature.
                 if T<tc and abs((tc-T)/tc)<0.25:
                     plt.scatter(T/V.fSIGMA,sig/V.fSIGMA,marker='d',color='orange')
-                    
-        plt.show()
+        plt.savefig(f"Temporal-Plots/Vcritical.pdf", dpi=300)    
+        debug_plot(name="debug", overwrite=False)        
+        #plt.show()
         
 
         #Plot 3: RMS error and perturbativity.
@@ -354,7 +358,7 @@ def SolveMasses(V, plot=False):
         cbar1 = plt.colorbar(im1)
         cbar1.set_label(r'Effective Coupling $g_eff$',fontsize=14)
         ax[1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
-        ax[1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
+        ax[1].set_ylabel(r'$sigma/f_\pi$',fontsize=15)
 
 
         
@@ -369,10 +373,11 @@ def SolveMasses(V, plot=False):
             else:
                 ax[1].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='blueviolet')
                 
-        fig.suptitle(f"$f_\pi={V.fSIGMA}$")
-        plt.show()
+        fig.suptitle(r"$f_\pi={V.fSIGMA}$")
+        plt.savefig("Temporal-Plots/secondminimum.pdf",dpi=300)
+        debug_plot(name="debug", overwrite=False)
+        #plt.show()
         
-    
     if noisyPoint:
         return dressedMasses, RMS, minT
     else:
@@ -455,7 +460,7 @@ def plotMassData(massData, V, minT=None):
         ax[1,0].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         ax[1,1].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         
-    fig.suptitle(f"$f_\pi={V.fSIGMA}$")
+    fig.suptitle(r"$f_\pi={V.fSIGMA}$")
 
 
 def plotInterpMasses(V):
@@ -468,7 +473,8 @@ def plotInterpMasses(V):
     minT = V.minT
     
     #Finds location of critical temperature
-    tc=V.criticalT(prnt=False,minT=minT)
+    tc= V.criticalT(prnt=False,minT=minT)
+    print(f'tc: {tc}')
     
     #Data grids for effective masses
     X,Y=np.meshgrid(TRange,sigmaRange)
@@ -499,7 +505,7 @@ def plotInterpMasses(V):
     ax[0,0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
     
     #Plots location of second minimum with T.
-    RHS_mins=np.array([V.findminima(T) for T in TRange]) 
+    RHS_mins=np.array([V.findminima(T) for T in TRange])
     _RHS_mins = RHS_mins[RHS_mins!=None]
     _Ts = TRange[RHS_mins!=None]
     for T,mins in zip(_Ts,_RHS_mins):
@@ -508,13 +514,13 @@ def plotInterpMasses(V):
         else:
             ax[0,0].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='blueviolet')
         
-
+ 
     im1 = ax[0,1].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqEtaVals)
     cbar = plt.colorbar(im1)
     cbar.set_label(r"$m_{\eta'}^2$",fontsize=14)
     ax[0,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
     ax[0,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
-
+ 
     ax[0,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
         
         
@@ -532,11 +538,11 @@ def plotInterpMasses(V):
     cbar.set_label(r'$m_\pi^2$',fontsize=14)
     ax[1,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
     ax[1,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
-
+ 
     ax[1,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
-
+ 
     if tc is not None:
-
+ 
         ax[0,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[0,1].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[1,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
@@ -548,13 +554,13 @@ def plotInterpMasses(V):
         ax[1,0].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         ax[1,1].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         
-
+ 
     fig.suptitle(f"$f_\pi={V.fSIGMA}$")
     plt.show()
         
-
+ 
     #Plot 2: RMS error and perturbativity.
-
+ 
     fig, ax = plt.subplots(nrows=1,ncols=2)
         
     im0 = ax[0].contourf(X/V.fSIGMA, Y/V.fSIGMA, RMS.T)
@@ -564,15 +570,15 @@ def plotInterpMasses(V):
     ax[0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
         
     #IR Problem:
-	#4-point effective vertices.
+    #4-point effective vertices.
     gSig_eff = np.abs(3*V.lambdas - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)/V.F**2)/(24.)
         
     gPi_eff = np.abs(V.lambdas*(V.F**2+1) + V.lambdaa*(V.F**2-4)
                     - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.detPow/V.F)*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6))/((V.F**2-1) * (2**3))
-
+ 
     pSig = lambda sig,T: gSig_eff * (T/(np.abs(V.MSq['Sig'][0](sig,T))+1e-12)**(1/2))
     pPi = lambda sig,T: gPi_eff * (V.F**2-1) * (T/(np.abs(V.MSq['Pi'][0](sig,T))+1e-12)**(1/2))
-
+ 
     perturbativity = pSig(X,Y) + pPi(X,Y)
     perturbativity[pSig(X,Y)>16*np.pi]=16*np.pi
     perturbativity[pPi(X,Y)>16*np.pi]=16*np.pi
@@ -583,9 +589,7 @@ def plotInterpMasses(V):
     ax[1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
     ax[1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
     
-
     
-
 ##SPLINE FIT FOR Ib
 
 dat = np.genfromtxt(f'IBData.csv', delimiter=',', dtype=float, skip_header=1)
@@ -678,7 +682,9 @@ if __name__ == "__main__":
     plt.ylabel('IB(R2)')
     plt.legend()
     plt.grid(True)
-    plt.show()    
+    plt.savefig(f"Temporal-Plots/R2functions.pdf", dpi=300)
+    debug_plot(name="debug", overwrite=False)
+    #plt.show()    
     
     '''Test of dressed mass code'''
 
@@ -698,7 +704,6 @@ if __name__ == "__main__":
 
     SolveMasses(V, plot=True)
     
-
 
 
 

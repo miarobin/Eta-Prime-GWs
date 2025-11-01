@@ -1,11 +1,22 @@
 import Potential2
 import GravitationalWave
 import numpy as np
+import matplotlib
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import csv
 from multiprocessing import Pool
 import DressedMasses
+import os
+from debug_plot import debug_plot
+
+
+# Get number of CPUs allocated by SLURM
+print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
+CORES = int(os.environ.get("SLURM_CPUS_PER_TASK", 36))  # default to 1 if not set
+print(f"Using {CORES} cores")
+
 
 '''
 	Please see the dockstring in "Potential2.py" for a parameter dictionary!!
@@ -66,7 +77,7 @@ import DressedMasses
 	NOTE The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
 '''
 ##GLOBAL VARIABLES##
-CORES=8
+#CORES=1
 
 
 def plotV(V, Ts):
@@ -90,7 +101,8 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
             writer.writerow(row)
 
 
-def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=True, fSIGMA=None):
+
+def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, fSIGMA=None):
 	#Building the potential...
 	try:
 		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, fSIGMA=fSIGMA)
@@ -105,17 +117,19 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=True, f
 	fSig = V.fSIGMA
 	print(f'fSigma={fSig}')
 	print(f'Masses: m2_sig={V.mSq['Sig'][0](fSig)}, m2Eta={V.mSq['Eta'][0](fSig)}, m2X={V.mSq['X'][0](fSig)}, m2Pi={V.mSq['Pi'][0](fSig)}')
-	
-	
+
+
 	if plot:
 		#Plotting the interpolated dressed masses
 		DressedMasses.plotInterpMasses(V)
 		#Plots the potential as a function of temperature
 		def plotV(V, Ts):
+			plt.figure()
 			for T in Ts:
 				plt.plot(np.linspace(-5,fSig*1.2,num=300),V.Vtot(np.linspace(-5,fSig*1.2,num=300),T)-V.Vtot(0,T),label=f"T={T}")
 			plt.legend()
-			plt.show()
+			debug_plot(name="debug", overwrite=False)
+			#plt.show()
 			
 		#Do feel free to change this list of temperatures to something more sensible.
 		plotV(V,[0,100,150,200,225,250,400,450,500,510,fSig])
@@ -123,14 +137,14 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=True, f
 	if fSig == None:
 		#If fSig does not exist, then the potential does not have enough solutions for a tunneling. Return None.
 		return (0, 0, 0, 0, 0, 15)
-	
+
 	#Grid function computes:
-	#	a) Nucleation temperature Tn,
-	#	b) An interpolated function grd of action over temperature w/ temperature, 
-	#	c) and an error code.
+	#   a) Nucleation temperature Tn,
+	#   b) An interpolated function grd of action over temperature w/ temperature,
+	#   c) and an error code.
 	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot,ext_minT=V.minT)
-	
-	
+
+
 	if Tn is not None:
 		#I'm not even sure how this is an error but anyway:
 		print(Tn)
@@ -145,13 +159,34 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, plot=True, f
 		
 		#Returning wave parameters and zero-temperature particle masses.
 		return (Tn, alpha, betaH, 1, tc, message)
-	
+
 	else:
 		#If Tn is none, bubbles do not nucleate in time.
 		print(f'CT Returned None with message {message}')
 		
 		#Returns the failure state, the associated failure code, and the associated zero-temperature particle masses.
 		return (0, 0, 0, 0, tc, message)
+
+# --- safe wrapper around your existing populate() ---
+def populate_safe(*args, **kwargs):
+    """
+    Calls the original populate(), but converts all outputs
+    to plain Python objects (numbers or lists of numbers) for multiprocessing.
+    """
+    raw_results = populate(*args, **kwargs)
+    
+    safe_results = []
+    for r in raw_results:
+        if isinstance(r, (int, float)):
+            safe_results.append(r)
+        elif hasattr(r, "__iter__"):
+            safe_results.append([float(x) for x in r])
+        else:
+            # fallback for unpicklable objects
+            safe_results.append(0.0)
+    
+    return safe_results
+
 	
 	
 	
@@ -170,7 +205,9 @@ def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False,plot=False):
 
 	
 	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+
 
 def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True,plot=False):
 	#Wrapper for the largeN case.
@@ -184,14 +221,33 @@ def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True,plot=False):
 		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
 	except Potential2.BoundedFromBelow as e:
 		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+	
 
 
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
 
 
+def populate_safe_wrapperN(*args):
+    try:
+        out = populateN(*args)
+        return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
+    except Exception as e:
+        print(f"populateN failed: {e}")
+        return [0.0]*10  # same number of outputs you expect
+        
 
-def parallelScanComp(m2Sig,m2Eta,m2X, fPI, N, F, crop=250):
+def populate_safe_wrapperlN(*args):
+    try:
+        out = populatelN(*args)
+        return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
+    except Exception as e:
+        print(f"populatelN failed: {e}")
+        return [0.0]*10
+
+
+def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=3):
 	
 	#MAKE THE ARRAY
 	data = []
@@ -209,9 +265,12 @@ def parallelScanComp(m2Sig,m2Eta,m2X, fPI, N, F, crop=250):
 	#Multithreading with X cores.
 	with Pool(CORES) as p:
 		#Populating the result arrays.
-		resN = p.starmap(populateN, data)
-		reslN = p.starmap(populatelN, data)
-	
+		#resN = p.starmap(populateN, data)
+		#reslN = p.starmap(populatelN, data)
+		resN = p.starmap(populate_safe_wrapperN, data)
+		reslN = p.starmap(populate_safe_wrapperlN, data)
+
+
 	resN=np.array(resN); reslN=np.array(reslN)
 
 	#MAKE THE FILE WRITER
@@ -233,8 +292,8 @@ def parallelScanComp(m2Sig,m2Eta,m2X, fPI, N, F, crop=250):
 
 	print('Scan Finished')
 
-def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop=None):
-	
+def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop= None ):
+    
 	#MAKE THE ARRAY
 	data = []
 	for i in m2Sig:
@@ -247,12 +306,13 @@ def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop=None):
 	data = np.array(data)
 	if crop and crop<len(data):
 		data = data[:crop]
-        
+		
 	#Multithreading with X cores.
 	with Pool(CORES) as p:
 		#Populating the result arrays.
-		resN = p.starmap(populateN, data)
-	
+		#resN = p.starmap(populateN, data)
+		resN = p.starmap(populate_safe_wrapperN, data)
+  
 	resN=np.array(resN)
 
 	#MAKE THE FILE WRITER
@@ -260,42 +320,40 @@ def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop=None):
 	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message']
 	# File path to save the CSV
 	file_path = f'Test_N{N}F{F}_Normal.csv'
-	save_arrays_to_csv(file_path, column_titles, 
+	save_arrays_to_csv(file_path, column_titles,
 					data[:,0],data[:,1],data[:,2],data[:,3],
 					resN[:,0],resN[:,1],resN[:,2],resN[:,3],
 					resN[:,8],resN[:,4],resN[:,5],resN[:,6],resN[:,9]
 					)
 
 	print('Scan Finished')
-
+ 
 	
 if __name__ == "__main__":
 
-	###LARGE SCAN###
-	N=3; F=4
+	###LARGE SCAN###s
+	N=3; F=3
 
-	m2Sig = np.linspace(1., 25., num=3)*1000**2
-	m2Eta = np.linspace(1., 25., num=3)*1000**2
-	m2X = np.linspace(1., 25., num=3)*1000**2
+	m2Sig = np.linspace(1., 25., num=7)*1000**2
+	m2Eta = np.linspace(1., 25., num=7)*1000**2
+	m2X = np.linspace(1., 25., num=7)*1000**2
+ 
+	fPi = np.linspace(0.5,1.5,num=7)*1000*np.sqrt(F/2)
 	
-	fPi = np.linspace(0.5, 1.5,num=3)*1000*np.sqrt(F/2)
-	
-	
+	#comment out parallelscan norm to plot
 	#parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
 	
-	
 	###SINGLE POINT FROM SCAN###
-	POINT_OF_INTEREST=79
+	POINT_OF_INTEREST=606   
 
-	filename = 'Test_N3F4_Normal.csv'; delimiter = ','
+	filename = 'Test_N3F3_Normal.csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
-	
+
 	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,_ = data[POINT_OF_INTEREST-2]
-	
+
 	print(f'm2Sig = {m2Sig}, m2Eta = {m2Eta}, m2X = {m2X}, fPI = {fPI}')
 	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
 	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
-	
+
 	populateN(m2Sig, m2Eta, m2X, fPI, 3, 3, Polyakov=False, plot=True)
-	
-		
+
