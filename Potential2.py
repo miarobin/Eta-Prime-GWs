@@ -294,7 +294,6 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     if V(fPI)>V(0)+TOL:
         raise NonTunnelling('sigma=0 minimum is true minimum')
     if abs(dV(fPI))>TOL:
-        print(dV(fPI))
         print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
         plt.title(f'detPow={detPow}')
         plt.plot(np.arange(0,2*fPI),V(np.arange(0,2*fPI)),label='V')
@@ -655,7 +654,6 @@ class Potential:
             if deltaV is not None and deltaV < 0: break
 
         deltaVs_init=np.array(deltaVs_init)
-        print(deltaVs_init)
 
         if prnt:
             

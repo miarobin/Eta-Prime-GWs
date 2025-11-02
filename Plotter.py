@@ -104,6 +104,7 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, fSIGMA=None):
 	#Building the potential...
+	
 	try:
 		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, fSIGMA=fSIGMA)
 	except Potential2.InvalidPotential as e:
@@ -147,7 +148,6 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, 
 
 	if Tn is not None:
 		#I'm not even sure how this is an error but anyway:
-		print(Tn)
 		if Tn<tc/10:
 			return (0,0,0,0,tc,18)
 		
@@ -344,9 +344,11 @@ if __name__ == "__main__":
 	#parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
 	
 	###SINGLE POINT FROM SCAN###
-	POINT_OF_INTEREST=606   
+	POINT_OF_INTEREST=6
+	
+	N=3; F=4
 
-	filename = 'Test_N3F3_Normal.csv'; delimiter = ','
+	filename = 'Test_N3F4_Normal.csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
 	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,_ = data[POINT_OF_INTEREST-2]
@@ -355,5 +357,5 @@ if __name__ == "__main__":
 	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
 	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-	populateN(m2Sig, m2Eta, m2X, fPI, 3, 3, Polyakov=False, plot=True)
+	populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, plot=True)
 

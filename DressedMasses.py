@@ -23,7 +23,7 @@ NUMBEROFPOINTS = 200
 EPSILON = 0.1
 
 
-def SolveMasses(V, plot=False ):
+def SolveMasses(V, plot=False):
     plot=Potential2.PLOT_RUN
     
     #Distinct Feynman rule structures.
@@ -189,23 +189,36 @@ def SolveMasses(V, plot=False ):
     valuesX = MSqXData.ravel()
     valuesPi = MSqPiData.ravel()
     
-    print(valuesSigma)
     #First interpolator (bad) getting the data into the right shape.
-    
     _MSqSigData = interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X,Y))
     _MSqEtaData = interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X,Y))
     _MSqXData = interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X,Y))
     _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y))
-    #ABOVE IS WHERE THE PROBLEM SHOWS UP^^^
     
-    #npMSqSigData = np.array(MSqSigData)
-    #_npMSqSigData = np.array(_MSqSigData)
-    #print(npMSqSigData.shape)
-    #print(_npMSqSigData.shape)
-    #print(valuesSigma.shape)
-    #print(X.shape)
-    #print(X.ravel().shape)
+    _MSqSigData=np.array(_MSqSigData)
+    _MSqEtaData=np.array(_MSqEtaData)
+    _MSqXData=np.array(_MSqXData)
+    _MSqPiData=np.array(_MSqPiData)
     
+    #Sometimes there are issues with the bounding box!
+    
+    if np.isnan(_MSqSigData).any:
+        #First try: patch with real data.
+        _broken = np.isnan(_MSqSigData)
+        
+        _MSqSigData[_broken] = MSqSigData[_broken]
+        _MSqEtaData[_broken] = MSqEtaData[_broken]
+        _MSqXData[_broken] = MSqXData[_broken]
+        _MSqPiData[_broken] = MSqPiData[_broken]
+        
+        #Second try: patch with nearest data
+        if np.isnan(_MSqSigData).any:
+            _broken =  np.isnan(_MSqSigData)
+            
+            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesSigma)],valuesEta[np.isfinite(valuesSigma)],(X[_broken],Y[_broken]),method='nearest'))
+            _MSqEtaData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X[_broken],Y[_broken]),method='nearest'))
+            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesX)],valuesEta[np.isfinite(valuesX)],(X[_broken],Y[_broken]),method='nearest'))
+            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesPi)],valuesEta[np.isfinite(valuesPi)],(X[_broken],Y[_broken]),method='nearest'))
     
     
     plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V,minimal=True)
@@ -445,10 +458,9 @@ def plotMassData(massData, V, minT=None, minimal=False):
     if not minimal:
         ax[0,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
     
-    ###MARTHA!!! THIS HIGHLIGHTS THE 'nan' POINTS IN RED! THERE SHOULD BE NONE AFTER THE griddata INTERPOLATOR HAS FINISHED. 
-    #BUT YOU CAN SEE THE WEIRD RED LINE ON THE RHS!
-    ## NOTE THIS ONLY SHOWS UP ON THE TOP, RHS PLOT.
-    ax[0,1].scatter(X[np.isnan(MSqSigData.T)]/V.fSIGMA,Y[np.isnan(MSqSigData.T)]/V.fSIGMA,color='firebrick')
+
+    ## NOTE DEBUG FOR NAN VALUES!
+    ax[0,1].scatter(X[np.isnan(MSqEtaData.T)]/V.fSIGMA,Y[np.isnan(MSqEtaData.T)]/V.fSIGMA,color='orange')
         
     im2 = ax[1,0].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqXData.T)
     cbar = plt.colorbar(im2)
