@@ -145,7 +145,6 @@ def SolveMasses(V, plot=False ):
             
             #Scipy root function to solve the coupled equations.
             sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-08)
-            
             #Root mean squared error with a cutoff at 1.
             RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1)
 
@@ -161,6 +160,7 @@ def SolveMasses(V, plot=False ):
             else:
                 #Try with numerical jacobian as well:
                 sol = root(bagEquations, initial_guess, method='hybr')
+                
                 if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):
                     M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
@@ -170,9 +170,9 @@ def SolveMasses(V, plot=False ):
                     MSqPiData[i,j]=M_Pi2
                 else:
                         
-                    if plot:
-                        print(f"Root finding did not converge well for T={T} and sigma={sigma}")
-                        print(sol.message)
+                    #if plot:
+                    #    print(f"Root finding did not converge well for T={T} and sigma={sigma}")
+                    #    print(sol.message)
                     MSqSigData[i,j]=None
                     MSqEtaData[i,j]=None
                     MSqXData[i,j]=None
@@ -189,12 +189,27 @@ def SolveMasses(V, plot=False ):
     valuesX = MSqXData.ravel()
     valuesPi = MSqPiData.ravel()
     
-    
+    print(valuesSigma)
     #First interpolator (bad) getting the data into the right shape.
+    
     _MSqSigData = interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X,Y))
     _MSqEtaData = interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X,Y))
     _MSqXData = interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X,Y))
     _MSqPiData = interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X,Y))
+    #ABOVE IS WHERE THE PROBLEM SHOWS UP^^^
+    
+    #npMSqSigData = np.array(MSqSigData)
+    #_npMSqSigData = np.array(_MSqSigData)
+    #print(npMSqSigData.shape)
+    #print(_npMSqSigData.shape)
+    #print(valuesSigma.shape)
+    #print(X.shape)
+    #print(X.ravel().shape)
+    
+    
+    
+    plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V,minimal=True)
+    plotMassData([_MSqSigData,_MSqEtaData,_MSqXData,_MSqPiData], V,minimal=True)
     
     #Very accurate interpolator to the data (which may be noisy itself so beware).
     rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2)
@@ -327,7 +342,6 @@ def SolveMasses(V, plot=False ):
                     plt.scatter(T/V.fSIGMA,sig/V.fSIGMA,marker='d',color='orange')
         plt.savefig(f"Temporal-Plots/Vcritical.pdf", dpi=300)    
         debug_plot(name="debug", overwrite=False)        
-        #plt.show()
         
 
         #Plot 3: RMS error and perturbativity.
@@ -387,7 +401,7 @@ def SolveMasses(V, plot=False ):
 
 
 
-def plotMassData(massData, V, minT=None):
+def plotMassData(massData, V, minT=None, minimal=False):
     #Make sure these are exactly the same ranges as above!
     TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
     sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
@@ -397,8 +411,8 @@ def plotMassData(massData, V, minT=None):
     MSqXData=massData[2]
     MSqPiData=massData[3]
 
-
-    tc=V.criticalT(prnt=False,minT=minT)
+    if not minimal:
+        tc=V.criticalT(prnt=False,minT=minT)
     
     X,Y=np.meshgrid(TRange,sigmaRange)
         
@@ -411,14 +425,15 @@ def plotMassData(massData, V, minT=None):
     ax[0,0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
     ax[0,0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
         
-    RHS_mins=np.array([V.findminima(T) for T in TRange]) 
-    _RHS_mins = RHS_mins[RHS_mins!=None]
-    _Ts = TRange[RHS_mins!=None]
-    for T,mins in zip(_Ts,_RHS_mins):
-        if V.Vtot(mins,T)>V.Vtot(0,T):
-            ax[0,0].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='firebrick')
-        else:
-            ax[0,0].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='blueviolet')
+    if not minimal:
+        RHS_mins=np.array([V.findminima(T) for T in TRange]) 
+        _RHS_mins = RHS_mins[RHS_mins!=None]
+        _Ts = TRange[RHS_mins!=None]
+        for T,mins in zip(_Ts,_RHS_mins):
+            if V.Vtot(mins,T)>V.Vtot(0,T):
+                ax[0,0].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='firebrick')
+            else:
+                ax[0,0].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='blueviolet')
         
 
     im1 = ax[0,1].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqEtaData.T)
@@ -426,17 +441,23 @@ def plotMassData(massData, V, minT=None):
     cbar.set_label(r"$m_{\eta'}^2$",fontsize=14)
     ax[0,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
     ax[0,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
-
-    ax[0,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
-        
+    
+    if not minimal:
+        ax[0,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
+    
+    ###MARTHA!!! THIS HIGHLIGHTS THE 'nan' POINTS IN RED! THERE SHOULD BE NONE AFTER THE griddata INTERPOLATOR HAS FINISHED. 
+    #BUT YOU CAN SEE THE WEIRD RED LINE ON THE RHS!
+    ## NOTE THIS ONLY SHOWS UP ON THE TOP, RHS PLOT.
+    ax[0,1].scatter(X[np.isnan(MSqSigData.T)]/V.fSIGMA,Y[np.isnan(MSqSigData.T)]/V.fSIGMA,color='firebrick')
         
     im2 = ax[1,0].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqXData.T)
     cbar = plt.colorbar(im2)
     cbar.set_label(r'$m_X^2$',fontsize=14)
     ax[1,0].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
     ax[1,0].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
-        
-    ax[1,0].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
+    
+    if not minimal:
+        ax[1,0].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
         
         
     im3 = ax[1,1].contourf(X/V.fSIGMA, Y/V.fSIGMA, MSqPiData.T)
@@ -445,16 +466,17 @@ def plotMassData(massData, V, minT=None):
     ax[1,1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
     ax[1,1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
 
-    ax[1,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
+    if not minimal:
+        ax[1,1].scatter(TRange[RHS_mins!=None]/V.fSIGMA,RHS_mins[RHS_mins!=None]/V.fSIGMA,color='firebrick')
 
     #Plot a vertical line at the critical temperature.
-    if tc is not None:
+    if not minimal and tc is not None:
         ax[0,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[0,1].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[1,0].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         ax[1,1].vlines(tc/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dashed',color='grey',linewidth=3)
         
-    if minT is not None:
+    if not minimal and minT is not None:
         ax[0,0].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         ax[0,1].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         ax[1,0].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
@@ -462,6 +484,7 @@ def plotMassData(massData, V, minT=None):
         
     fig.suptitle(r"$f_\pi={V.fSIGMA}$")
 
+    debug_plot(name="DressedMassData", overwrite=False)
 
 def plotInterpMasses(V):
     #Make sure these are exactly the same ranges as above!
@@ -473,7 +496,7 @@ def plotInterpMasses(V):
     minT = V.minT
     
     #Finds location of critical temperature
-    tc= V.criticalT(prnt=False,minT=minT)
+    tc= V.criticalT(prnt=True,minT=minT)
     print(f'tc: {tc}')
     
     #Data grids for effective masses
