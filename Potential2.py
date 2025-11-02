@@ -838,5 +838,6 @@ if __name__ == "__main__":
     #plt.semilogx(Ts,g_stars)
     plt.semilogx(TsMeV,_g_starSM(TsMeV),linestyle='dashed')#INPUT Ts ARE IN GeV NOW
     
-    plt.show()
+    debug_plot(name="debug", overwrite=False)
+    #plt.show()
     
