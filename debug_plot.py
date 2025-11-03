@@ -2,6 +2,7 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import os
+import shutil
 
 # Detect headless mode (cluster or no DISPLAY) or SLURM environment
 HEADLESS = not bool(os.environ.get("DISPLAY")) or os.environ.get("SLURM_JOB_ID") is not None
@@ -13,6 +14,9 @@ _plot_counter = 0
 
 # Folder to save debug plots
 DEBUG_FOLDER = "Temporal-DebugPlots"
+
+if os.path.exists(DEBUG_FOLDER):
+    shutil.rmtree(DEBUG_FOLDER) #delete entire folder
 os.makedirs(DEBUG_FOLDER, exist_ok=True)  # create folder if it doesn't exist
 
 def debug_plot(name="debug", overwrite=True):
