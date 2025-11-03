@@ -344,7 +344,7 @@ if __name__ == "__main__":
 	#parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
 	
 	###SINGLE POINT FROM SCAN###
-	POINT_OF_INTEREST=6   
+	POINT_OF_INTEREST=7   
 
 	filename = 'Test_N3F4_Normal(1).csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))

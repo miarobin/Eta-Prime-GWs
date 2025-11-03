@@ -556,7 +556,8 @@ def plotInterpMasses(V):
         
  
     fig.suptitle(f"$f_\pi={V.fSIGMA}$")
-    plt.show()
+    debug_plot(name="debug", overwrite=False)
+    #plt.show()
         
  
     #Plot 2: RMS error and perturbativity.
