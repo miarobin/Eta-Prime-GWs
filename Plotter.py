@@ -14,7 +14,7 @@ from debug_plot import debug_plot
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = int(os.environ.get("SLURM_CPUS_PER_TASK", 36))  # default to 1 if not set
+CORES = 8  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
@@ -265,8 +265,6 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=3):
 	#Multithreading with X cores.
 	with Pool(CORES) as p:
 		#Populating the result arrays.
-		#resN = p.starmap(populateN, data)
-		#reslN = p.starmap(populatelN, data)
 		resN = p.starmap(populate_safe_wrapperN, data)
 		reslN = p.starmap(populate_safe_wrapperlN, data)
 
@@ -292,7 +290,7 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=3):
 
 	print('Scan Finished')
 
-def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop= None ):
+def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop=None):
     
 	#MAKE THE ARRAY
 	data = []
@@ -332,17 +330,18 @@ def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop= None ):
 if __name__ == "__main__":
 
 	###LARGE SCAN###s
-	N=3; F=3
+	N=3; F=4
 
-	m2Sig = np.linspace(1., 25., num=7)*1000**2
-	m2Eta = np.linspace(1., 25., num=7)*1000**2
-	m2X = np.linspace(1., 25., num=7)*1000**2
+	m2Sig = np.linspace(1., 25., num=3)*1000**2
+	m2Eta = np.linspace(1., 25., num=3)*1000**2
+	m2X = np.linspace(1., 25., num=3)*1000**2
  
-	fPi = np.linspace(0.5,1.5,num=7)*1000*np.sqrt(F/2)
+	fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
 	
 	#comment out parallelscan norm to plot
-	#parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
+	parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
 	
+	'''
 	###SINGLE POINT FROM SCAN###
 	POINT_OF_INTEREST=6
 	
@@ -357,5 +356,5 @@ if __name__ == "__main__":
 	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
 	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-	populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, plot=True)
+	populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, plot=True)'''
 

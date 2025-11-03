@@ -178,7 +178,7 @@ GLUONIC_CUTOFF = 1000
 TOL = 1e-5
 
 IRDIVSMOOTHING=False
-PLOT_RUN=True
+PLOT_RUN=False
 
 TMULT = 1.5
 SIGMULT = 1.1
@@ -241,9 +241,9 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     
     print(f'm2={m2},c={c},ls={ls},la={la}')
     
-    VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
-    plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
-    debug_plot(name="VTree Test", overwrite=False)
+    #VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
+    #plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
+    #debug_plot(name="VTree Test", overwrite=False)
     #UNITARITY BOUNDS AND EFT EXPANSION
     '''
     #From sigma sigma -> sigma sigma scattering
@@ -433,9 +433,6 @@ class Potential:
         #Temperature dependent masses:
         try:
             _,self.RMS,_ = DressedMasses.SolveMasses(self)
-            print('HELLO WE ARE HERE NOW')
-            print(self.MSq['Sig'][0](10,10))
-            print(self.MSq['Eta'][0](10,10))
         except BadDressedMassConvergence as e:
             raise e
         

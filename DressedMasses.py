@@ -220,9 +220,9 @@ def SolveMasses(V, plot=False):
             _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesX)],valuesEta[np.isfinite(valuesX)],(X[_broken],Y[_broken]),method='nearest'))
             _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesPi)],valuesEta[np.isfinite(valuesPi)],(X[_broken],Y[_broken]),method='nearest'))
     
-    
-    plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V,minimal=True)
-    plotMassData([_MSqSigData,_MSqEtaData,_MSqXData,_MSqPiData], V,minimal=True)
+    if plot:
+        plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V,minimal=True)
+        plotMassData([_MSqSigData,_MSqEtaData,_MSqXData,_MSqPiData], V,minimal=True)
     
     #Very accurate interpolator to the data (which may be noisy itself so beware).
     rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2)
