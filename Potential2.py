@@ -178,7 +178,7 @@ GLUONIC_CUTOFF = 1000
 TOL = 1e-5
 
 IRDIVSMOOTHING=False
-PLOT_RUN=False
+PLOT_RUN=True
 
 TMULT = 1.5
 SIGMULT = 1.1
@@ -241,9 +241,9 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     
     print(f'm2={m2},c={c},ls={ls},la={la}')
     
-    #VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
-    #plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
-    #plt.show()
+    VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
+    plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
+    debug_plot(name="VTree Test", overwrite=False)
     #UNITARITY BOUNDS AND EFT EXPANSION
     '''
     #From sigma sigma -> sigma sigma scattering
@@ -294,7 +294,6 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     if V(fPI)>V(0)+TOL:
         raise NonTunnelling('sigma=0 minimum is true minimum')
     if abs(dV(fPI))>TOL:
-        print(dV(fPI))
         print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
         plt.title(f'detPow={detPow}')
         plt.plot(np.arange(0,2*fPI),V(np.arange(0,2*fPI)),label='V')
@@ -434,6 +433,9 @@ class Potential:
         #Temperature dependent masses:
         try:
             _,self.RMS,_ = DressedMasses.SolveMasses(self)
+            print('HELLO WE ARE HERE NOW')
+            print(self.MSq['Sig'][0](10,10))
+            print(self.MSq['Eta'][0](10,10))
         except BadDressedMassConvergence as e:
             raise e
         
@@ -646,16 +648,15 @@ class Potential:
         for T in Ts_init:
             #Computing the difference between symmetric and broken minima.
             deltaV =  self.deltaV(T, rstart=scale)
-            
+
             #Basically starting from low T and increasing until deltaV flips signs (i.e. minima have crossed eachother)
             if deltaV is not None and deltaV > 0: deltaVs_init.append([T,deltaV])
             if deltaV is not None and deltaV < 0: break
 
         deltaVs_init=np.array(deltaVs_init)
-		
 
         if prnt:
-            ax=plt.subplot()
+            
             for T,_ in deltaVs_init:
                 plt.scatter(self.findminima(T),T)
                 plt.scatter(0,T)
@@ -682,28 +683,23 @@ class Potential:
             plt.plot(deltaVs_init[:,1], deltaVs_init[:,0])
             plt.xlabel('Delta V'); plt.ylabel('Temperature')
             debug_plot(name="debug", overwrite=False)
-            #plt.show()
 
             print(f"Coarse grain scan finds {T_init} being closest Delta V to 0")
 
         def plotV(V, Ts):
-            ax=plt.subplot()
             for T in Ts:
                 plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=100),V.Vtot(np.linspace(-10,self.fSIGMA*SIGMULT,num=100),T)-V.Vtot(0,T),label=f"T={T}")
                 if self.findminima(T) is not None:
-                    ax.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
+                    plt.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
             plt.legend()
             debug_plot(name="debug", overwrite=False)
-            #plt.show()	
             
         def splitV(V, T):
-            ax=plt.subplot()
-            ax.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.Vtot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),T)-V.Vtot(0,T),label=f"VTot at Tc={T}")
-            ax.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.V1T(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),T)-V.V1T(0,T),label=f"V1T at Tc={T}")
-            ax.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.V(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000))-V.V(0),label=f"Vtree")
+            plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.Vtot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),T)-V.Vtot(0,T),label=f"VTot at Tc={T}")
+            plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.V1T(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),T)-V.V1T(0,T),label=f"V1T at Tc={T}")
+            plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.V(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000))-V.V(0),label=f"Vtree")
             plt.legend()
             debug_plot(name="debug", overwrite=False)
-            #plt.show()
 	
 		#Find delta V for a finer scan of temperatures & interpolate between them. 
         Ts = np.linspace(T_init-10,T_init+10,num=150); deltaVs = np.array([[T, self.deltaV(T, rstart=scale*.8)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
@@ -836,8 +832,7 @@ if __name__ == "__main__":
     print('hello world') 
 
     #plt.semilogx(Ts,g_stars)
-    plt.semilogx(TsMeV,_g_starSM(TsMeV),linestyle='dashed')#INPUT Ts ARE IN GeV NOW
-    
-    debug_plot(name="debug", overwrite=False)
-    #plt.show()
+    #plt.semilogx(TsMeV,_g_starSM(TsMeV),linestyle='dashed')#INPUT Ts ARE IN GeV NOW
+    plt.plot(Jb_spline(np.arange(0,10)),np.arange(0,10))
+    debug_plot('Jb_spline')
     
