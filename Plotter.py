@@ -343,9 +343,7 @@ if __name__ == "__main__":
 	
 	'''
 	###SINGLE POINT FROM SCAN###
-	POINT_OF_INTEREST=6
-	
-	N=3; F=4
+	POINT_OF_INTEREST=7   
 
 	filename = 'Test_N3F4_Normal.csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
