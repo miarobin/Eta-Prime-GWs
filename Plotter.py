@@ -14,7 +14,7 @@ from debug_plot import debug_plot
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = 8  # default to 1 if not set
+CORES = 10  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
@@ -330,7 +330,7 @@ def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop=None):
 if __name__ == "__main__":
 
 	###LARGE SCAN###s
-	N=3; F=4
+	N=3; F=3
 
 	m2Sig = np.linspace(1., 25., num=3)*1000**2
 	m2Eta = np.linspace(1., 25., num=3)*1000**2
@@ -339,13 +339,14 @@ if __name__ == "__main__":
 	fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
 	
 	#comment out parallelscan norm to plot
+	
 	parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
 	
-	'''
+	
 	###SINGLE POINT FROM SCAN###
-	POINT_OF_INTEREST=7   
+	POINT_OF_INTEREST=1
 
-	filename = 'Test_N3F4_Normal.csv'; delimiter = ','
+	filename = 'Test_N3F3_Normal.csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
 	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,_ = data[POINT_OF_INTEREST-2]
@@ -354,5 +355,5 @@ if __name__ == "__main__":
 	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
 	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-	populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, plot=True)'''
+	populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, plot=True)
 

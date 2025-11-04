@@ -274,17 +274,63 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	#ADD WALL VELOCITY!
 	#NOTE TO FUTURE SELVES: defining SM part of g_star at the CRITICAL TEMPERATURE.
 	b = 12*np.pi* (30/(V._g_star(tc)*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
-	Integrand = lambda T: np.array([(1/Ts[i])**2 * (As[i]/Ts[i])**(3/2) * np.exp(-As[i]/Ts[i] + 4*np.log(MPl)) * (1/T - 1/Ts[i])**3 if T<Ts[i] else 0 for i in range(len(Ts))])
+	def Integrand(T, intAs, intTs):
+		return np.array([(1/intTs[i])**2 * (intAs[i]/intTs[i])**(3/2) * np.exp(-intAs[i]/intTs[i] + 4*np.log(MPl)) * (1/T - 1/intTs[i])**3 if T<intTs[i] else 0 for i in range(len(intTs))])
+	
+	Is = [b*integrate.trapezoid(Integrand(T, As, Ts), Ts) for T in Ts]
 
-
-	Is = [b*integrate.trapezoid(Integrand(T), Ts) for T in Ts]
 	
 	_Is = np.array([I for I, T, A in zip(Is,Ts,As) if I<150])
 	_Ts = np.array([T for I, T, A in zip(Is,Ts,As) if I<150])
 	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<150])
 	
 	if max(Is) > 150 and max(_Is)<0.34:
-		return None, None, tc, 12 #StepSize is too small!
+		print(Is)
+		print(Ts)
+		
+		print(_Is)
+		print(_Ts)
+		if abs(max(_Is))<Potential2.TOL:
+			return None, None, tc, 9 #An action has been found, but not less than I=150.
+
+		#Stepsize is too small so now iterating between the two values.
+		#1: find the lowest two values with Is above 150.
+		jplus,jminus = np.where(np.array(Is)>150)[0][:2]
+		Iplus,Iminus = Is[jplus], Is[jminus]
+		
+
+		moreTs = [Ts[jminus],Ts[jplus]]; moreAs = [As[jminus],As[jplus]]; moreIs = [Is[jminus],Is[jplus]]
+
+		#SAWTOOTH:
+		while moreIs[-1]>0.34 and abs((moreTs[-1]-moreTs[-2])/min(_Ts))>1e-6: #0.01 is arbitrary can change later!
+			m=(moreIs[-1]-Is[-2])/(Ts[-1]-Ts[-2])
+			c=moreIs[-1]-moreTs[-1]*m
+			
+			runningT = -c/m
+			try:
+				runningA,_ = action(V,runningT)
+			except BadlyIRDivergent as e:
+				print(e)
+				runningA=None 
+			if runningA is None or runningA<0:
+				return None, None, tc, 12 #If this happens, kill the code and look at the point individually.
+			
+			#We only need to consider the Ts greater than the running T for the integral.
+			runningI = b*integrate.trapezoid(Integrand(runningT, np.concatenate([runningA],_As),np.concatenate([runningT],_Ts)))[0]
+			moreTs.append(runningT); moreAs.append(runningA); moreIs.append(runningI)
+			
+			plt.plot(Is,Ts)
+			debug_plot('Jigsaw')
+			
+		if moreIs[-1]>0.34:
+			print(f'Fraction changing between points before exit = {(moreTs[-1]-moreTs[-2])/min(_Ts)}')
+			return None, None, tc, 12 #StepSize is still too small!
+		else:
+			_Is=np.concatenate(moreTs,_Ts); _Ts=np.concatenate(moreTs,_Ts); _As=np.concatenate(moreAs,_As)
+			_Is = np.array([I for I, T, A in zip(_Is,_Ts,_As) if I<150])
+			_Ts = np.array([T for I, T, A in zip(_Is,_Ts,_As) if I<150])
+			_As = np.array([A for I, T, A in zip(_Is,_Ts,_As) if I<150])
+			
 
 	if len(_As)==0:
 		return None, None, tc, 9 #An action has been found, but not less than I=100. Not sure exactly what this means but it's bad news.
@@ -301,7 +347,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 			if rollingAction is not None and rollingAction>0:
 				_As.append(rollingAction)
 				_Ts.append(_T)
-				_Is.append(b*integrate.trapezoid(Integrand(_T), Ts)) #COULD MAKE MORE ACCURATE!
+				_Is.append(b*integrate.trapezoid(Integrand(_T,_As,_Ts), Ts))
 		_Ts = np.array(_Ts); _As = np.array(_As); _Is = np.array(_Is)
 		
 		if len(_As)<=3:
