@@ -19,7 +19,7 @@ plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["font.size"]= 12
 
-NUMBEROFPOINTS = 200
+NUMBEROFPOINTS = 100
 EPSILON = 0.1
 
 
@@ -43,9 +43,11 @@ def SolveMasses(V, plot=False):
     MSqXData = np.zeros((len(TRange),len(sigmaRange)))
     RMS = np.zeros((len(TRange),len(sigmaRange))); failPoints = []
     
-
+    # Store previous solutions at each grid (T, σ) to enable 2D warm starts 
+    solution_grid = np.full((len(TRange), len(sigmaRange), 4), np.nan)
     
     for i,T in enumerate(TRange):
+        prev_solution = None # stores last successful solution (Mσ², Mη², MX², Mπ²)
         for j,sigma in enumerate(sigmaRange):
             if T<EPSILON:
                 MSqSigData[i,j] = V.mSq['Sig'][0](sigma)
@@ -53,6 +55,8 @@ def SolveMasses(V, plot=False):
                 MSqPiData[i,j] = V.mSq['Pi'][0](sigma)
                 MSqXData[i,j] = V.mSq['X'][0](sigma)
                 RMS[i,j] = 0
+                
+                continue
                 
             def bagEquations(vars):                
 
@@ -135,12 +139,22 @@ def SolveMasses(V, plot=False):
 
                 return res
                      
-
-            # Initial guess using the Debye masses.
-            initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
-                             V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
-                              V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
-                               V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
+            if j > 0 and np.all(np.isfinite(solution_grid[i, j-1])):
+                initial_guess = solution_grid[i, j-1]            # left neighbor
+            elif i > 0 and np.all(np.isfinite(solution_grid[i-1, j])):
+                initial_guess = solution_grid[i-1, j]            # above neighbor
+            elif i > 0 and j > 0 and np.all(np.isfinite(solution_grid[i-1, j-1])):
+                initial_guess = solution_grid[i-1, j-1]          # diagonal neighbor
+            elif prev_solution is not None:
+                initial_guess = prev_solution                    # same row fallback
+            else:
+                # <-- keep your original Debye-based guess
+                initial_guess = [
+                    V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - c1 * sigma**(V.F*V.detPow-4)),
+                    V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + c1 * sigma**(V.F*V.detPow-4)),
+                    V.mSq['X'][0](sigma)  + (T**2/24)*(V.lambdas + 2*V.lambdaa + c2 * sigma**(V.F*V.detPow-4)),
+                    V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - c2 * sigma**(V.F*V.detPow-4)),
+                ]
 
             
             #Scipy root function to solve the coupled equations.
@@ -155,6 +169,11 @@ def SolveMasses(V, plot=False):
                 MSqEtaData[i,j]=M_eta2
                 MSqXData[i,j]=M_X2
                 MSqPiData[i,j]=M_Pi2
+                
+                # SAVE solution for future neighbor-based warm-start
+                solution_grid[i, j] = sol.x
+                prev_solution = sol.x
+
                 
 
             else:
@@ -220,10 +239,10 @@ def SolveMasses(V, plot=False):
             _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesX)],valuesEta[np.isfinite(valuesX)],(X[_broken],Y[_broken]),method='nearest'))
             _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesPi)],valuesEta[np.isfinite(valuesPi)],(X[_broken],Y[_broken]),method='nearest'))
     
-    
-    plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V,minimal=True)
-    plotMassData([_MSqSigData,_MSqEtaData,_MSqXData,_MSqPiData], V,minimal=True)
-    
+    if plot:
+        plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V,minimal=True)
+        plotMassData([_MSqSigData,_MSqEtaData,_MSqXData,_MSqPiData], V,minimal=True)
+        
     #Very accurate interpolator to the data (which may be noisy itself so beware).
     rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2)
     rectiEta = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData/V.fSIGMA, ky=2,kx=2)
@@ -697,7 +716,7 @@ def _Jb_exact2(theta):
         )    
 
 
-
+#This only runs if we run DressedMasses.py 
 if __name__ == "__main__":
     '''Interpolator'''
 
@@ -725,7 +744,7 @@ if __name__ == "__main__":
     '''Test of dressed mass code'''
 
    	#NORMAL (fixed c = 8.19444444444445E-09)
-    N=3; F=6
+    N=3; F=3
     m2Sig = 90000.0; m2Eta = 100.; m2X = 1750000.0; fPI=1000.
     #m2Sig = 90000.0; m2Eta = 239722.22222222200; m2X = 250000.0; fPI=833.3333333333330
     #m2Sig = 90000.0; m2Eta = 131111.11111111100; m2X = 400000.0; fPI = 1000.0 #VERY BROKEN!
