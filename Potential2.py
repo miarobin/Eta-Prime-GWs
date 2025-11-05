@@ -173,8 +173,6 @@ from debug_plot import debug_plot
         
 '''
 
-#Maximum value of sigma for Martha's interpolator.
-GLUONIC_CUTOFF = 1000
 TOL = 1e-5
 
 IRDIVSMOOTHING=False
@@ -241,9 +239,9 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     
     print(f'm2={m2},c={c},ls={ls},la={la}')
     
-    #VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
-    #plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
-    #debug_plot(name="VTree Test", overwrite=False)
+    VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
+    plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
+    debug_plot(name="VTree Test", overwrite=False)
     #UNITARITY BOUNDS AND EFT EXPANSION
     '''
     #From sigma sigma -> sigma sigma scattering
@@ -352,53 +350,14 @@ class Potential:
         
         
         #  === MARTHA ===  Changed to automatically set the scale
+        # New interpolator now.
         if Polyakov:
             ##GLUONIC FITS
-            data = np.genfromtxt(f'GridDataF{int(self.F)}N{int(self.N)}Corrected.csv', delimiter=',', dtype=float, skip_header=1)
+            gluonicdata = np.genfromtxt(f'VGluonicF{int(self.F)}N{int(self.N)}.csv', delimiter=',', dtype=float, skip_header=1)
+            TTcs = np.genfromtxt(f'VGluonicDataF3N3TTcs.csv', delimiter=',', dtype=float, skip_header=0)
+            sigTcs = np.genfromtxt(f'VGluonicDataF3N3mqTcs.csv', delimiter=',', dtype=float, skip_header=0)
             
-            # Split by temperature midpoint
-            T_mid = 0.5 * (min(data[:,0]) + max(data[:,0]))
-            low_mask = data[:,0] < T_mid
-            high_mask = data[:,0] >= T_mid
-            
-            data_low = data[low_mask]
-            data_high = data[high_mask]
-            
-            # Automatic normalization
-            scale_low = np.max(np.abs(data_low[:,2]))
-            scale_high = np.max(np.abs(data_high[:,2]))
-
-            self.T_switch = T_mid
-            self.linear_small = interpolate.SmoothBivariateSpline(data_low[:,0], data_low[:,1], data_low[:,2]/scale_low, kx=4, ky=3
-                        )
-            self.linear_large = interpolate.SmoothBivariateSpline(
-                            data_high[:,0], data_high[:,1], data_high[:,2]/scale_high, kx=4, ky=3
-                        )
-            # Save scales for later when evaluating potential
-            self.scale_low = scale_low
-            self.scale_high = scale_high
-    
-        
-
-            data_low = data[low_mask]
-            data_high = data[high_mask]
-
-            # Automatic normalization
-            scale_low = np.max(np.abs(data_low[:,2]))
-            scale_high = np.max(np.abs(data_high[:,2]))
-        
-            self.T_switch = T_mid
-            self.linear_small = interpolate.SmoothBivariateSpline(
-                data_low[:,0], data_low[:,1], data_low[:,2]/scale_low, kx=4, ky=3
-            )
-            self.linear_large = interpolate.SmoothBivariateSpline(
-                data_high[:,0], data_high[:,1], data_high[:,2]/scale_high, kx=4, ky=3
-            )
-
-            # Save scales for later when evaluating potential
-            self.scale_low = scale_low
-            self.scale_high = scale_high
-        
+            self.VGluonicTc = interpolate.RectBivariateSpline(TTcs,sigTcs,gluonicdata)
 
         #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
         #                                            and their respective DoF]}
@@ -475,56 +434,15 @@ class Potential:
         return np.reshape((np.sum([n*Jb_spline(M2(sig,T)/T**2)-(1/4)*(M2(sig,T)-M2(sig,0))*Ib_spline(M2(sig,T)/T**2)/T**2 for M2, n in [self.MSq['Sig'],self.MSq['Eta'],
                                                                         self.MSq['X'],self.MSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
 
-
-    def _Vg(self, sig, T):
-        # Check if input1 or input2 are single numbers (scalars)
-        if np.ndim(T) == 0:
-            T = [T]  # Treat as a vector of one element
-        if np.ndim(sig) == 0:
-            sig = [sig]  # Treat as a vector of one element
-
-        # Convert inputs to numpy arrays for easier handling
-        vector1 = np.array(sig)
-        vector2 = np.array(T)
-        
-        # Create a matrix to store the results
-        matrix = np.zeros((len(vector1), len(vector2)))
-        
-        # Loop through each element of vector1 and vector2, applying the function
-        for i, a in enumerate(vector1):
-            for j, b in enumerate(vector2):
-                matrix[i, j] = self._Vg_f(a, b)
-    
-        return np.array(matrix)
-            
-    def _Vg_f(self, sig, T):
-        #Forcing the sigma to be a radial-type coordinate.
-        sig = abs(sig)
-        
-        #The interpolator does a terrible job at these low temperatures. For now, just set to zero as PT usually not at such low temperature.
-        if T<90:
-            return 0
-        
-        #T_switch is temperature for switching between 'small' temperatures & 'large'.
-        if T<self.T_switch:
-            #Set the V_gluonic contribution to be constant after a large value of sigma where Martha's code has cut off: GLUONIC_CUTOFF.
-            if sig>GLUONIC_CUTOFF:
-                #NOTE we have to rescale the interpolating function.
-                return self.linear_small.ev(T,GLUONIC_CUTOFF)*self.scale_low
-            else:
-                return self.linear_small.ev(T,sig)*self.scale_low
-        else:
-            if sig>GLUONIC_CUTOFF:
-                return self.linear_large.ev(T,GLUONIC_CUTOFF)*self.scale_high
-            else:
-                return self.linear_large.ev(T,sig)*self.scale_high
             
             
 
     def VGluonic(self, sig, T):
         #Wrapper function for _Vg.
         sig = np.array(sig)
-        return np.reshape(self._Vg(sig, T),sig.shape)
+        if self.tc is None:
+            self.tc=self.criticalT(prnt=False, minT=self.minT)
+        return np.reshape(self.VGluonicTc.ev(T/self.tc,sig/self.tc)*self.tc**4,sig.shape)
 	
 
     def Vtot(self,sig,T):

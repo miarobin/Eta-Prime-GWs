@@ -280,11 +280,11 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	Is = [b*integrate.trapezoid(Integrand(T, As, Ts), Ts) for T in Ts]
 
 	
-	_Is = np.array([I for I, T, A in zip(Is,Ts,As) if I<150])
-	_Ts = np.array([T for I, T, A in zip(Is,Ts,As) if I<150])
-	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<150])
+	_Is = np.array([I for I, T, A in zip(Is,Ts,As) if I<2])
+	_Ts = np.array([T for I, T, A in zip(Is,Ts,As) if I<2])
+	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<2])
 	
-	if max(Is) > 150 and max(_Is)<0.34:
+	if max(Is) > 2 and max(_Is)<0.34:
 		print(Is)
 		print(Ts)
 		
@@ -295,7 +295,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 
 		#Stepsize is too small so now iterating between the two values.
 		#1: find the lowest two values with Is above 150.
-		jplus,jminus = np.where(np.array(Is)>150)[0][:2]
+		jplus,jminus = np.where(np.array(Is)>2)[0][:2]
 		Iplus,Iminus = Is[jplus], Is[jminus]
 		
 
@@ -327,9 +327,9 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 			return None, None, tc, 12 #StepSize is still too small!
 		else:
 			_Is=np.concatenate(moreTs,_Ts); _Ts=np.concatenate(moreTs,_Ts); _As=np.concatenate(moreAs,_As)
-			_Is = np.array([I for I, T, A in zip(_Is,_Ts,_As) if I<150])
-			_Ts = np.array([T for I, T, A in zip(_Is,_Ts,_As) if I<150])
-			_As = np.array([A for I, T, A in zip(_Is,_Ts,_As) if I<150])
+			_Is = np.array([I for I, T, A in zip(_Is,_Ts,_As) if I<2])
+			_Ts = np.array([T for I, T, A in zip(_Is,_Ts,_As) if I<2])
+			_As = np.array([A for I, T, A in zip(_Is,_Ts,_As) if I<2])
 			
 
 	if len(_As)==0:
