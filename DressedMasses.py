@@ -19,7 +19,7 @@ plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["font.size"]= 12
 
-NUMBEROFPOINTS = 100
+NUMBEROFPOINTS = 150
 EPSILON = 0.1
 
 

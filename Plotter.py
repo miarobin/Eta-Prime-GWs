@@ -10,12 +10,17 @@ from multiprocessing import Pool
 import DressedMasses
 import os
 from debug_plot import debug_plot
+import pickle
+import hashlib
+import cProfile
+import pstats
 
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = int(os.environ.get("SLURM_CPUS_PER_TASK", 18))  # default to 1 if not set
+CORES = int(os.environ.get("SLURM_CPUS_PER_TASK", 36))  # default to 1 if not set
 print(f"Using {CORES} cores")
+
 
 
 '''
@@ -77,6 +82,7 @@ print(f"Using {CORES} cores")
 	NOTE The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
 '''
 
+
 def unwrap_populateN(args):
     return populate_safe_wrapperN(*args)
 
@@ -105,9 +111,11 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 
 
+
 def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, fSIGMA=None):
 	#Building the potential...
-	
+	plot = False #force plot false for scan
+ 
 	try:
 		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, fSIGMA=fSIGMA)
 	except Potential2.InvalidPotential as e:
@@ -190,26 +198,23 @@ def populate_safe(*args, **kwargs):
     
     return safe_results
 
-	
-	
-	
-def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False,plot=False):
-	#Wrapper function for normal case.
-	detPow = Potential2.get_detPow(N,F,"Normal")
-	
-	try:
-		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
-	except Potential2.NonUnitary as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 20)
-	except Potential2.NonTunnelling as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
-	except Potential2.BoundedFromBelow as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
 
-	
-	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
-	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, plot=False):
+    detPow = Potential2.get_detPow(N, F, "Normal")
+
+    try:
+        mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig, m2Eta, m2X, fPI, N, F, detPow)
+    except Potential2.NonUnitary:
+        return (0,0,0,0, 0,0,0,0, 0,20)
+    except Potential2.NonTunnelling:
+        return (0,0,0,0, 0,0,0,0, 0,21)
+    except Potential2.BoundedFromBelow:
+        return (0,0,0,0, 0,0,0,0, 0,22)
+
+    print(f'Normal: m2={mSq}, c={c}, ls={ls}, la={la}, N={N}, F={F}, p={detPow}')
+
+    return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow,
+                                          Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
 
 
 def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True,plot=False):
@@ -405,24 +410,26 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filenam
     print("Scan Finished")
 
 
-	
+
 if __name__ == "__main__":
 
 	###LARGE SCAN###s
-	N=3; F=3
+	N=3; F=6
 
-	m2Sig = np.linspace(1., 25., num=6)*1000**2
-	m2Eta = np.linspace(1., 25., num=6)*1000**2
-	m2X = np.linspace(1., 25., num=6)*1000**2
+	m2Sig = np.linspace(1., 25., num=7)*1000**2
+	m2Eta = np.linspace(0.01, 0.5, num=7)*1000**2
+	m2X = np.linspace(1., 25., num=7)*1000**2
  
-	fPi = np.linspace(0.5,1.5,num=6)*1000*np.sqrt(F/2)
+	fPi = np.linspace(1.,1.5,num=7)*1000*np.sqrt(F/2)
 	
 	#comment out parallelscan norm to plot
-	#parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
 	parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F)
 	
-	###SINGLE POINT FROM SCAN###
+	
+
 '''
+    # SINGLE POINT FROM SCAN
+    
 	POINT_OF_INTEREST=7   
 
 	filename = 'Test_N3F3_Normal.csv'; delimiter = ','
