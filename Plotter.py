@@ -413,17 +413,18 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filenam
 
 if __name__ == "__main__":
 
-	###LARGE SCAN###s
-	N=3; F=6
+    #LARGE SCANS
+    N=3; F=3
 
-	m2Sig = np.linspace(1., 25., num=7)*1000**2
-	m2Eta = np.linspace(0.01, 0.5, num=7)*1000**2
-	m2X = np.linspace(1., 25., num=7)*1000**2
- 
-	fPi = np.linspace(1.,1.5,num=7)*1000*np.sqrt(F/2)
-	
-	#comment out parallelscan norm to plot
-	parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F)
+    m2Sig = np.linspace(1., 25., num=6)*1000**2
+    #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
+    m2Eta = np.linspace(1., 25., num=6)*1000**2
+    m2X = np.linspace(1., 25., num=6)*1000**2
+
+    fPi = np.linspace(0.5,1.5,num=6)*1000*np.sqrt(F/2)
+
+    #comment out parallelscan norm to plot
+    parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F)
 	
 	
 

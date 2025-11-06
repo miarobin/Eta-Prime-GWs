@@ -23,6 +23,54 @@ NUMBEROFPOINTS = 150
 EPSILON = 0.1
 
 
+def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
+    """
+      adaptive scan:
+      1) Quick coarse scan over all T.
+      2) If no phase transition → skip refinement.
+      3) If phase transition exists → re-run SolveMasses only around Tc.
+    """
+    global NUMBEROFPOINTS
+    old_POINTS = NUMBEROFPOINTS      
+    old_TMULT = Potential2.TMULT      # store original T max multiplier
+
+    # 1) Coarse scan (fast)
+    print(f"[Adaptive] Coarse scan with {coarse_points} points...")
+    NUMBEROFPOINTS = coarse_points
+    Potential2.TMULT = old_TMULT      # keep same T max (just fewer points)
+
+    dressed, RMS, _ = SolveMasses(V, plot=False)
+    tc = V.criticalT(plot=False)
+
+    # 2) If no phase transition → done
+    if tc is None:
+        print("[Adaptive] No Tc found. Skipping refinement.")
+        NUMBEROFPOINTS = old_POINTS
+        Potential2.TMULT = old_TMULT
+        return dressed, RMS, None
+
+    # 3) Refine only around Tc
+    print(f"[Adaptive] Tc ≈ {tc:.2f}. Refining only near transition...")
+
+    # Narrow region in T, e.g. 0.8 Tc – 1.2 Tc
+    Tmin = max(0, tc * 0.8)
+    Tmax = tc * 1.2
+
+    # Restore fine resolution
+    NUMBEROFPOINTS = fine_points
+
+    # Adjust only the T-range (TMULT = Tmax / fπ)
+    Potential2.TMULT = Tmax / V.fSIGMA
+
+    # Re-run with fine grid, only near Tc
+    result = SolveMasses(V, plot=False)
+
+    # Restore original settings (important to not affect next parameter point)
+    NUMBEROFPOINTS = old_POINTS
+    Potential2.TMULT = old_TMULT
+    return result
+
+
 def SolveMasses(V, plot=False):
     plot=Potential2.PLOT_RUN
     
@@ -46,7 +94,10 @@ def SolveMasses(V, plot=False):
     # Store previous solutions at each grid (T, σ) to enable 2D warm starts 
     solution_grid = np.full((len(TRange), len(sigmaRange), 4), np.nan)
     
+    t_total = time.time()
+
     for i,T in enumerate(TRange):
+        t_row = time.time()
         prev_solution = None # stores last successful solution (Mσ², Mη², MX², Mπ²)
         for j,sigma in enumerate(sigmaRange):
             if T<EPSILON:
@@ -57,7 +108,7 @@ def SolveMasses(V, plot=False):
                 RMS[i,j] = 0
                 
                 continue
-                
+            
             def bagEquations(vars):                
 
                 M_sigma2, M_eta2, M_X2, M_Pi2 = vars
@@ -199,6 +250,9 @@ def SolveMasses(V, plot=False):
                     
                     failPoints.append([sigma, T])
                     
+        #print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s")       
+        print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
+     
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
     points = np.column_stack((X.ravel(), Y.ravel()))
@@ -429,9 +483,6 @@ def SolveMasses(V, plot=False):
     else:
         return dressedMasses, RMS, None
     
-
-
-
 
 def plotMassData(massData, V, minT=None, minimal=False):
     #Make sure these are exactly the same ranges as above!
@@ -664,6 +715,7 @@ _dtckb_positive = interpolate.interp1d(_dxb[_xb>0], _dyb[_xb>0], kind='cubic', f
 _dtckb_negative = interpolate.interp1d(_dxb[_dxb<0], _dyb[_dxb<0], kind='cubic', fill_value="extrapolate")
 
 
+
 def Ib_spline(X):
     """Ib interpolated from a saved spline. Input is (m/T)^2."""
     X = np.array(X)
@@ -674,8 +726,7 @@ def Ib_spline(X):
 
     y[x < _xbmin] = _tckb_negative(_xbmin)
     y[x > _xbmax] = 0
-    return y.reshape(X.shape)
-
+    return y.reshape(X.shape) 
 
 
 def dIb_spline(X):
@@ -689,7 +740,7 @@ def dIb_spline(X):
     y[x==0] = 1e15
     y[x < _xbmin] = _dtckb_negative(_xbmin)
     y[x > _xbmax] = 0
-    return y.reshape(X.shape)
+    return y.reshape(X.shape) 
 
 
 def Ib(X):
@@ -757,7 +808,9 @@ if __name__ == "__main__":
     #fPI=88
     #V = Potential2.Potential(m2,c,ls,la,3,3,1,Polyakov=False)
 
-    SolveMasses(V, plot=True)
+    #SolveMasses(V, plot=True)
+    SolveMasses_adaptive(V)
+
     
 
 
