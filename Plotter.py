@@ -2,7 +2,6 @@ import Potential2
 import GravitationalWave
 import numpy as np
 import matplotlib
-matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import csv
@@ -11,6 +10,11 @@ import DressedMasses
 import os
 from debug_plot import debug_plot
 
+import WallVelocity
+import WallVelocityLargeN
+
+if not Potential2.PLOT_RUN:
+	matplotlib.use('Agg') 
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
@@ -102,16 +106,16 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 
 
-def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, fSIGMA=None):
+def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=True, fSIGMA=None):
 	#Building the potential...
 	
 	try:
-		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, fSIGMA=fSIGMA)
+		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, xi=xi, fSIGMA=fSIGMA)
 	except Potential2.InvalidPotential as e:
 		print(e)
-		return (0, 0, 0, 0, 0, 16) #Dressed mass calculation has failed for this.
+		return (0, 0, 0, 0, 16, 0, 0, 0, 0) #Dressed mass calculation has failed for this.
 	except Potential2.BadDressedMassConvergence as e:
-		return (0, 0, 0, 0, 0, 23)
+		return (0, 0, 0, 0, 23, 0, 0, 0, 0)
 	
 	
 	#Calculating the zero temperature, tree level, analytic minimum.
@@ -137,35 +141,63 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, 
 		
 	if fSig == None:
 		#If fSig does not exist, then the potential does not have enough solutions for a tunneling. Return None.
-		return (0, 0, 0, 0, 0, 15)
+		return (0, 0, 0, 0, 15, 0, 0, 0, 0)
 
 	#Grid function computes:
 	#   a) Nucleation temperature Tn,
 	#   b) An interpolated function grd of action over temperature w/ temperature,
 	#   c) and an error code.
 	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot,ext_minT=V.minT)
+	
 
 
 	if Tn is not None:
 		#I'm not even sure how this is an error but anyway:
 		if Tn<tc/10:
-			return (0,0,0,0,tc,18)
+			return (0, 0, 0, tc, 18, 0, 0, 0, 0)
 		
 		#Bubbles nucleate before BBN! Yay!
 		
 		#Calculating wave parameters.
-		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
+		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd)
 		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}, message = {message}")
 		
+		#Wall Velocity 2303.10171:
+		minima = V.findminima(Tn)
+		psiN = V.dVdT(minima,Tn)/V.dVdT(0,Tn)
+            
+		cs2 = V.dVdT(0,Tn)/(Tn*V.d2VdT2(0,Tn))
+		cb2 = V.dVdT(minima,Tn)/(Tn*V.d2VdT2(minima,Tn))
+		alN = WallVelocity.alpha(V, Tn, cb2)
+            
+		vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
+		kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)
+		
+
+		#Wall Velocity 2312.09964. Large N refers to number of degrees of freedom here!
+		#NOTE for this to be valid, DoFBroken << DoFSym.
+		DoFSym = (7/2*V.F*V.N) + 2*(V.N**2-1) + Potential2._g_starSM(Tn)
+		DoFBroken = 2*V.F**2 + Potential2._g_starSM(Tn)
+		
+		if DoFBroken<DoFSym:#Maybe make harsher!
+			alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym, DoFBroken)
+			vwLN = WallVelocityLargeN.find_vw(alNLN,cb2,cs2)
+			kappaLN = WallVelocityLargeN.find_kappa(alNLN, cb2, cs2, psiN, vw=vwLN)
+		else:
+			vwLN = None
+			kappaLN = None
+			
+		print(f"vwLTE = {vwLTE}, kappaLTE = {kappaLTE}, vwLN = {vwLN}, kappaLN = {kappaLN}")
+		
 		#Returning wave parameters and zero-temperature particle masses.
-		return (Tn, alpha, betaH, 1, tc, message)
+		return (Tn, alpha, betaH, tc, message, vwLTE, kappaLTE, vwLN, kappaLN)
 
 	else:
 		#If Tn is none, bubbles do not nucleate in time.
 		print(f'CT Returned None with message {message}')
 		
 		#Returns the failure state, the associated failure code, and the associated zero-temperature particle masses.
-		return (0, 0, 0, 0, tc, message)
+		return (0, 0, 0, tc, message, 0, 0, 0, 0)
 
 # --- safe wrapper around your existing populate() ---
 def populate_safe(*args, **kwargs):
@@ -190,37 +222,36 @@ def populate_safe(*args, **kwargs):
 	
 	
 	
-def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False,plot=False):
+def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, plot=False):
 	#Wrapper function for normal case.
 	detPow = Potential2.get_detPow(N,F,"Normal")
 	
 	try:
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
 	except Potential2.NonUnitary as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 20)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 20)
 	except Potential2.NonTunnelling as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 21)
 	except Potential2.BoundedFromBelow as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 22)
 
 	
 	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
-	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, xi=xi, plot=plot, fSIGMA=fPI)]
 
 
-def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True,plot=False):
+def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, plot=False):
 	#Wrapper for the largeN case.
 	detPow = Potential2.get_detPow(N,F,"largeN")
 	
 	try:
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
 	except Potential2.NonUnitary as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 20)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 20)
 	except Potential2.NonTunnelling as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 21)
 	except Potential2.BoundedFromBelow as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 22)
 	
 
 
@@ -271,21 +302,24 @@ def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=3):
 
 	resN=np.array(resN); reslN=np.array(reslN)
 
+
 	#MAKE THE FILE WRITER
 	#Column Titles
-	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message']
+	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message', 'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN']
 	# File path to save the CSV
 	file_path = f'Test_N{N}F{F}_Normal.csv'
 	save_arrays_to_csv(file_path, column_titles, 
 					data[:,0],data[:,1],data[:,2],data[:,3],
 					resN[:,0],resN[:,1],resN[:,2],resN[:,3],
-					resN[:,8],resN[:,4],resN[:,5],resN[:,6],resN[:,9]
+					resN[:,7],resN[:,4],resN[:,5],resN[:,6],resN[:,8],
+					resN[:,9], resN[:,10], resN[:,11], resN[:,12]
 					)
 	file_path = f'Test_N{N}F{F}_largeN.csv'
 	save_arrays_to_csv(file_path, column_titles, 
 					data[:,0],data[:,1],data[:,2],data[:,3],
 					reslN[:,0],reslN[:,1],reslN[:,2],reslN[:,3],
-					reslN[:,8],reslN[:,4],reslN[:,5],reslN[:,6],reslN[:,9]
+					reslN[:,7],reslN[:,4],reslN[:,5],reslN[:,6],reslN[:,8],
+					reslN[:,9], reslN[:,10], reslN[:,11], reslN[:,12]
 					)
 
 	print('Scan Finished')
@@ -315,14 +349,16 @@ def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop=None):
 
 	#MAKE THE FILE WRITER
 	#Column Titles
-	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message']
+	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message', 'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN']
 	# File path to save the CSV
-	file_path = f'Test_N{N}F{F}_Normal.csv'
-	save_arrays_to_csv(file_path, column_titles,
+	file_path = f'NoPoly_N{N}F{F}_Normal.csv'
+	save_arrays_to_csv(file_path, column_titles, 
 					data[:,0],data[:,1],data[:,2],data[:,3],
 					resN[:,0],resN[:,1],resN[:,2],resN[:,3],
-					resN[:,8],resN[:,4],resN[:,5],resN[:,6],resN[:,9]
+					resN[:,7],resN[:,4],resN[:,5],resN[:,6],resN[:,8],
+					resN[:,9], resN[:,10], resN[:,11], resN[:,12]
 					)
+					
 
 	print('Scan Finished')
  
@@ -333,20 +369,22 @@ if __name__ == "__main__":
 	N=3; F=3
 
 	m2Sig = np.linspace(1., 25., num=3)*1000**2
-	m2Eta = np.linspace(1., 25., num=3)*1000**2
+	m2Eta = np.linspace(1, 25., num=3)*1000**2
 	m2X = np.linspace(1., 25., num=3)*1000**2
  
 	fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
 	
 	#comment out parallelscan norm to plot
-	
+	Potential2.PLOTRUN=False
 	#parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
 	
 	
 	###SINGLE POINT FROM SCAN###
-	POINT_OF_INTEREST=5
+	N=3; F=3
+	Potential2.PLOTRUN=True
+	POINT_OF_INTEREST=12
 
-	filename = 'Test_N3F3_Normal.csv'; delimiter = ','
+	filename = 'Test_N3F3_Normal100hou1.csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
 	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,_ = data[POINT_OF_INTEREST-2]
@@ -355,5 +393,5 @@ if __name__ == "__main__":
 	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
 	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-	populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, plot=True)
+	populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=2, plot=True)
 

@@ -4,7 +4,6 @@ from scipy.optimize import root
 from scipy import optimize, differentiate
 import time
 import matplotlib
-matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from scipy import interpolate
 import csv
@@ -21,6 +20,9 @@ plt.rcParams["font.size"]= 12
 
 NUMBEROFPOINTS = 200
 EPSILON = 0.1
+
+#if not Potential2.PLOT_RUN:
+#	matplotlib.use('Agg') 
 
 
 def SolveMasses(V, plot=False):
@@ -46,6 +48,7 @@ def SolveMasses(V, plot=False):
 
     
     for i,T in enumerate(TRange):
+        prevSol=None
         for j,sigma in enumerate(sigmaRange):
             if T<EPSILON:
                 MSqSigData[i,j] = V.mSq['Sig'][0](sigma)
@@ -135,13 +138,31 @@ def SolveMasses(V, plot=False):
 
                 return res
                      
+            initial_guess = np.array([V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
+                                V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
+                                V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
+                                V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))])
 
+            '''
+            # Initial guess using the previous point shifted in sigma.
+            if i>1 and j>1 and not np.isnan(MSqSigData[i-1,j]) and not np.isnan(MSqSigData[i,j-1]):
+                
+                    initial_guess = np.array([MSqSigData[i-1,j]+MSqSigData[i,j-1],
+                                    MSqEtaData[i-1,j]+MSqEtaData[i,j-1],
+                                    MSqXData[i-1,j]+MSqXData[i,j-1],
+                                    MSqPiData[i-1,j]+MSqPiData[i,j-1]])
+
+            else:
             # Initial guess using the Debye masses.
-            initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
-                             V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
-                              V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
-                               V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
+                
+                initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
+                                V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
+                                V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
+                                V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
+            '''
+            
 
+            
             
             #Scipy root function to solve the coupled equations.
             sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-08)
@@ -155,6 +176,7 @@ def SolveMasses(V, plot=False):
                 MSqEtaData[i,j]=M_eta2
                 MSqXData[i,j]=M_X2
                 MSqPiData[i,j]=M_Pi2
+                prevSol=sol.x
                 
 
             else:
@@ -168,6 +190,7 @@ def SolveMasses(V, plot=False):
                     MSqEtaData[i,j]=M_eta2
                     MSqXData[i,j]=M_X2
                     MSqPiData[i,j]=M_Pi2
+                    prevSol=sol.x
                 else:
                         
                     #if plot:
@@ -179,7 +202,14 @@ def SolveMasses(V, plot=False):
                     MSqPiData[i,j]=None
                     
                     failPoints.append([sigma, T])
-                    
+
+    '''      
+    TRange = TRange[::-1]
+    MSqSigData = MSqSigData[::-1]
+    MSqEtaData = MSqEtaData[::-1]
+    MSqXData = MSqXData[::-1]
+    MSqPiData = MSqPiData[::-1]'''
+    
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
     points = np.column_stack((X.ravel(), Y.ravel()))

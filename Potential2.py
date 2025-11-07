@@ -178,7 +178,7 @@ TOL = 1e-5
 IRDIVSMOOTHING=False
 PLOT_RUN=True
 
-TMULT = 1.5
+TMULT = 2
 SIGMULT = 1.1
 
 #Calculate g_star
@@ -315,7 +315,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
 
 #IT WOULD BE NICE TO HAVE fPI AS INPUT HERE FOR LATER SO WE DON'T HAVE TO RELY ON THE FORMULAE.
 class Potential:
-    def __init__(self, m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, fSIGMA=None):
+    def __init__(self, m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, xi=1, fSIGMA=None):
 		#All the parameters needed to construct the potential.
         self.m2 = m2
         self.c = c
@@ -325,6 +325,8 @@ class Potential:
         self.F = F
         self.detPow = detPow
         self.Polyakov = Polyakov
+        if self.Polyakov:
+            self.xi = xi #Confining Critical Temperature scaling.
         self.tc = None
         self.minT = None #Smallest temperature it makes sense to talk about the potential.
         
@@ -353,9 +355,9 @@ class Potential:
         # New interpolator now.
         if Polyakov:
             ##GLUONIC FITS
-            gluonicdata = np.genfromtxt(f'VGluonicF{int(self.F)}N{int(self.N)}.csv', delimiter=',', dtype=float, skip_header=1)
-            TTcs = np.genfromtxt(f'VGluonicDataF3N3TTcs.csv', delimiter=',', dtype=float, skip_header=0)
-            sigTcs = np.genfromtxt(f'VGluonicDataF3N3mqTcs.csv', delimiter=',', dtype=float, skip_header=0)
+            gluonicdata = np.genfromtxt(f'VGluonicDataF{int(self.F)}N{int(self.N)}.csv', delimiter=',', dtype=float, skip_header=0)
+            TTcs = np.genfromtxt(f'VGluonicDataF{int(self.F)}N{int(self.N)}TTcs.csv', delimiter=',', dtype=float, skip_header=0)
+            sigTcs = np.genfromtxt(f'VGluonicDataF{int(self.F)}N{int(self.N)}mqTcs.csv', delimiter=',', dtype=float, skip_header=0)
             
             self.VGluonicTc = interpolate.RectBivariateSpline(TTcs,sigTcs,gluonicdata)
 
@@ -440,9 +442,8 @@ class Potential:
     def VGluonic(self, sig, T):
         #Wrapper function for _Vg.
         sig = np.array(sig)
-        if self.tc is None:
-            self.tc=self.criticalT(prnt=False, minT=self.minT)
-        return np.reshape(self.VGluonicTc.ev(T/self.tc,sig/self.tc)*self.tc**4,sig.shape)
+        _tconfinement = self.xi*self.fSIGMA
+        return np.reshape(self.VGluonicTc.ev(T/_tconfinement,sig/_tconfinement)*_tconfinement**4,sig.shape)
 	
 
     def Vtot(self,sig,T):
