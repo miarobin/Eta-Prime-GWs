@@ -7,10 +7,10 @@ from scipy import interpolate
 from debug_plot import debug_plot
 
 GLUONIC_CUTOFF=1000
-Tc=570
+Tc=600
 
-data = np.genfromtxt(f'fineGridDatamqsigma.csv', delimiter=',', dtype=float, skip_header=1)[68:]
-dataNew = np.genfromtxt(f'VGluonicDataF3N3TEST.csv', delimiter=',', dtype=float, skip_header=0)
+data = np.genfromtxt(f'gridDataF3N3.csv', delimiter=',', dtype=float, skip_header=1)[68:]
+dataNew = np.genfromtxt(f'VGluonicDataF3N3.csv', delimiter=',', dtype=float, skip_header=0)
 TTcsNew = np.genfromtxt(f'VGluonicDataF3N3TTcs.csv', delimiter=',', dtype=float, skip_header=0)
 sigTcsNew = np.genfromtxt(f'VGluonicDataF3N3mqTcs.csv', delimiter=',', dtype=float, skip_header=0)
 
@@ -108,15 +108,13 @@ for T in Ts:
         if round(T)==round(point[0]):
             temperaturepoint.append(point)
     
-    #print(np.array(temperaturepoint))
-    #print(_Vg(T,sigmas))
             
     temperaturepoint=np.array(temperaturepoint)    
     print(linearNew.ev(np.array(T)/Tc,np.array(10)/Tc)*Tc**4/temperaturepoint[1,2])
 
        
     plt.plot(temperaturepoint[:,1],temperaturepoint[:,2],label='real data')
-    plt.plot(sigmas,(_Vg(T,sigmas)[0]),label='interpolated',linestyle='dashed')
+    #plt.plot(sigmas,(_Vg(T,sigmas)[0]),label='interpolated',linestyle='dashed')
     plt.plot(sigmas, linearNew.ev(np.array(T)/Tc,np.array(sigmas)/Tc)*Tc**4,label='New interpolated')
 
     plt.title(f'T={T}')

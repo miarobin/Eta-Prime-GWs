@@ -56,10 +56,12 @@ The two additional functions I have written are:
 ###### GLOBAL VARIABLES ######
 #None.
 
-def find_alphaN(Tc, Tn, cb2, N):
+def find_alphaN(Tc, Tn, cb2, DoFSym):
     mu = 1+1/cb2
-    V= - N**2 * Tc**(4-mu) * Tn**mu * (1/(mu-1)) + N**2 * Tc**4 / (mu-1)
-    dVdT = - N**2 * Tc**(4-mu) * Tn**(mu-1) * (mu/(mu-1))    
+    
+    #Template model (eq. 7) with energy difference between phases 0 at Tc.
+    V= - DoFSym * Tc**(4-mu) * Tn**mu * (1/(mu-1)) + DoFSym * Tc**4 / (mu-1)
+    dVdT = - DoFSym * Tc**(4-mu) * Tn**(mu-1) * (mu/(mu-1))    
 
     thetaBar = -Tn*dVdT+V + V/cb2
     DThetaBar = thetaBar
@@ -164,13 +166,13 @@ def max_al(cb2,cs2,upper_limit=1):
 
 def find_kappa (alN, cb2, cs2, psiN, vw=None):
     if vw is None:
-        vw = find_vw (alN, cb2, cs2, psiN)
+        vw = find_vw (alN, cb2, cs2)
     nu , mu = 1+1/cb2 ,1+1/cs2
     kappa, wp, vm, vp = 0, 1, 0, 0
     if vw < 1:
         vm = min (np.sqrt(cb2), vw)
-        al = solve_alpha(vw, alN, cb2, cs2, psiN)
-        vp = get_vp(vm, al, cb2)
+        al = solve_alpha(vw, alN, cb2, cs2)
+        vp = get_vp()
         wp = w_from_alpha(al, alN, nu, mu)
         sol = integrate_plasma((vw - vp)/(1 - vw * vp), vw, wp, cs2)
         v , xi , w = sol.t, sol.y[0], sol .y[1]
@@ -242,7 +244,8 @@ def readAndEdit(filename, N, F, termType):
             
             cs2 = V.dVdT(0,Tns[i])/(Tns[i]*V.d2VdT2(0,Tns[i]))
             cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
-            alN = find_alphaN(Tcs[i], Tns[i], cb2, N)
+            DoFSym = (7/2*V.F*V.N) + 2*(V.N**2-1) + V._g_starSM(Tns[i])
+            alN = find_alphaN(Tcs[i], Tns[i], cb2, DoFSym)
             
             VwsLN[i] = find_vw(alN,cb2,cs2)
             kappasLN[i] = find_kappa(alN, cb2, cs2, psiN, VwsLN[i])

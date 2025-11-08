@@ -36,7 +36,7 @@ def SolveMasses(V, plot=False):
 
 
     #Setting up the scan.
-    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
+    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)[::-1]
     sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
@@ -143,7 +143,7 @@ def SolveMasses(V, plot=False):
                                 V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
                                 V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))])
 
-            '''
+            
             # Initial guess using the previous point shifted in sigma.
             if i>1 and j>1 and not np.isnan(MSqSigData[i-1,j]) and not np.isnan(MSqSigData[i,j-1]):
                 
@@ -152,16 +152,6 @@ def SolveMasses(V, plot=False):
                                     MSqXData[i-1,j]+MSqXData[i,j-1],
                                     MSqPiData[i-1,j]+MSqPiData[i,j-1]])
 
-            else:
-            # Initial guess using the Debye masses.
-                
-                initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
-                                V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
-                                V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
-                                V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
-            '''
-            
-
             
             
             #Scipy root function to solve the coupled equations.
@@ -169,19 +159,21 @@ def SolveMasses(V, plot=False):
             #Root mean squared error with a cutoff at 1.
             RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1)
 
-            if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):#arbitrary for now.
+            if sol.success and RMS[i,j]<1/V.fSIGMA:#arbitrary for now.
                 M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                 MSqSigData[i,j]=M_sigma2
                 MSqEtaData[i,j]=M_eta2
                 MSqXData[i,j]=M_X2
                 MSqPiData[i,j]=M_Pi2
-                prevSol=sol.x
                 
-
             else:
-                #Try with numerical jacobian as well:
-                sol = root(bagEquations, initial_guess, method='hybr')
+                initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
+                                V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
+                                V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
+                                V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
+ 
+                sol = root(bagEquations, initial_guess, jac=jac, method='hybr')
                 
                 if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):
                     M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
@@ -203,12 +195,12 @@ def SolveMasses(V, plot=False):
                     
                     failPoints.append([sigma, T])
 
-    '''      
+     
     TRange = TRange[::-1]
     MSqSigData = MSqSigData[::-1]
     MSqEtaData = MSqEtaData[::-1]
     MSqXData = MSqXData[::-1]
-    MSqPiData = MSqPiData[::-1]'''
+    MSqPiData = MSqPiData[::-1]
     
 
     X,Y=np.meshgrid(TRange,sigmaRange) 

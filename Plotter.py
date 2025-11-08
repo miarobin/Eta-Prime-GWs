@@ -118,6 +118,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 		return (0, 0, 0, 0, 23, 0, 0, 0, 0)
 	
 	
+	
 	#Calculating the zero temperature, tree level, analytic minimum.
 	fSig = V.fSIGMA
 	print(f'fSigma={fSig}')
@@ -155,6 +156,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 		#I'm not even sure how this is an error but anyway:
 		if Tn<tc/10:
 			return (0, 0, 0, tc, 18, 0, 0, 0, 0)
+					
 		
 		#Bubbles nucleate before BBN! Yay!
 		
@@ -229,12 +231,16 @@ def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, plot=False):
 	try:
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
 	except Potential2.NonUnitary as e:
-		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 20)
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0)
 	except Potential2.NonTunnelling as e:
-		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 21)
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0)
 	except Potential2.BoundedFromBelow as e:
-		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 22)
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0)
 
+				
 	
 	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, xi=xi, plot=plot, fSIGMA=fPI)]
@@ -247,11 +253,14 @@ def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, plot=False):
 	try:
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
 	except Potential2.NonUnitary as e:
-		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 20)
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0)
 	except Potential2.NonTunnelling as e:
-		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 21)
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0)
 	except Potential2.BoundedFromBelow as e:
-		return (0, 0, 0, 0, 0, 0, 0, 0, 0, 22)
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0)
 	
 
 
@@ -345,6 +354,7 @@ def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop=None):
 		#resN = p.starmap(populateN, data)
 		resN = p.starmap(populate_safe_wrapperN, data)
   
+	print(resN)
 	resN=np.array(resN)
 
 	#MAKE THE FILE WRITER
@@ -368,23 +378,22 @@ if __name__ == "__main__":
 	###LARGE SCAN###s
 	N=3; F=3
 
-	m2Sig = np.linspace(1., 25., num=3)*1000**2
-	m2Eta = np.linspace(1, 25., num=3)*1000**2
-	m2X = np.linspace(1., 25., num=3)*1000**2
+	m2Sig = np.linspace(1., 25., num=2)*1000**2
+	m2Eta = np.linspace(1., 25., num=2)*1000**2
+	m2X = np.linspace(1., 25., num=2)*1000**2
  
-	fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
+	fPi = np.linspace(0.5,1.5,num=2)*1000*np.sqrt(F/2)
 	
 	#comment out parallelscan norm to plot
 	Potential2.PLOTRUN=False
-	#parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
-	
-	
+	parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
+	'''
 	###SINGLE POINT FROM SCAN###
 	N=3; F=3
 	Potential2.PLOTRUN=True
-	POINT_OF_INTEREST=12
+	POINT_OF_INTEREST=11
 
-	filename = 'Test_N3F3_Normal100hou1.csv'; delimiter = ','
+	filename = 'Test_N3F3_Normal81points.csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
 	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,_ = data[POINT_OF_INTEREST-2]
@@ -393,5 +402,5 @@ if __name__ == "__main__":
 	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
 	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-	populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=2, plot=True)
+	print(populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=2, plot=True))'''
 

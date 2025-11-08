@@ -229,7 +229,7 @@ def readAndEdit(filename, N, F, termType):
             
             cs2 = V.dVdT(0,Tns[i])/(Tns[i]*V.d2VdT2(0,Tns[i]))
             cb2 = V.dVdT(minima,Tns[i])/(Tns[i]*V.d2VdT2(minima,Tns[i]))
-            alN = alpha(Tcs[i], Tns[i], cb2, N)
+            alN = alpha(Tcs[i], Tns[i], cb2)
             
             VwsLTE[i] = find_vw(alN,cb2,cs2)
             kappasLTE[i] = find_kappa(alN, cb2, cs2, psiN, VwsLTE[i])
