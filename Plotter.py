@@ -179,8 +179,8 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 		DoFSym = (7/2*V.F*V.N) + 2*(V.N**2-1) + Potential2._g_starSM(Tn)
 		DoFBroken = 2*V.F**2 + Potential2._g_starSM(Tn)
 		
-		if DoFBroken<DoFSym:#Maybe make harsher!
-			alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym, DoFBroken)
+		if DoFBroken<DoFSym:#Maybe make harsher! DoFBroken needs to be negligible 
+			alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym)
 			vwLN = WallVelocityLargeN.find_vw(alNLN,cb2,cs2)
 			kappaLN = WallVelocityLargeN.find_kappa(alNLN, cb2, cs2, psiN, vw=vwLN)
 		else:
