@@ -113,9 +113,9 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, xi=xi, fSIGMA=fSIGMA)
 	except Potential2.InvalidPotential as e:
 		print(e)
-		return (0, 0, 0, 0, 16, 0, 0, 0, 0) #Dressed mass calculation has failed for this.
+		return (0, 0, 0, 0, 16., 0, 0, 0, 0) #Dressed mass calculation has failed for this.
 	except Potential2.BadDressedMassConvergence as e:
-		return (0, 0, 0, 0, 23, 0, 0, 0, 0)
+		return (0, 0, 0, 0, 23., 0, 0, 0, 0)
 	
 	
 	
@@ -142,7 +142,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 		
 	if fSig == None:
 		#If fSig does not exist, then the potential does not have enough solutions for a tunneling. Return None.
-		return (0, 0, 0, 0, 15, 0, 0, 0, 0)
+		return (0, 0, 0, 0, 15., 0, 0, 0, 0)
 
 	#Grid function computes:
 	#   a) Nucleation temperature Tn,
@@ -155,7 +155,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 	if Tn is not None:
 		#I'm not even sure how this is an error but anyway:
 		if Tn<tc/10:
-			return (0, 0, 0, tc, 18, 0, 0, 0, 0)
+			return (0, 0, 0, tc, 18., 0, 0, 0, 0)
 					
 		
 		#Bubbles nucleate before BBN! Yay!
@@ -232,13 +232,13 @@ def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, plot=False):
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
 	except Potential2.NonUnitary as e:
 		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 20., 0, 0, 0, 0)
 	except Potential2.NonTunnelling as e:
 		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 21., 0, 0, 0, 0)
 	except Potential2.BoundedFromBelow as e:
 		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 22., 0, 0, 0, 0)
 
 				
 	
@@ -254,13 +254,13 @@ def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, plot=False):
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
 	except Potential2.NonUnitary as e:
 		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 20., 0, 0, 0, 0)
 	except Potential2.NonTunnelling as e:
 		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 21., 0, 0, 0, 0)
 	except Potential2.BoundedFromBelow as e:
 		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 22., 0, 0, 0, 0)
 	
 
 

@@ -242,38 +242,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
     plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
     debug_plot(name="VTree Test", overwrite=False)
-    #UNITARITY BOUNDS AND EFT EXPANSION
-    '''
-    #From sigma sigma -> sigma sigma scattering
-    if np.abs(3*ls - c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>16*np.pi:
-        print(f'Point is Invalid as unitarity is violated in sigma sigma -> sigma sigma')
-        raise NonUnitary('Failed in sigma sigma -> sigma sigma scattering')
-        
-    if np.abs(3*ls + c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>8*np.pi:#I think 8 but should check!
-        print(f'Point is Invalid as unitarity is violated in sigma eta prime -> sigma eta prime')
-        raise NonUnitary('Failed in sigma eta prime -> sigma eta prime scattering')
     
-    #From pi sigma -> pi sigma scattering
-    #  === MARTHA ===  3rd term is missing dividing by F (fixed)
-    if np.abs(ls+2*la - c/F *fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3))>8*np.pi: #I THINK 8 BUT SHOULD CHECK
-        print(f'Point is Invalid as unitarity is violated in sigma sigma -> pi pi')
-        raise NonUnitary('Failed in sigma sigma -> pi pi scattering')
-    
-    if np.abs(ls+2*la + c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3)/F)>8*np.pi:
-        print(f'Point is Invalid as unitarity is violated in sigma sigma -> X X')
-        raise NonUnitary('Failed in sigma X -> sigma X scattering')
-
-    #From pi pi -> pi pi scattering
-    # === MARTHA ===  This is different from what it is written down in overleaf
-    if np.abs(3*ls-c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>16*np.pi:
-        print(f'Point is Invalid as unitarity is violated in X X -> X X')
-        raise NonUnitary('Failed in X X -> X X scattering')
-
-    if np.abs(3*ls+c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>8*np.pi: #I think 8 but should check!
-        print(f'Point is Invalid as unitarity is violated in X pi -> X pi')
-        raise NonUnitary('Failed in X pi -> X pi scattering')
-    '''
-        
     #CHECKS
     V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F*detPow)/F**2 + ls*sigma**4/8
     dV = lambda sigma: -m2*sigma - c*detPow*sigma**(F*detPow-1)/F + ls*sigma**3/2
@@ -290,7 +259,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
 
     # stationary at fpi
     if V(fPI)>V(0)+TOL:
-        raise NonTunnelling('sigma=0 minimum is true minimum')
+        raise NonTunnelling('Symmetric minimum is true minimum')
     if abs(dV(fPI))>TOL:
         print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
         plt.title(f'detPow={detPow}')
@@ -299,7 +268,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         plt.legend()
         debug_plot(name="debug", overwrite=False)
         #plt.show()
-        raise NonTunnelling('sigma=0 minimum is true minimum')
+        raise NonTunnelling('Symmetric minimum is true minimum')
 
     if ddV(fPI)<-TOL:
         print(f'Point is Invalid as fPI is not minimum')
