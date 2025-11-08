@@ -9,6 +9,10 @@ from multiprocessing import Pool
 import DressedMasses
 import os
 from debug_plot import debug_plot
+import pickle
+import hashlib
+import cProfile
+import pstats
 
 import WallVelocity
 import WallVelocityLargeN
@@ -20,6 +24,7 @@ if not Potential2.PLOT_RUN:
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
 CORES = 10  # default to 1 if not set
 print(f"Using {CORES} cores")
+
 
 
 '''
@@ -80,9 +85,13 @@ print(f"Using {CORES} cores")
 		
 	NOTE The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
 '''
-##GLOBAL VARIABLES##
-#CORES=1
 
+
+def unwrap_populateN(args):
+    return populate_safe_wrapperN(*args)
+
+def unwrap_populatelN(args): 
+    return populate_safe_wrapperlN(*args)
 
 def plotV(V, Ts):
 	for T in Ts:
@@ -108,7 +117,8 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=True, fSIGMA=None):
 	#Building the potential...
-	
+	plot = False #force plot false for scan
+ 
 	try:
 		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, xi=xi, fSIGMA=fSIGMA)
 	except Potential2.InvalidPotential as e:
@@ -201,7 +211,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 		#Returns the failure state, the associated failure code, and the associated zero-temperature particle masses.
 		return (0, 0, 0, tc, message, 0, 0, 0, 0)
 
-# --- safe wrapper around your existing populate() ---
+# safe wrapper around populate() 
 def populate_safe(*args, **kwargs):
     """
     Calls the original populate(), but converts all outputs
@@ -285,115 +295,187 @@ def populate_safe_wrapperlN(*args):
     except Exception as e:
         print(f"populatelN failed: {e}")
         return [0.0]*10
-
-
-def parallelScan(m2Sig,m2Eta,m2X, fPI, N, F, crop=3):
-	
-	#MAKE THE ARRAY
-	data = []
-	for i in m2Sig:
-		for j in m2Eta:
-			for k in m2X:
-				for l in fPI:
-					if k>j and k>i:
-						data.append([i,j,k,l,N,F])
-						
-	#Cropping the data.
-	data = np.array(data)
-	data = data[:crop]
-        
-	#Multithreading with X cores.
-	with Pool(CORES) as p:
-		#Populating the result arrays.
-		resN = p.starmap(populate_safe_wrapperN, data)
-		reslN = p.starmap(populate_safe_wrapperlN, data)
-
-
-	resN=np.array(resN); reslN=np.array(reslN)
-
-
-	#MAKE THE FILE WRITER
-	#Column Titles
-	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message', 'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN']
-	# File path to save the CSV
-	file_path = f'Test_N{N}F{F}_Normal.csv'
-	save_arrays_to_csv(file_path, column_titles, 
-					data[:,0],data[:,1],data[:,2],data[:,3],
-					resN[:,0],resN[:,1],resN[:,2],resN[:,3],
-					resN[:,7],resN[:,4],resN[:,5],resN[:,6],resN[:,8],
-					resN[:,9], resN[:,10], resN[:,11], resN[:,12]
-					)
-	file_path = f'Test_N{N}F{F}_largeN.csv'
-	save_arrays_to_csv(file_path, column_titles, 
-					data[:,0],data[:,1],data[:,2],data[:,3],
-					reslN[:,0],reslN[:,1],reslN[:,2],reslN[:,3],
-					reslN[:,7],reslN[:,4],reslN[:,5],reslN[:,6],reslN[:,8],
-					reslN[:,9], reslN[:,10], reslN[:,11], reslN[:,12]
-					)
-
-	print('Scan Finished')
-
-def parallelScanNorm(m2Sig,m2Eta,m2X, fPI, N, F, crop=None):
-    
-	#MAKE THE ARRAY
-	data = []
-	for i in m2Sig:
-		for j in m2Eta:
-			for k in m2X:
-				for l in fPI:
-					data.append([i,j,k,l,N,F])
-						
-	#Cropping the data.
-	data = np.array(data)
-	if crop and crop<len(data):
-		data = data[:crop]
-		
-	#Multithreading with X cores.
-	with Pool(CORES) as p:
-		#Populating the result arrays.
-		#resN = p.starmap(populateN, data)
-		resN = p.starmap(populate_safe_wrapperN, data)
-  
-	print(resN)
-	resN=np.array(resN)
-
-	#MAKE THE FILE WRITER
-	#Column Titles
-	column_titles = ['m2Sig','m2Eta','m2X','fPI', 'm2', 'c', 'lambda_sigma', 'lambda_a', 'Tc', 'Tn', 'Alpha', 'Beta', 'Message', 'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN']
-	# File path to save the CSV
-	file_path = f'NoPoly_N{N}F{F}_Normal.csv'
-	save_arrays_to_csv(file_path, column_titles, 
-					data[:,0],data[:,1],data[:,2],data[:,3],
-					resN[:,0],resN[:,1],resN[:,2],resN[:,3],
-					resN[:,7],resN[:,4],resN[:,5],resN[:,6],resN[:,8],
-					resN[:,9], resN[:,10], resN[:,11], resN[:,12]
-					)
-					
-
-	print('Scan Finished')
  
-	
+ 
+#Just make sure to delete the old file before running   
+def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
+   
+    data = []
+    for i in m2Sig:
+        for j in m2Eta:
+            for k in m2X:
+                for l in fPI:
+                    if k > j and k > i:  
+                        data.append([i, j, k, l, N, F])
+    data = np.array(data)
+
+    if crop and crop < len(data):
+        data = data[:crop]
+
+    normal_file = f"Test_N{N}F{F}_Normal.csv"
+    largeN_file = f"Test_N{N}F{F}_largeN.csv"
+
+    def init_csv(fname):
+        if not os.path.exists(fname):
+            with open(fname, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    'm2Sig','m2Eta','m2X','fPI',
+                    'm2','c','lambda_sigma','lambda_a',
+                    'Tc','Tn','Alpha','Beta','Message'
+                ])
+
+    init_csv(normal_file)
+    init_csv(largeN_file)
+
+    #  Load finished parameter points to skip them
+    def load_done(fname):
+        done = set()
+        if os.path.exists(fname):
+            with open(fname, 'r') as f:
+                reader = csv.reader(f)
+                next(reader)  # skip header
+                for row in reader:
+                    if row:
+                        done.add(tuple(map(float, row[:4])))
+        return done
+
+    done_normal = load_done(normal_file)
+    done_largeN = load_done(largeN_file)
+
+    # Only compute points not already done in BOTH files
+    todo = [pt for pt in data if (tuple(pt[:4]) not in done_normal) or (tuple(pt[:4]) not in done_largeN)]
+
+    print(f"[Checkpoint] Total points = {len(data)}, still to do = {len(todo)}")
+
+    if not todo:
+        print("[Checkpoint] All points are already done.")
+        return
+
+    #  Run in parallel, but save as soon as each result comes back
+    with Pool(CORES) as p, \
+        open(normal_file, 'a', newline='') as fn, \
+        open(largeN_file, 'a', newline='') as fl:
+
+        writer_norm = csv.writer(fn)
+        writer_lN   = csv.writer(fl)
+
+        for params, results in zip(
+            todo,
+            p.starmap(
+                # This calls both wrappers on each point
+                lambda m2Sig, m2Eta, m2X, fPI, N, F: (
+                    populate_safe_wrapperN(m2Sig, m2Eta, m2X, fPI, N, F),
+                    populate_safe_wrapperlN(m2Sig, m2Eta, m2X, fPI, N, F)
+                ),
+                [tuple(pt) for pt in todo]
+            )
+        ):
+            resN, reslN = results
+
+            #  Save Normal 
+            writer_norm.writerow(list(params[:4]) + [
+                resN[0], resN[1], resN[2], resN[3],  # m2, c, lambda_sigma, lambda_a
+                resN[8], resN[4], resN[5], resN[6],  # Tc, Tn, Alpha, Beta
+                resN[9]                               # Message
+            ])
+            fn.flush()
+
+            #  Save large-N 
+            writer_lN.writerow(list(params[:4]) + [
+                reslN[0], reslN[1], reslN[2], reslN[3],
+                reslN[8], reslN[4], reslN[5], reslN[6],
+                reslN[9]
+            ])
+            fl.flush()
+
+            print(f"[Saved] {params[:4]}")
+
+    print("Scan Finished")
+
+
+#Just make sure to delete the old file before running
+def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filename=None):
+    
+    if filename is None:
+        filename = f'Test_N{N}F{F}_Normal.csv'
+
+    # Build full parameter list
+    data = []
+    for i in m2Sig:
+        for j in m2Eta:
+            for k in m2X:
+                for l in fPI:
+                    data.append([i, j, k, l, N, F])
+    data = np.array(data)
+
+    if crop and crop < len(data):
+        data = data[:crop]
+
+    # Check if checkpoint file exists
+    done = set()
+    if os.path.exists(filename):
+        print(f"[Checkpoint] Resuming from {filename}")
+        with open(filename, 'r') as f:
+            reader = csv.reader(f)
+            next(reader)  # skip header
+            for row in reader:
+                if row:
+                    done.add(tuple(map(float, row[:4])))
+
+    else:
+        print(f"[Checkpoint] Creating new file: {filename}")
+        with open(filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
+                             'lambda_a','Tc','Tn','Alpha','Beta','Message'])
+
+    # Filter out completed points
+    todo = [params for params in data if tuple(params[:4]) not in done]
+    print(f"[Checkpoint] Total points={len(data)}, remaining={len(todo)}")
+
+    if not todo:
+        print("[Checkpoint] All points already completed.")
+        return
+
+    # Run in parallel and write results one-by-one
+    with Pool(CORES) as p, open(filename, 'a', newline='') as f:
+        writer = csv.writer(f)
+        for params, result in zip(todo, p.imap(unwrap_populateN, todo)):
+        #for params, result in zip(todo, p.imap_unordered(unwrap_populateN, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
+            writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[8], 
+												result[4], result[5], result[6],  result[9] ])
+            f.flush()
+            print(f"[Saved] {params[:4]} → result saved.")
+
+
+    print("Scan Finished")
+
+
+
 if __name__ == "__main__":
 
-	###LARGE SCAN###s
-	N=3; F=3
+    #LARGE SCANS
+    N=3; F=3
 
-	m2Sig = np.linspace(1., 25., num=2)*1000**2
-	m2Eta = np.linspace(1., 25., num=2)*1000**2
-	m2X = np.linspace(1., 25., num=2)*1000**2
- 
-	fPi = np.linspace(0.5,1.5,num=2)*1000*np.sqrt(F/2)
+    m2Sig = np.linspace(1., 25., num=6)*1000**2
+    #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
+    m2Eta = np.linspace(1., 25., num=6)*1000**2
+    m2X = np.linspace(1., 25., num=6)*1000**2
+
+    fPi = np.linspace(0.5,1.5,num=6)*1000*np.sqrt(F/2)
+
+    #comment out parallelscan norm to plot
+    parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F)
 	
-	#comment out parallelscan norm to plot
-	Potential2.PLOTRUN=False
-	parallelScanNorm(m2Sig,m2Eta,m2X,fPi,N,F)
-	'''
-	###SINGLE POINT FROM SCAN###
-	N=3; F=3
-	Potential2.PLOTRUN=True
-	POINT_OF_INTEREST=11
+	
 
-	filename = 'Test_N3F3_Normal81points.csv'; delimiter = ','
+'''
+    # SINGLE POINT FROM SCAN
+    
+	POINT_OF_INTEREST=7   
+
+	filename = 'Test_N3F3_Normal.csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
 	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,_ = data[POINT_OF_INTEREST-2]

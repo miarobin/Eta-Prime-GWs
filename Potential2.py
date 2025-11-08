@@ -176,7 +176,7 @@ from debug_plot import debug_plot
 TOL = 1e-5
 
 IRDIVSMOOTHING=False
-PLOT_RUN=True
+PLOT_RUN=False
 
 TMULT = 2
 SIGMULT = 1.1
@@ -242,7 +242,8 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
     plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
     debug_plot(name="VTree Test", overwrite=False)
-    
+
+
     #CHECKS
     V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F*detPow)/F**2 + ls*sigma**4/8
     dV = lambda sigma: -m2*sigma - c*detPow*sigma**(F*detPow-1)/F + ls*sigma**3/2
@@ -427,7 +428,7 @@ class Potential:
             return self.V(sig) + self.V1T(sig,T).real
 
 
-
+    #do we need such level of precision in derivatives?
     def dVdT(self,sig,T,eps=0.001):
     #Uses finite difference method to fourth order. Takes scalar sigma and T.
         return (self.Vtot(sig,T-2*eps) - 8*self.Vtot(sig,T-eps) + 8*self.Vtot(sig,T+eps) - self.Vtot(sig,T+2*eps)) / (12.*eps)
@@ -584,7 +585,7 @@ class Potential:
             plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.V1T(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),T)-V.V1T(0,T),label=f"V1T at Tc={T}")
             plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.V(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000))-V.V(0),label=f"Vtree")
             plt.legend()
-            debug_plot(name="debug", overwrite=False)
+            #debug_plot(name="debug", overwrite=False)
 	
 		#Find delta V for a finer scan of temperatures & interpolate between them. 
         Ts = np.linspace(T_init-10,T_init+10,num=150); deltaVs = np.array([[T, self.deltaV(T, rstart=scale*.8)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
