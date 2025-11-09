@@ -319,11 +319,9 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
         if not os.path.exists(fname):
             with open(fname, 'w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow([
-                    'm2Sig','m2Eta','m2X','fPI',
-                    'm2','c','lambda_sigma','lambda_a',
-                    'Tc','Tn','Alpha','Beta','Message'
-                ])
+                writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
+                             'lambda_a','Tc','Tn','Alpha','Beta','Message',
+                             'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN'])
 
     init_csv(normal_file)
     init_csv(largeN_file)
@@ -374,19 +372,16 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
             resN, reslN = results
 
             #  Save Normal 
-            writer_norm.writerow(list(params[:4]) + [
-                resN[0], resN[1], resN[2], resN[3],  # m2, c, lambda_sigma, lambda_a
-                resN[8], resN[4], resN[5], resN[6],  # Tc, Tn, Alpha, Beta
-                resN[9]                               # Message
-            ])
+
+            writer_norm.writerow(list(params[:4]) +  [ resN[0], resN[1], resN[2], resN[3], resN[7],
+												resN[4], resN[5], resN[6],  resN[8], 
+                                                resN[9], resN[10], resN[11], resN[12] ])
             fn.flush()
 
             #  Save large-N 
-            writer_lN.writerow(list(params[:4]) + [
-                reslN[0], reslN[1], reslN[2], reslN[3],
-                reslN[8], reslN[4], reslN[5], reslN[6],
-                reslN[9]
-            ])
+            writer_lN.writerow(list(params[:4]) +  [ reslN[0], reslN[1], reslN[2], reslN[3], reslN[7],
+												reslN[4], reslN[5], reslN[6],  reslN[8], 
+                                                reslN[9], reslN[10], reslN[11], reslN[12] ])
             fl.flush()
 
             print(f"[Saved] {params[:4]}")
@@ -398,7 +393,7 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
 def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filename=None):
     
     if filename is None:
-        filename = f'Test_N{N}F{F}_Normal.csv'
+        filename = f'SmallTest_NewMethod_N{N}F{F}_Normal.csv'
 
     # Build full parameter list
     data = []
@@ -428,7 +423,8 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filenam
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
-                             'lambda_a','Tc','Tn','Alpha','Beta','Message'])
+                             'lambda_a','Tc','Tn','Alpha','Beta','Message',
+                             'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN'])
 
     # Filter out completed points
     todo = [params for params in data if tuple(params[:4]) not in done]
@@ -443,8 +439,9 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filenam
         writer = csv.writer(f)
         for params, result in zip(todo, p.imap(unwrap_populateN, todo)):
         #for params, result in zip(todo, p.imap_unordered(unwrap_populateN, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
-            writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[8], 
-												result[4], result[5], result[6],  result[9] ])
+            writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[7], 
+												result[4], result[5], result[6],  result[8], 
+                                                result[9], result[10], result[11], result[12] ])
             f.flush()
             print(f"[Saved] {params[:4]} → result saved.")
 
@@ -458,12 +455,12 @@ if __name__ == "__main__":
     #LARGE SCANS
     N=3; F=3
 
-    m2Sig = np.linspace(1., 25., num=6)*1000**2
+    m2Sig = np.linspace(1., 10., num=3)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=6)*1000**2
-    m2X = np.linspace(1., 25., num=6)*1000**2
+    m2Eta = np.linspace(1., 25., num=3)*1000**2
+    m2X = np.linspace(1., 25., num=3)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=6)*1000*np.sqrt(F/2)
+    fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
     parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F)
