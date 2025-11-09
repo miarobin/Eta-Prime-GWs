@@ -285,7 +285,7 @@ def populate_safe_wrapperN(*args):
         return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
     except Exception as e:
         print(f"populateN failed: {e}")
-        return [0.0]*10  # same number of outputs you expect
+        return [0.0]*13  # same number of outputs you expect
         
 
 def populate_safe_wrapperlN(*args):
@@ -294,7 +294,7 @@ def populate_safe_wrapperlN(*args):
         return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
     except Exception as e:
         print(f"populatelN failed: {e}")
-        return [0.0]*10
+        return [0.0]*13
  
  
 #Just make sure to delete the old file before running   
@@ -393,7 +393,7 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
 def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filename=None):
     
     if filename is None:
-        filename = f'SmallTest_NewMethod_N{N}F{F}_Normal.csv'
+        filename = f'SmallTest_OldMethod_N{N}F{F}_Normal.csv'
 
     # Build full parameter list
     data = []
@@ -438,7 +438,8 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filenam
     with Pool(CORES) as p, open(filename, 'a', newline='') as f:
         writer = csv.writer(f)
         for params, result in zip(todo, p.imap(unwrap_populateN, todo)):
-        #for params, result in zip(todo, p.imap_unordered(unwrap_populateN, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
+            print(result)
+            #for params, result in zip(todo, p.imap_unordered(unwrap_populateN, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
             writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[7], 
 												result[4], result[5], result[6],  result[8], 
                                                 result[9], result[10], result[11], result[12] ])
