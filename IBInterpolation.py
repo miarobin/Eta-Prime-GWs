@@ -3,11 +3,9 @@ from scipy.integrate import quad
 from scipy.optimize import root
 import time
 import matplotlib
-matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import csv
-from debug_plot import debug_plot
 
 
 
@@ -97,11 +95,18 @@ def dIB(R2):
 if __name__ == "__main__":
 
     #Create the interpolator for r^2 = M^2 /T^2 ~ Range[(700/100)^2, (800/200)^2] 
-    R2_vals = np.concatenate((np.linspace(-10,-0.001),np.concatenate(([0],np.geomspace(0.001, 100, 2000)))))
+    R2_vals = np.concatenate((np.linspace(-10,-0.0001,num=1000),np.concatenate(([0],np.geomspace(0.001, 100, 2000)))))
 
-
+    print(numerical_derivative(IB,-0.001))
+    print(numerical_derivative(IB, 0))
+    print(numerical_derivative(IB,0.001))
+    
+    print(dIB(-0.001))
+    print(dIB(0))
+    print(dIB(0.001))
 
     IB_vals = np.array([IB(R2) for R2 in R2_vals])
+    #dIB_vals = np.array([dIB(R2) if R2>=0 else numerical_derivative(IB, R2) for R2 in R2_vals])
     dIB_vals = np.array([dIB(R2) for R2 in R2_vals])
     dIB_numerical = np.array([numerical_derivative(IB, R2) for R2 in R2_vals])
 
@@ -126,8 +131,8 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(True)
     plt.savefig(f"Temporal-Plots/Intervssol.pdf", dpi=300)
-    debug_plot(name="debug", overwrite=False)
-    #plt.show()
+    #debug_plot(name="debug", overwrite=False)
+    plt.show()
 
     save_arrays_to_csv('IBData.csv',['R2','IB'], R2_vals, IB_vals)
     save_arrays_to_csv('dIBData.csv',['R2','dIB'], R2_vals, dIB_vals)

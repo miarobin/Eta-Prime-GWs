@@ -4,7 +4,6 @@ from scipy.optimize import root
 from scipy import optimize, differentiate
 import time
 import matplotlib
-matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from scipy import interpolate
 import csv
@@ -21,6 +20,9 @@ plt.rcParams["font.size"]= 12
 
 NUMBEROFPOINTS = 150
 EPSILON = 0.1
+
+#if not Potential2.PLOT_RUN:
+#	matplotlib.use('Agg') 
 
 
 
@@ -73,7 +75,11 @@ def SolveMasses(V, plot=False):
 
 
     #Setting up the scan.
+<<<<<<< HEAD
     TRange = np.linspace(0. ,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
+=======
+    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)[::-1]
+>>>>>>> upstream/main
     sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
@@ -201,6 +207,7 @@ def SolveMasses(V, plot=False):
                 ]
 
             
+            
             #Scipy root function to solve the coupled equations.
             sol = root(bagEquations, initial_guess, jac=jac, method='hybr',tol=1.49012e-08)
             #Root mean squared error with a cutoff at 1.
@@ -221,8 +228,12 @@ def SolveMasses(V, plot=False):
                 
 
             else:
-                #Try with numerical jacobian as well:
-                sol = root(bagEquations, initial_guess, method='hybr')
+                initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
+                                V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
+                                V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
+                                V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
+ 
+                sol = root(bagEquations, initial_guess, jac=jac, method='hybr')
                 
                 if sol.success and RMS[i,j]<1/V.fSIGMA:
                     M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
@@ -231,6 +242,7 @@ def SolveMasses(V, plot=False):
                     MSqEtaData[i,j]=M_eta2
                     MSqXData[i,j]=M_X2
                     MSqPiData[i,j]=M_Pi2
+                    prevSol=sol.x
                 else:
                         
                     MSqSigData[i,j]=None
@@ -239,9 +251,15 @@ def SolveMasses(V, plot=False):
                     MSqPiData[i,j]=None
                     
                     failPoints.append([sigma, T])
-                    
-        #print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s")       
+
         print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
+     
+    TRange = TRange[::-1]
+    MSqSigData = MSqSigData[::-1]
+    MSqEtaData = MSqEtaData[::-1]
+    MSqXData = MSqXData[::-1]
+    MSqPiData = MSqPiData[::-1]
+    
      
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
@@ -286,7 +304,7 @@ def SolveMasses(V, plot=False):
     if plot:
         plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V,minimal=True)
         plotMassData([_MSqSigData,_MSqEtaData,_MSqXData,_MSqPiData], V,minimal=True)
-        
+    
     #Very accurate interpolator to the data (which may be noisy itself so beware).
     rectiSig = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqSigData/V.fSIGMA, ky=2,kx=2)
     rectiEta = interpolate.RectBivariateSpline(TRange, sigmaRange, _MSqEtaData/V.fSIGMA, ky=2,kx=2)

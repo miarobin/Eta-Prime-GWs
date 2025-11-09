@@ -173,14 +173,12 @@ from debug_plot import debug_plot
         
 '''
 
-#Maximum value of sigma for Martha's interpolator.
-GLUONIC_CUTOFF = 1000
 TOL = 1e-5
 
 IRDIVSMOOTHING=False
 PLOT_RUN=False
 
-TMULT = 1.5
+TMULT = 2
 SIGMULT = 1.1
 
 #Calculate g_star
@@ -243,39 +241,9 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     
     VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
     plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
-    #debug_plot(name="VTree Test", overwrite=False)
-    #UNITARITY BOUNDS AND EFT EXPANSION
-    '''
-    #From sigma sigma -> sigma sigma scattering
-    if np.abs(3*ls - c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>16*np.pi:
-        print(f'Point is Invalid as unitarity is violated in sigma sigma -> sigma sigma')
-        raise NonUnitary('Failed in sigma sigma -> sigma sigma scattering')
-        
-    if np.abs(3*ls + c*fPI**(F*detPow-4)*(F*detPow)*(F*detPow-1)*(F*detPow-2)*(F*detPow-3)/F**2)>8*np.pi:#I think 8 but should check!
-        print(f'Point is Invalid as unitarity is violated in sigma eta prime -> sigma eta prime')
-        raise NonUnitary('Failed in sigma eta prime -> sigma eta prime scattering')
-    
-    #From pi sigma -> pi sigma scattering
-    #  === MARTHA ===  3rd term is missing dividing by F (fixed)
-    if np.abs(ls+2*la - c/F *fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3))>8*np.pi: #I THINK 8 BUT SHOULD CHECK
-        print(f'Point is Invalid as unitarity is violated in sigma sigma -> pi pi')
-        raise NonUnitary('Failed in sigma sigma -> pi pi scattering')
-    
-    if np.abs(ls+2*la + c*fPI**(F*detPow-4)*detPow*(F*detPow-2)*(F*detPow-3)/F)>8*np.pi:
-        print(f'Point is Invalid as unitarity is violated in sigma sigma -> X X')
-        raise NonUnitary('Failed in sigma X -> sigma X scattering')
+    debug_plot(name="VTree Test", overwrite=False)
 
-    #From pi pi -> pi pi scattering
-    # === MARTHA ===  This is different from what it is written down in overleaf
-    if np.abs(3*ls-c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>16*np.pi:
-        print(f'Point is Invalid as unitarity is violated in X X -> X X')
-        raise NonUnitary('Failed in X X -> X X scattering')
 
-    if np.abs(3*ls+c*fPI**(F*detPow-4)*(detPow/F)*(detPow*F**3-4*F**2+detPow*F+6))>8*np.pi: #I think 8 but should check!
-        print(f'Point is Invalid as unitarity is violated in X pi -> X pi')
-        raise NonUnitary('Failed in X pi -> X pi scattering')
-    '''
-        
     #CHECKS
     V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F*detPow)/F**2 + ls*sigma**4/8
     dV = lambda sigma: -m2*sigma - c*detPow*sigma**(F*detPow-1)/F + ls*sigma**3/2
@@ -292,7 +260,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
 
     # stationary at fpi
     if V(fPI)>V(0)+TOL:
-        raise NonTunnelling('sigma=0 minimum is true minimum')
+        raise NonTunnelling('Symmetric minimum is true minimum')
     if abs(dV(fPI))>TOL:
         print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
         plt.title(f'detPow={detPow}')
@@ -301,7 +269,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         plt.legend()
         debug_plot(name="debug", overwrite=False)
         #plt.show()
-        raise NonTunnelling('sigma=0 minimum is true minimum')
+        raise NonTunnelling('Symmetric minimum is true minimum')
 
     if ddV(fPI)<-TOL:
         print(f'Point is Invalid as fPI is not minimum')
@@ -317,7 +285,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
 
 #IT WOULD BE NICE TO HAVE fPI AS INPUT HERE FOR LATER SO WE DON'T HAVE TO RELY ON THE FORMULAE.
 class Potential:
-    def __init__(self, m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, fSIGMA=None):
+    def __init__(self, m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, xi=1, fSIGMA=None):
 		#All the parameters needed to construct the potential.
         self.m2 = m2
         self.c = c
@@ -327,6 +295,8 @@ class Potential:
         self.F = F
         self.detPow = detPow
         self.Polyakov = Polyakov
+        if self.Polyakov:
+            self.xi = xi #Confining Critical Temperature scaling.
         self.tc = None
         self.minT = None #Smallest temperature it makes sense to talk about the potential.
         
@@ -352,53 +322,14 @@ class Potential:
         
         
         #  === MARTHA ===  Changed to automatically set the scale
+        # New interpolator now.
         if Polyakov:
             ##GLUONIC FITS
-            data = np.genfromtxt(f'GridDataF{int(self.F)}N{int(self.N)}Corrected.csv', delimiter=',', dtype=float, skip_header=1)
+            gluonicdata = np.genfromtxt(f'VGluonicDataF{int(self.F)}N{int(self.N)}.csv', delimiter=',', dtype=float, skip_header=0)
+            TTcs = np.genfromtxt(f'VGluonicDataF{int(self.F)}N{int(self.N)}TTcs.csv', delimiter=',', dtype=float, skip_header=0)
+            sigTcs = np.genfromtxt(f'VGluonicDataF{int(self.F)}N{int(self.N)}mqTcs.csv', delimiter=',', dtype=float, skip_header=0)
             
-            # Split by temperature midpoint
-            T_mid = 0.5 * (min(data[:,0]) + max(data[:,0]))
-            low_mask = data[:,0] < T_mid
-            high_mask = data[:,0] >= T_mid
-            
-            data_low = data[low_mask]
-            data_high = data[high_mask]
-            
-            # Automatic normalization
-            scale_low = np.max(np.abs(data_low[:,2]))
-            scale_high = np.max(np.abs(data_high[:,2]))
-
-            self.T_switch = T_mid
-            self.linear_small = interpolate.SmoothBivariateSpline(data_low[:,0], data_low[:,1], data_low[:,2]/scale_low, kx=4, ky=3
-                        )
-            self.linear_large = interpolate.SmoothBivariateSpline(
-                            data_high[:,0], data_high[:,1], data_high[:,2]/scale_high, kx=4, ky=3
-                        )
-            # Save scales for later when evaluating potential
-            self.scale_low = scale_low
-            self.scale_high = scale_high
-    
-        
-
-            data_low = data[low_mask]
-            data_high = data[high_mask]
-
-            # Automatic normalization
-            scale_low = np.max(np.abs(data_low[:,2]))
-            scale_high = np.max(np.abs(data_high[:,2]))
-        
-            self.T_switch = T_mid
-            self.linear_small = interpolate.SmoothBivariateSpline(
-                data_low[:,0], data_low[:,1], data_low[:,2]/scale_low, kx=4, ky=3
-            )
-            self.linear_large = interpolate.SmoothBivariateSpline(
-                data_high[:,0], data_high[:,1], data_high[:,2]/scale_high, kx=4, ky=3
-            )
-
-            # Save scales for later when evaluating potential
-            self.scale_low = scale_low
-            self.scale_high = scale_high
-        
+            self.VGluonicTc = interpolate.RectBivariateSpline(TTcs,sigTcs,gluonicdata)
 
         #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
         #                                            and their respective DoF]}
@@ -433,9 +364,6 @@ class Potential:
         #Temperature dependent masses:
         try:
             _,self.RMS,_ = DressedMasses.SolveMasses(self)
-            print('HELLO WE ARE HERE NOW')
-            print(self.MSq['Sig'][0](10,10))
-            print(self.MSq['Eta'][0](10,10))
         except BadDressedMassConvergence as e:
             raise e
         
@@ -478,56 +406,14 @@ class Potential:
         return np.reshape((np.sum([n*Jb_spline(M2(sig,T)/T**2)-(1/4)*(M2(sig,T)-M2(sig,0))*Ib_spline(M2(sig,T)/T**2)/T**2 for M2, n in [self.MSq['Sig'],self.MSq['Eta'],
                                                                         self.MSq['X'],self.MSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
 
-
-    def _Vg(self, sig, T):
-        # Check if input1 or input2 are single numbers (scalars)
-        if np.ndim(T) == 0:
-            T = [T]  # Treat as a vector of one element
-        if np.ndim(sig) == 0:
-            sig = [sig]  # Treat as a vector of one element
-
-        # Convert inputs to numpy arrays for easier handling
-        vector1 = np.array(sig)
-        vector2 = np.array(T)
-        
-        # Create a matrix to store the results
-        matrix = np.zeros((len(vector1), len(vector2)))
-        
-        # Loop through each element of vector1 and vector2, applying the function
-        for i, a in enumerate(vector1):
-            for j, b in enumerate(vector2):
-                matrix[i, j] = self._Vg_f(a, b)
-    
-        return np.array(matrix)
-            
-    def _Vg_f(self, sig, T):
-        #Forcing the sigma to be a radial-type coordinate.
-        sig = abs(sig)
-        
-        #The interpolator does a terrible job at these low temperatures. For now, just set to zero as PT usually not at such low temperature.
-        if T<90:
-            return 0
-        
-        #T_switch is temperature for switching between 'small' temperatures & 'large'.
-        if T<self.T_switch:
-            #Set the V_gluonic contribution to be constant after a large value of sigma where Martha's code has cut off: GLUONIC_CUTOFF.
-            if sig>GLUONIC_CUTOFF:
-                #NOTE we have to rescale the interpolating function.
-                return self.linear_small.ev(T,GLUONIC_CUTOFF)*self.scale_low
-            else:
-                return self.linear_small.ev(T,sig)*self.scale_low
-        else:
-            if sig>GLUONIC_CUTOFF:
-                return self.linear_large.ev(T,GLUONIC_CUTOFF)*self.scale_high
-            else:
-                return self.linear_large.ev(T,sig)*self.scale_high
             
             
 
     def VGluonic(self, sig, T):
         #Wrapper function for _Vg.
         sig = np.array(sig)
-        return np.reshape(self._Vg(sig, T),sig.shape)
+        _tconfinement = self.xi*self.fSIGMA
+        return np.reshape(self.VGluonicTc.ev(T/_tconfinement,sig/_tconfinement)*_tconfinement**4,sig.shape)
 	
 
     def Vtot(self,sig,T):

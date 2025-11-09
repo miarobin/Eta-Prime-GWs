@@ -2,7 +2,6 @@ import Potential2
 import GravitationalWave
 import numpy as np
 import matplotlib
-matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import csv
@@ -15,10 +14,15 @@ import hashlib
 import cProfile
 import pstats
 
+import WallVelocity
+import WallVelocityLargeN
+
+if not Potential2.PLOT_RUN:
+	matplotlib.use('Agg') 
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = int(os.environ.get("SLURM_CPUS_PER_TASK", 36))  # default to 1 if not set
+CORES = 10  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
@@ -111,18 +115,18 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 
 
-
-def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, fSIGMA=None):
+def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=True, fSIGMA=None):
 	#Building the potential...
 	plot = False #force plot false for scan
  
 	try:
-		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, fSIGMA=fSIGMA)
+		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, xi=xi, fSIGMA=fSIGMA)
 	except Potential2.InvalidPotential as e:
 		print(e)
-		return (0, 0, 0, 0, 0, 16) #Dressed mass calculation has failed for this.
+		return (0, 0, 0, 0, 16., 0, 0, 0, 0) #Dressed mass calculation has failed for this.
 	except Potential2.BadDressedMassConvergence as e:
-		return (0, 0, 0, 0, 0, 23)
+		return (0, 0, 0, 0, 23., 0, 0, 0, 0)
+	
 	
 	
 	#Calculating the zero temperature, tree level, analytic minimum.
@@ -148,35 +152,64 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, plot=True, 
 		
 	if fSig == None:
 		#If fSig does not exist, then the potential does not have enough solutions for a tunneling. Return None.
-		return (0, 0, 0, 0, 0, 15)
+		return (0, 0, 0, 0, 15., 0, 0, 0, 0)
 
 	#Grid function computes:
 	#   a) Nucleation temperature Tn,
 	#   b) An interpolated function grd of action over temperature w/ temperature,
 	#   c) and an error code.
 	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot,ext_minT=V.minT)
+	
 
 
 	if Tn is not None:
 		#I'm not even sure how this is an error but anyway:
 		if Tn<tc/10:
-			return (0,0,0,0,tc,18)
+			return (0, 0, 0, tc, 18., 0, 0, 0, 0)
+					
 		
 		#Bubbles nucleate before BBN! Yay!
 		
 		#Calculating wave parameters.
-		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd); vw = GravitationalWave.wallVelocity(V, alpha, Tn)
+		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd)
 		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}, message = {message}")
 		
+		#Wall Velocity 2303.10171:
+		minima = V.findminima(Tn)
+		psiN = V.dVdT(minima,Tn)/V.dVdT(0,Tn)
+            
+		cs2 = V.dVdT(0,Tn)/(Tn*V.d2VdT2(0,Tn))
+		cb2 = V.dVdT(minima,Tn)/(Tn*V.d2VdT2(minima,Tn))
+		alN = WallVelocity.alpha(V, Tn, cb2)
+            
+		vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
+		kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)
+		
+
+		#Wall Velocity 2312.09964. Large N refers to number of degrees of freedom here!
+		#NOTE for this to be valid, DoFBroken << DoFSym.
+		DoFSym = (7/2*V.F*V.N) + 2*(V.N**2-1) + Potential2._g_starSM(Tn)
+		DoFBroken = 2*V.F**2 + Potential2._g_starSM(Tn)
+		
+		if DoFBroken<DoFSym:#Maybe make harsher! DoFBroken needs to be negligible 
+			alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym)
+			vwLN = WallVelocityLargeN.find_vw(alNLN,cb2,cs2)
+			kappaLN = WallVelocityLargeN.find_kappa(alNLN, cb2, cs2, psiN, vw=vwLN)
+		else:
+			vwLN = None
+			kappaLN = None
+			
+		print(f"vwLTE = {vwLTE}, kappaLTE = {kappaLTE}, vwLN = {vwLN}, kappaLN = {kappaLN}")
+		
 		#Returning wave parameters and zero-temperature particle masses.
-		return (Tn, alpha, betaH, 1, tc, message)
+		return (Tn, alpha, betaH, tc, message, vwLTE, kappaLTE, vwLN, kappaLN)
 
 	else:
 		#If Tn is none, bubbles do not nucleate in time.
 		print(f'CT Returned None with message {message}')
 		
 		#Returns the failure state, the associated failure code, and the associated zero-temperature particle masses.
-		return (0, 0, 0, 0, tc, message)
+		return (0, 0, 0, tc, message, 0, 0, 0, 0)
 
 # safe wrapper around populate() 
 def populate_safe(*args, **kwargs):
@@ -198,37 +231,46 @@ def populate_safe(*args, **kwargs):
     
     return safe_results
 
+	
+	
+	
+def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, plot=False):
+	#Wrapper function for normal case.
+	detPow = Potential2.get_detPow(N,F,"Normal")
+	
+	try:
+		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
+	except Potential2.NonUnitary as e:
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 20., 0, 0, 0, 0)
+	except Potential2.NonTunnelling as e:
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 21., 0, 0, 0, 0)
+	except Potential2.BoundedFromBelow as e:
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 22., 0, 0, 0, 0)
 
-def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, plot=False):
-    detPow = Potential2.get_detPow(N, F, "Normal")
-
-    try:
-        mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig, m2Eta, m2X, fPI, N, F, detPow)
-    except Potential2.NonUnitary:
-        return (0,0,0,0, 0,0,0,0, 0,20)
-    except Potential2.NonTunnelling:
-        return (0,0,0,0, 0,0,0,0, 0,21)
-    except Potential2.BoundedFromBelow:
-        return (0,0,0,0, 0,0,0,0, 0,22)
-
-    print(f'Normal: m2={mSq}, c={c}, ls={ls}, la={la}, N={N}, F={F}, p={detPow}')
-
-    return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow,
-                                          Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+				
+	
+	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
+	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, xi=xi, plot=plot, fSIGMA=fPI)]
 
 
-def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True,plot=False):
+def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, plot=False):
 	#Wrapper for the largeN case.
 	detPow = Potential2.get_detPow(N,F,"largeN")
 	
 	try:
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
 	except Potential2.NonUnitary as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 20)
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 20., 0, 0, 0, 0)
 	except Potential2.NonTunnelling as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 21)
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 21., 0, 0, 0, 0)
 	except Potential2.BoundedFromBelow as e:
-		return (0,0,0,0, 0, 0, 0, 0, 0, 22)
+		print(e)
+		return (0, 0, 0, 0, 0, 0, 0, 0, 22., 0, 0, 0, 0)
 	
 
 
@@ -243,7 +285,7 @@ def populate_safe_wrapperN(*args):
         return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
     except Exception as e:
         print(f"populateN failed: {e}")
-        return [0.0]*10  # same number of outputs you expect
+        return [0.0]*13  # same number of outputs you expect
         
 
 def populate_safe_wrapperlN(*args):
@@ -252,7 +294,7 @@ def populate_safe_wrapperlN(*args):
         return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
     except Exception as e:
         print(f"populatelN failed: {e}")
-        return [0.0]*10
+        return [0.0]*13
  
  
 #Just make sure to delete the old file before running   
@@ -277,11 +319,9 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
         if not os.path.exists(fname):
             with open(fname, 'w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow([
-                    'm2Sig','m2Eta','m2X','fPI',
-                    'm2','c','lambda_sigma','lambda_a',
-                    'Tc','Tn','Alpha','Beta','Message'
-                ])
+                writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
+                             'lambda_a','Tc','Tn','Alpha','Beta','Message',
+                             'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN'])
 
     init_csv(normal_file)
     init_csv(largeN_file)
@@ -332,19 +372,16 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
             resN, reslN = results
 
             #  Save Normal 
-            writer_norm.writerow(list(params[:4]) + [
-                resN[0], resN[1], resN[2], resN[3],  # m2, c, lambda_sigma, lambda_a
-                resN[8], resN[4], resN[5], resN[6],  # Tc, Tn, Alpha, Beta
-                resN[9]                               # Message
-            ])
+
+            writer_norm.writerow(list(params[:4]) +  [ resN[0], resN[1], resN[2], resN[3], resN[7],
+												resN[4], resN[5], resN[6],  resN[8], 
+                                                resN[9], resN[10], resN[11], resN[12] ])
             fn.flush()
 
             #  Save large-N 
-            writer_lN.writerow(list(params[:4]) + [
-                reslN[0], reslN[1], reslN[2], reslN[3],
-                reslN[8], reslN[4], reslN[5], reslN[6],
-                reslN[9]
-            ])
+            writer_lN.writerow(list(params[:4]) +  [ reslN[0], reslN[1], reslN[2], reslN[3], reslN[7],
+												reslN[4], reslN[5], reslN[6],  reslN[8], 
+                                                reslN[9], reslN[10], reslN[11], reslN[12] ])
             fl.flush()
 
             print(f"[Saved] {params[:4]}")
@@ -356,7 +393,7 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
 def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filename=None):
     
     if filename is None:
-        filename = f'Test_N{N}F{F}_Normal.csv'
+        filename = f'SmallTest_OldMethod_N{N}F{F}_Normal.csv'
 
     # Build full parameter list
     data = []
@@ -386,7 +423,8 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filenam
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
-                             'lambda_a','Tc','Tn','Alpha','Beta','Message'])
+                             'lambda_a','Tc','Tn','Alpha','Beta','Message',
+                             'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN'])
 
     # Filter out completed points
     todo = [params for params in data if tuple(params[:4]) not in done]
@@ -400,9 +438,11 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filenam
     with Pool(CORES) as p, open(filename, 'a', newline='') as f:
         writer = csv.writer(f)
         for params, result in zip(todo, p.imap(unwrap_populateN, todo)):
-        #for params, result in zip(todo, p.imap_unordered(unwrap_populateN, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
-            writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[8], 
-												result[4], result[5], result[6],  result[9] ])
+            print(result)
+            #for params, result in zip(todo, p.imap_unordered(unwrap_populateN, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
+            writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[7], 
+												result[4], result[5], result[6],  result[8], 
+                                                result[9], result[10], result[11], result[12] ])
             f.flush()
             print(f"[Saved] {params[:4]} → result saved.")
 
@@ -416,12 +456,12 @@ if __name__ == "__main__":
     #LARGE SCANS
     N=3; F=3
 
-    m2Sig = np.linspace(1., 25., num=6)*1000**2
+    m2Sig = np.linspace(1., 10., num=3)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=6)*1000**2
-    m2X = np.linspace(1., 25., num=6)*1000**2
+    m2Eta = np.linspace(1., 25., num=3)*1000**2
+    m2X = np.linspace(1., 25., num=3)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=6)*1000*np.sqrt(F/2)
+    fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
     parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F)
@@ -442,5 +482,5 @@ if __name__ == "__main__":
 	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
 	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-	populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, plot=True)'''
+	print(populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=2, plot=True))'''
 
