@@ -23,6 +23,7 @@ NUMBEROFPOINTS = 150
 EPSILON = 0.1
 
 
+
 def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     """
       adaptive scan:
@@ -33,12 +34,13 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     global NUMBEROFPOINTS
     old_POINTS = NUMBEROFPOINTS      
     old_TMULT = Potential2.TMULT      # store original T max multiplier
-
+    
+    
     # 1) Coarse scan (fast)
     print(f"[Adaptive] Coarse scan with {coarse_points} points...")
     NUMBEROFPOINTS = coarse_points
     Potential2.TMULT = old_TMULT      # keep same T max (just fewer points)
-
+   
     dressed, RMS, _ = SolveMasses(V, plot=False)
     tc = V.criticalT(plot=False)
 
@@ -49,24 +51,13 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
         Potential2.TMULT = old_TMULT
         return dressed, RMS, None
 
-    # 3) Refine only around Tc
-    print(f"[Adaptive] Tc ≈ {tc:.2f}. Refining only near transition...")
-
-    # Narrow region in T, e.g. 0.8 Tc – 1.2 Tc
-    Tmin = max(0, tc * 0.8)
     Tmax = tc * 1.2
+    Potential2.TMULT = Tmax / V.fSIGMA
+    
+    
 
     # Restore fine resolution
     NUMBEROFPOINTS = fine_points
-
-    # Adjust only the T-range (TMULT = Tmax / fπ)
-    Potential2.TMULT = Tmax / V.fSIGMA
-
-    # Re-run with fine grid, only near Tc
-    result = SolveMasses(V, plot=False)
-
-    # Restore original settings (important to not affect next parameter point)
-    NUMBEROFPOINTS = old_POINTS
     Potential2.TMULT = old_TMULT
     return result
 
@@ -82,7 +73,7 @@ def SolveMasses(V, plot=False):
 
 
     #Setting up the scan.
-    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
+    TRange = np.linspace(0. ,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
     sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
@@ -196,10 +187,12 @@ def SolveMasses(V, plot=False):
                 initial_guess = solution_grid[i-1, j]            # above neighbor
             elif i > 0 and j > 0 and np.all(np.isfinite(solution_grid[i-1, j-1])):
                 initial_guess = solution_grid[i-1, j-1]          # diagonal neighbor
+                
             elif prev_solution is not None:
-                initial_guess = prev_solution                    # same row fallback
+                initial_guess = prev_solution  # same row fallback
+
             else:
-                # <-- keep your original Debye-based guess
+                # keep your original Debye-based guess
                 initial_guess = [
                     V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - c1 * sigma**(V.F*V.detPow-4)),
                     V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + c1 * sigma**(V.F*V.detPow-4)),
@@ -213,7 +206,7 @@ def SolveMasses(V, plot=False):
             #Root mean squared error with a cutoff at 1.
             RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1)
 
-            if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):#arbitrary for now.
+            if sol.success and RMS[i,j]<1/V.fSIGMA: #old(np.sqrt(V.fSIGMA))
                 M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                 MSqSigData[i,j]=M_sigma2
@@ -231,7 +224,7 @@ def SolveMasses(V, plot=False):
                 #Try with numerical jacobian as well:
                 sol = root(bagEquations, initial_guess, method='hybr')
                 
-                if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):
+                if sol.success and RMS[i,j]<1/V.fSIGMA:
                     M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                     MSqSigData[i,j]=M_sigma2
@@ -240,9 +233,6 @@ def SolveMasses(V, plot=False):
                     MSqPiData[i,j]=M_Pi2
                 else:
                         
-                    #if plot:
-                    #    print(f"Root finding did not converge well for T={T} and sigma={sigma}")
-                    #    print(sol.message)
                     MSqSigData[i,j]=None
                     MSqEtaData[i,j]=None
                     MSqXData[i,j]=None
@@ -275,7 +265,7 @@ def SolveMasses(V, plot=False):
     
     #Sometimes there are issues with the bounding box!
     
-    if np.isnan(_MSqSigData).any:
+    if np.isnan(_MSqSigData).any():
         #First try: patch with real data.
         _broken = np.isnan(_MSqSigData)
         
@@ -285,13 +275,13 @@ def SolveMasses(V, plot=False):
         _MSqPiData[_broken] = MSqPiData[_broken]
         
         #Second try: patch with nearest data
-        if np.isnan(_MSqSigData).any:
+        if np.isnan(_MSqSigData).any():
             _broken =  np.isnan(_MSqSigData)
             
-            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesSigma)],valuesEta[np.isfinite(valuesSigma)],(X[_broken],Y[_broken]),method='nearest'))
+            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X[_broken],Y[_broken]),method='nearest'))
             _MSqEtaData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X[_broken],Y[_broken]),method='nearest'))
-            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesX)],valuesEta[np.isfinite(valuesX)],(X[_broken],Y[_broken]),method='nearest'))
-            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesPi)],valuesEta[np.isfinite(valuesPi)],(X[_broken],Y[_broken]),method='nearest'))
+            _MSqXData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X[_broken],Y[_broken]),method='nearest'))
+            _MSqPiData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X[_broken],Y[_broken]),method='nearest'))
     
     if plot:
         plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V,minimal=True)
@@ -486,7 +476,7 @@ def SolveMasses(V, plot=False):
 
 def plotMassData(massData, V, minT=None, minimal=False):
     #Make sure these are exactly the same ranges as above!
-    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
+    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)[::-1]
     sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData=massData[0]
