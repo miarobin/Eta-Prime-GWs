@@ -21,8 +21,8 @@ plt.rcParams["font.size"]= 12
 NUMBEROFPOINTS = 150
 EPSILON = 0.1
 
-#if not Potential2.PLOT_RUN:
-#	matplotlib.use('Agg') 
+matplotlib.use('Agg') 
+	
 
 
 def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
@@ -84,7 +84,7 @@ def SolveMasses(V, plot=False):
 
 
     #Setting up the scan.
-    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)[::-1]
+    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
     sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
@@ -231,11 +231,12 @@ def SolveMasses(V, plot=False):
                 
 
             else:
+                
                 initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
                                 V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
                                 V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
                                 V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
- 
+                
                 sol = root(bagEquations, initial_guess, jac=jac, method='hybr')
                 
                 if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):
@@ -260,11 +261,12 @@ def SolveMasses(V, plot=False):
 
         print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
      
+    '''
     TRange = TRange[::-1]
     MSqSigData = MSqSigData[::-1]
     MSqEtaData = MSqEtaData[::-1]
     MSqXData = MSqXData[::-1]
-    MSqPiData = MSqPiData[::-1]
+    MSqPiData = MSqPiData[::-1]'''
     
      
 
@@ -402,17 +404,16 @@ def SolveMasses(V, plot=False):
         TIndexSample = [0, 50, 100, 150, 165, 180, 195]
         colours = ["red", "firebrick", "darkorange", "crimson", "rosybrown", "gold", "palevioletred"]
         
-        for i,Tindex in enumerate(TIndexSample):
-            T = TRange[Tindex]
-            ax[0,0].scatter(sigmaRange, MSqSigData[Tindex,:]/V.fSIGMA**2, color=colours[i], label=f"T={T}",alpha=0.66)
-            ax[0,1].scatter(sigmaRange, MSqEtaData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66)
-            ax[1,0].scatter(sigmaRange, MSqXData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66)
-            ax[1,1].scatter(sigmaRange, MSqPiData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66)
+        for i,T in enumerate(TIndexSample):
+            ax[0,0].scatter(sigmaRange, MSqSigData[i,:]/V.fSIGMA**2, color=colours[i], label=f"T={T}",alpha=0.66)
+            ax[0,1].scatter(sigmaRange, MSqEtaData[i,:]/V.fSIGMA**2, color=colours[i],alpha=0.66)
+            ax[1,0].scatter(sigmaRange, MSqXData[i,:]/V.fSIGMA**2, color=colours[i],alpha=0.66)
+            ax[1,1].scatter(sigmaRange, MSqPiData[i,:]/V.fSIGMA**2, color=colours[i],alpha=0.66)
             
-            ax[0,0].scatter(sigmaRange, _MSqSigData[Tindex,:]/V.fSIGMA**2, color=colours[i], label=f"T={T}",alpha=0.66,marker='1')
-            ax[0,1].scatter(sigmaRange, _MSqEtaData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66,marker='1')
-            ax[1,0].scatter(sigmaRange, _MSqXData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66,marker='1')
-            ax[1,1].scatter(sigmaRange, _MSqPiData[Tindex,:]/V.fSIGMA**2, color=colours[i],alpha=0.66,marker='1')
+            ax[0,0].scatter(sigmaRange, _MSqSigData[i,:]/V.fSIGMA**2, color=colours[i], label=f"T={T}",alpha=0.66,marker='1')
+            ax[0,1].scatter(sigmaRange, _MSqEtaData[i,:]/V.fSIGMA**2, color=colours[i],alpha=0.66,marker='1')
+            ax[1,0].scatter(sigmaRange, _MSqXData[i,:]/V.fSIGMA**2, color=colours[i],alpha=0.66,marker='1')
+            ax[1,1].scatter(sigmaRange, _MSqPiData[i,:]/V.fSIGMA**2, color=colours[i],alpha=0.66,marker='1')
 
             
             ax[0,0].plot(sigmaRange, dressedMasses['Sig'](T, sigmaRange).flatten()/V.fSIGMA, color=colours[i])
