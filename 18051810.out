@@ -1,0 +1,480 @@
+/home/m.ulloacalzonzin/GW_eta/Eta-Prime-GWs
+c0701a-s11.ufhpc
+Sun Nov  9 01:50:33 PM EST 2025
+/home/m.ulloacalzonzin/GW_eta/Eta-Prime-GWs/DressedMasses.py:664: SyntaxWarning: invalid escape sequence '\p'
+  fig.suptitle(f"$f_\pi={V.fSIGMA}$")
+/home/m.ulloacalzonzin/GW_eta/Eta-Prime-GWs/WallVelocity.py:251: SyntaxWarning: invalid escape sequence '\g'
+  '''
+SLURM_CPUS_PER_TASK = 36
+Using 10 cores
+[Checkpoint] Creating new file: Test_N3F3xi1_Normal.csv
+[Checkpoint] Total points=81, remaining=81
+m2=333333.3333333334,c=544.3310539518174,ls=0.3950617283950618,la=3.654320987654322
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Normal: m2=333333.3333333334,c=544.3310539518174,ls=0.3950617283950618,la=3.654320987654322,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-3666666.6666666665,c=20412.41452319315,ls=6.222222222222222,la=-10.444444444444446
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=-3666666.6666666665,c=40824.8290463863,ls=24.88888888888889,la=22.22222222222223
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Symmetric minimum is true minimum
+m2=2583333.3333333335,c=544.3310539518174,ls=1.7283950617283954,la=7.209876543209878
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=2583333.3333333335,c=544.3310539518174,ls=1.7283950617283954,la=7.209876543209878,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=583333.3333333335,c=7076.303701373627,ls=2.9135802469135808,la=1.2839506172839512
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=583333.3333333335,c=7076.303701373627,ls=2.9135802469135808,la=1.2839506172839512,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1416666.6666666665,c=13608.276348795434,ls=4.098765432098766,la=-1.08641975308642
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=-1416666.6666666665,c=13608.276348795434,ls=4.098765432098766,la=-1.08641975308642,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=4833333.333333333,c=1632.9931618554522,ls=27.55555555555556,la=64.8888888888889
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=4833333.333333333,c=1632.9931618554522,ls=27.55555555555556,la=64.8888888888889,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=2833333.3333333335,c=10614.455552060439,ls=9.555555555555555,la=10.888888888888891
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=2833333.3333333335,c=10614.455552060439,ls=9.555555555555555,la=10.888888888888891,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=333333.3333333334,c=1632.9931618554522,ls=3.555555555555556,la=0.8888888888888892
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Normal: m2=333333.3333333334,c=1632.9931618554522,ls=3.555555555555556,la=0.8888888888888892,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1666666.6666666665,c=7076.303701373627,ls=1.5802469135802473,la=-2.2716049382716053
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=-3666666.6666666665,c=13608.276348795434,ls=2.7654320987654324,la=-4.641975308641976
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Symmetric minimum is true minimum
+m2=2583333.3333333335,c=1632.9931618554522,ls=15.555555555555557,la=32.88888888888889
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=2583333.3333333335,c=1632.9931618554522,ls=15.555555555555557,la=32.88888888888889,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=583333.3333333335,c=10614.455552060439,ls=6.555555555555555,la=2.8888888888888897
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=583333.3333333335,c=10614.455552060439,ls=6.555555555555555,la=2.8888888888888897,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1416666.6666666665,c=40824.8290463863,ls=36.88888888888889,la=22.22222222222223
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=-1416666.6666666665,c=40824.8290463863,ls=36.88888888888889,la=22.22222222222223,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=4833333.333333333,c=816.4965809277261,ls=6.88888888888889,la=16.222222222222225
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=4833333.333333333,c=816.4965809277261,ls=6.88888888888889,la=16.222222222222225,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=833333.3333333335,c=40824.8290463863,ls=48.88888888888889,la=-41.777777777777786
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=833333.3333333335,c=40824.8290463863,ls=48.88888888888889,la=-41.777777777777786,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=333333.3333333334,c=1632.9931618554522,ls=3.555555555555556,la=32.88888888888889
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Normal: m2=333333.3333333334,c=1632.9931618554522,ls=3.555555555555556,la=32.88888888888889,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1666666.6666666665,c=7076.303701373627,ls=1.5802469135802473,la=1.2839506172839512
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=-3666666.6666666665,c=40824.8290463863,ls=24.88888888888889,la=-9.777777777777777
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Symmetric minimum is true minimum
+m2=2583333.3333333335,c=1632.9931618554522,ls=15.555555555555557,la=64.8888888888889
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=2583333.3333333335,c=1632.9931618554522,ls=15.555555555555557,la=64.8888888888889,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=583333.3333333335,c=7076.303701373627,ls=2.9135802469135808,la=4.839506172839508
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=583333.3333333335,c=7076.303701373627,ls=2.9135802469135808,la=4.839506172839508,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1416666.6666666665,c=20412.41452319315,ls=9.222222222222223,la=5.555555555555557
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=-1416666.6666666665,c=20412.41452319315,ls=9.222222222222223,la=5.555555555555557,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=2833333.3333333335,c=21228.911104120878,ls=38.22222222222222,la=-20.444444444444446
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=2833333.3333333335,c=21228.911104120878,ls=38.22222222222222,la=-20.444444444444446,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=833333.3333333335,c=13608.276348795434,ls=5.4320987654321,la=-4.641975308641976
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=833333.3333333335,c=13608.276348795434,ls=5.4320987654321,la=-4.641975308641976,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=333333.3333333334,c=816.4965809277261,ls=0.888888888888889,la=16.222222222222225
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Normal: m2=333333.3333333334,c=816.4965809277261,ls=0.888888888888889,la=16.222222222222225,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-3666666.6666666665,c=40824.8290463863,ls=24.88888888888889,la=-41.777777777777786
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=-3666666.6666666665,c=20412.41452319315,ls=6.222222222222222,la=5.555555555555557
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Symmetric minimum is true minimum
+m2=583333.3333333335,c=21228.911104120878,ls=26.22222222222222,la=-20.444444444444446
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=583333.3333333335,c=21228.911104120878,ls=26.22222222222222,la=-20.444444444444446,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1416666.6666666665,c=13608.276348795434,ls=4.098765432098766,la=-4.641975308641976
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=-1416666.6666666665,c=13608.276348795434,ls=4.098765432098766,la=-4.641975308641976,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=4833333.333333333,c=1632.9931618554522,ls=27.55555555555556,la=0.8888888888888892
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=4833333.333333333,c=1632.9931618554522,ls=27.55555555555556,la=0.8888888888888892,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=2833333.3333333335,c=7076.303701373627,ls=4.246913580246915,la=-2.2716049382716053
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=2833333.3333333335,c=7076.303701373627,ls=4.246913580246915,la=-2.2716049382716053,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=833333.3333333335,c=20412.41452319315,ls=12.222222222222223,la=-10.444444444444446
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=833333.3333333335,c=20412.41452319315,ls=12.222222222222223,la=-10.444444444444446,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=333333.3333333334,c=816.4965809277261,ls=0.888888888888889,la=0.2222222222222223
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Normal: m2=333333.3333333334,c=816.4965809277261,ls=0.888888888888889,la=0.2222222222222223,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1666666.6666666665,c=21228.911104120878,ls=14.222222222222223,la=43.555555555555564
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=2583333.3333333335,c=1632.9931618554522,ls=15.555555555555557,la=0.8888888888888892
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Normal: m2=2583333.3333333335,c=1632.9931618554522,ls=15.555555555555557,la=0.8888888888888892,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=583333.3333333335,c=7076.303701373627,ls=2.9135802469135808,la=-2.2716049382716053
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=583333.3333333335,c=7076.303701373627,ls=2.9135802469135808,la=-2.2716049382716053,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1416666.6666666665,c=20412.41452319315,ls=9.222222222222223,la=-10.444444444444446
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=-1416666.6666666665,c=20412.41452319315,ls=9.222222222222223,la=-10.444444444444446,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=4833333.333333333,c=816.4965809277261,ls=6.88888888888889,la=0.2222222222222223
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=4833333.333333333,c=816.4965809277261,ls=6.88888888888889,la=0.2222222222222223,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=2833333.3333333335,c=21228.911104120878,ls=38.22222222222222,la=11.555555555555559
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=2833333.3333333335,c=21228.911104120878,ls=38.22222222222222,la=11.555555555555559,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=833333.3333333335,c=20412.41452319315,ls=12.222222222222223,la=-2.444444444444444
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=833333.3333333335,c=20412.41452319315,ls=12.222222222222223,la=-2.444444444444444,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=333333.3333333334,c=544.3310539518174,ls=0.3950617283950618,la=0.09876543209876547
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Normal: m2=333333.3333333334,c=544.3310539518174,ls=0.3950617283950618,la=0.09876543209876547,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1666666.6666666665,c=7076.303701373627,ls=1.5802469135802473,la=4.839506172839508
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=-3666666.6666666665,c=13608.276348795434,ls=2.7654320987654324,la=-1.08641975308642
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Symmetric minimum is true minimum
+m2=2583333.3333333335,c=816.4965809277261,ls=3.8888888888888893,la=8.222222222222223
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=2583333.3333333335,c=816.4965809277261,ls=3.8888888888888893,la=8.222222222222223,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=583333.3333333335,c=21228.911104120878,ls=26.22222222222222,la=43.555555555555564
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=583333.3333333335,c=21228.911104120878,ls=26.22222222222222,la=43.555555555555564,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=4833333.333333333,c=544.3310539518174,ls=3.0617283950617296,la=0.09876543209876547
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=4833333.333333333,c=544.3310539518174,ls=3.0617283950617296,la=0.09876543209876547,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=2833333.3333333335,c=10614.455552060439,ls=9.555555555555555,la=-5.111111111111112
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=2833333.3333333335,c=10614.455552060439,ls=9.555555555555555,la=-5.111111111111112,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=833333.3333333335,c=40824.8290463863,ls=48.88888888888889,la=-9.777777777777777
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=833333.3333333335,c=40824.8290463863,ls=48.88888888888889,la=-9.777777777777777,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1666666.6666666665,c=21228.911104120878,ls=14.222222222222223,la=-20.444444444444446
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Symmetric minimum is true minimum
+m2=-1666666.6666666665,c=10614.455552060439,ls=3.555555555555556,la=-5.111111111111112
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=-3666666.6666666665,c=20412.41452319315,ls=6.222222222222222,la=-2.444444444444444
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Symmetric minimum is true minimum
+m2=2583333.3333333335,c=544.3310539518174,ls=1.7283950617283954,la=3.654320987654322
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=2583333.3333333335,c=544.3310539518174,ls=1.7283950617283954,la=3.654320987654322,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=583333.3333333335,c=10614.455552060439,ls=6.555555555555555,la=10.888888888888891
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=583333.3333333335,c=10614.455552060439,ls=6.555555555555555,la=10.888888888888891,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=4833333.333333333,c=1632.9931618554522,ls=27.55555555555556,la=32.88888888888889
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=4833333.333333333,c=1632.9931618554522,ls=27.55555555555556,la=32.88888888888889,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=2833333.3333333335,c=10614.455552060439,ls=9.555555555555555,la=2.8888888888888897
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=2833333.3333333335,c=10614.455552060439,ls=9.555555555555555,la=2.8888888888888897,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=833333.3333333335,c=40824.8290463863,ls=48.88888888888889,la=22.22222222222223
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=833333.3333333335,c=40824.8290463863,ls=48.88888888888889,la=22.22222222222223,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=333333.3333333334,c=1632.9931618554522,ls=3.555555555555556,la=64.8888888888889
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Normal: m2=333333.3333333334,c=1632.9931618554522,ls=3.555555555555556,la=64.8888888888889,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1666666.6666666665,c=21228.911104120878,ls=14.222222222222223,la=11.555555555555559
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=2583333.3333333335,c=544.3310539518174,ls=1.7283950617283954,la=0.09876543209876547
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Normal: m2=2583333.3333333335,c=544.3310539518174,ls=1.7283950617283954,la=0.09876543209876547,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=583333.3333333335,c=10614.455552060439,ls=6.555555555555555,la=-5.111111111111112
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=583333.3333333335,c=10614.455552060439,ls=6.555555555555555,la=-5.111111111111112,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1416666.6666666665,c=40824.8290463863,ls=36.88888888888889,la=-9.777777777777777
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=-1416666.6666666665,c=40824.8290463863,ls=36.88888888888889,la=-9.777777777777777,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=4833333.333333333,c=544.3310539518174,ls=3.0617283950617296,la=3.654320987654322
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=4833333.333333333,c=544.3310539518174,ls=3.0617283950617296,la=3.654320987654322,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=2833333.3333333335,c=7076.303701373627,ls=4.246913580246915,la=1.2839506172839512
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=2833333.3333333335,c=7076.303701373627,ls=4.246913580246915,la=1.2839506172839512,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=833333.3333333335,c=13608.276348795434,ls=5.4320987654321,la=-1.08641975308642
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=833333.3333333335,c=13608.276348795434,ls=5.4320987654321,la=-1.08641975308642,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=333333.3333333334,c=816.4965809277261,ls=0.888888888888889,la=8.222222222222223
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Normal: m2=333333.3333333334,c=816.4965809277261,ls=0.888888888888889,la=8.222222222222223,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1666666.6666666665,c=10614.455552060439,ls=3.555555555555556,la=2.8888888888888897
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=-3666666.6666666665,c=13608.276348795434,ls=2.7654320987654324,la=2.4691358024691366
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Symmetric minimum is true minimum
+m2=2583333.3333333335,c=816.4965809277261,ls=3.8888888888888893,la=16.222222222222225
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=2583333.3333333335,c=816.4965809277261,ls=3.8888888888888893,la=16.222222222222225,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1416666.6666666665,c=40824.8290463863,ls=36.88888888888889,la=-41.777777777777786
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=-1416666.6666666665,c=40824.8290463863,ls=36.88888888888889,la=-41.777777777777786,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1416666.6666666665,c=13608.276348795434,ls=4.098765432098766,la=2.4691358024691366
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=-1416666.6666666665,c=13608.276348795434,ls=4.098765432098766,la=2.4691358024691366,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=4833333.333333333,c=544.3310539518174,ls=3.0617283950617296,la=7.209876543209878
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=4833333.333333333,c=544.3310539518174,ls=3.0617283950617296,la=7.209876543209878,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=2833333.3333333335,c=7076.303701373627,ls=4.246913580246915,la=4.839506172839508
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=2833333.3333333335,c=7076.303701373627,ls=4.246913580246915,la=4.839506172839508,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=833333.3333333335,c=13608.276348795434,ls=5.4320987654321,la=2.4691358024691366
+[debug] plot saved → Temporal-DebugPlots/VTree Test_009.pdf
+Normal: m2=833333.3333333335,c=13608.276348795434,ls=5.4320987654321,la=2.4691358024691366,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=333333.3333333334,c=544.3310539518174,ls=0.3950617283950618,la=7.209876543209878
+[debug] plot saved → Temporal-DebugPlots/VTree Test_001.pdf
+Normal: m2=333333.3333333334,c=544.3310539518174,ls=0.3950617283950618,la=7.209876543209878,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1666666.6666666665,c=10614.455552060439,ls=3.555555555555556,la=10.888888888888891
+[debug] plot saved → Temporal-DebugPlots/VTree Test_002.pdf
+Symmetric minimum is true minimum
+m2=2583333.3333333335,c=816.4965809277261,ls=3.8888888888888893,la=0.2222222222222223
+[debug] plot saved → Temporal-DebugPlots/VTree Test_003.pdf
+Normal: m2=2583333.3333333335,c=816.4965809277261,ls=3.8888888888888893,la=0.2222222222222223,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=583333.3333333335,c=21228.911104120878,ls=26.22222222222222,la=11.555555555555559
+[debug] plot saved → Temporal-DebugPlots/VTree Test_004.pdf
+Normal: m2=583333.3333333335,c=21228.911104120878,ls=26.22222222222222,la=11.555555555555559,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=-1416666.6666666665,c=20412.41452319315,ls=9.222222222222223,la=-2.444444444444444
+[debug] plot saved → Temporal-DebugPlots/VTree Test_005.pdf
+Normal: m2=-1416666.6666666665,c=20412.41452319315,ls=9.222222222222223,la=-2.444444444444444,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=4833333.333333333,c=816.4965809277261,ls=6.88888888888889,la=8.222222222222223
+[debug] plot saved → Temporal-DebugPlots/VTree Test_006.pdf
+Normal: m2=4833333.333333333,c=816.4965809277261,ls=6.88888888888889,la=8.222222222222223,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=2833333.3333333335,c=21228.911104120878,ls=38.22222222222222,la=43.555555555555564
+[debug] plot saved → Temporal-DebugPlots/VTree Test_007.pdf
+Normal: m2=2833333.3333333335,c=21228.911104120878,ls=38.22222222222222,la=43.555555555555564,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+m2=833333.3333333335,c=20412.41452319315,ls=12.222222222222223,la=5.555555555555557
+[debug] plot saved → Temporal-DebugPlots/VTree Test_008.pdf
+Normal: m2=833333.3333333335,c=20412.41452319315,ls=12.222222222222223,la=5.555555555555557,N=3.0,F=3.0,p=1
+populateN failed: VGluonicDataF3N3.csv not found.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.00000000e+06 1.00000000e+06 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1000000.         1000000.         1000000.            1224.74487139] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1000000.         1000000.         1000000.            1837.11730709] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.00000000e+06 1.30000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.00000000e+06 1.30000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.00000000e+06 1.30000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.00000000e+06 2.50000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.00000000e+06 2.50000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.00000000e+06 2.50000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.30000000e+07 1.00000000e+06 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.30000000e+07 1.00000000e+06 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.30000000e+07 1.00000000e+06 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.30000000e+07 1.30000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.30000000e+07 1.30000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.30000000e+07 1.30000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.30000000e+07 2.50000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.30000000e+07 2.50000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 1.30000000e+07 2.50000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 2.50000000e+07 1.00000000e+06 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 2.50000000e+07 1.00000000e+06 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 2.50000000e+07 1.00000000e+06 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 2.50000000e+07 1.30000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 2.50000000e+07 1.30000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 2.50000000e+07 1.30000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 2.50000000e+07 2.50000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 2.50000000e+07 2.50000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+06 2.50000000e+07 2.50000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.00000000e+06 1.00000000e+06 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.00000000e+06 1.00000000e+06 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.00000000e+06 1.00000000e+06 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.00000000e+06 1.30000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.00000000e+06 1.30000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.00000000e+06 1.30000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.00000000e+06 2.50000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.00000000e+06 2.50000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.00000000e+06 2.50000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.30000000e+07 1.00000000e+06 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.30000000e+07 1.00000000e+06 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.30000000e+07 1.00000000e+06 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.30000000e+07 1.30000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.30000000e+07 1.30000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.30000000e+07 1.30000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.30000000e+07 2.50000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.30000000e+07 2.50000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 1.30000000e+07 2.50000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 2.50000000e+07 1.00000000e+06 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 2.50000000e+07 1.00000000e+06 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 2.50000000e+07 1.00000000e+06 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 2.50000000e+07 1.30000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 2.50000000e+07 1.30000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 2.50000000e+07 1.30000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 2.50000000e+07 2.50000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 2.50000000e+07 2.50000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [5.50000000e+06 2.50000000e+07 2.50000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.00000000e+06 1.00000000e+06 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.00000000e+06 1.00000000e+06 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.00000000e+06 1.00000000e+06 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.00000000e+06 1.30000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.00000000e+06 1.30000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.00000000e+06 1.30000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.00000000e+06 2.50000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.00000000e+06 2.50000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.00000000e+06 2.50000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.30000000e+07 1.00000000e+06 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.30000000e+07 1.00000000e+06 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.30000000e+07 1.00000000e+06 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.30000000e+07 1.30000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.30000000e+07 1.30000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.30000000e+07 1.30000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.30000000e+07 2.50000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.30000000e+07 2.50000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 1.30000000e+07 2.50000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 2.50000000e+07 1.00000000e+06 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 2.50000000e+07 1.00000000e+06 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 2.50000000e+07 1.00000000e+06 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 2.50000000e+07 1.30000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 2.50000000e+07 1.30000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 2.50000000e+07 1.30000000e+07 1.83711731e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 2.50000000e+07 2.50000000e+07 6.12372436e+02] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 2.50000000e+07 2.50000000e+07 1.22474487e+03] → result saved.
+[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[Saved] [1.00000000e+07 2.50000000e+07 2.50000000e+07 1.83711731e+03] → result saved.
+Scan Finished

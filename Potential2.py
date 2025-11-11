@@ -321,7 +321,7 @@ class Potential:
             raise NonLinear(f"Choice of N = {self.N}, F = {self.F}, detPow = {detPow} gives non-linear Lagrangian.")
         
         
-        #  === MARTHA ===  Changed to automatically set the scale
+        #  automatically set the scale
         # New interpolator now.
         if Polyakov:
             ##GLUONIC FITS

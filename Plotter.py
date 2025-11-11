@@ -22,7 +22,7 @@ if not Potential2.PLOT_RUN:
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = 10  # default to 1 if not set
+CORES = 36  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
@@ -234,7 +234,7 @@ def populate_safe(*args, **kwargs):
 	
 	
 	
-def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, plot=False):
+def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False):
 	#Wrapper function for normal case.
 	detPow = Potential2.get_detPow(N,F,"Normal")
 	
@@ -256,7 +256,7 @@ def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, plot=False):
 	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, xi=xi, plot=plot, fSIGMA=fPI)]
 
 
-def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, plot=False):
+def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False):
 	#Wrapper for the largeN case.
 	detPow = Potential2.get_detPow(N,F,"largeN")
 	
@@ -276,7 +276,7 @@ def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, plot=False):
 
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
-	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
+	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov,xi=xi, plot=plot, fSIGMA=fPI)]
 
 
 def populate_safe_wrapperN(*args):
@@ -298,7 +298,7 @@ def populate_safe_wrapperlN(*args):
  
  
 #Just make sure to delete the old file before running   
-def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
+def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1,  crop=None):
    
     data = []
     for i in m2Sig:
@@ -363,8 +363,8 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
             p.starmap(
                 # This calls both wrappers on each point
                 lambda m2Sig, m2Eta, m2X, fPI, N, F: (
-                    populate_safe_wrapperN(m2Sig, m2Eta, m2X, fPI, N, F),
-                    populate_safe_wrapperlN(m2Sig, m2Eta, m2X, fPI, N, F)
+                    populate_safe_wrapperN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=Polyakov, xi=xi),
+                    populate_safe_wrapperlN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=Polyakov, xi=xi)
                 ),
                 [tuple(pt) for pt in todo]
             )
@@ -390,10 +390,12 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None):
 
 
 #Just make sure to delete the old file before running
-def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filename=None):
+def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov= False, xi=1,  crop=None, filename=None):
     
-    if filename is None:
-        filename = f'SmallTest_OldMethod_N{N}F{F}_Normal.csv'
+    if filename is None and Polyakov is True:
+        filename = f'Test_N{N}F{F}xi{xi}_Normal.csv'
+    else:
+        filename = f'Test_N{N}F{F}_Normal.csv'
 
     # Build full parameter list
     data = []
@@ -401,7 +403,7 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, crop=None, filenam
         for j in m2Eta:
             for k in m2X:
                 for l in fPI:
-                    data.append([i, j, k, l, N, F])
+                    data.append([i, j, k, l, N, F, Polyakov, xi])
     data = np.array(data)
 
     if crop and crop < len(data):
@@ -456,15 +458,15 @@ if __name__ == "__main__":
     #LARGE SCANS
     N=3; F=3
 
-    m2Sig = np.linspace(1., 10., num=3)*1000**2
-    #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=3)*1000**2
-    m2X = np.linspace(1., 25., num=3)*1000**2
-
-    fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
+    m2Sig = np.linspace(1., 10., num=7)*1000**2
+    #m2Eta = np.linspace(0.01, 0.5, num=7)*1000**2 #for N3F5 N3F6 
+    m2Eta = np.linspace(1., 25., num=7)*1000**2
+    m2X = np.linspace(1., 25., num=7)*1000**2
+ 
+    fPi = np.linspace(0.5,1.5,num=7)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
-    parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F)
+    parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True, xi=2)
 	
 	
 

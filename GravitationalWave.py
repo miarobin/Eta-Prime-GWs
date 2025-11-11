@@ -303,7 +303,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	
 
 		#SAWTOOTH:
-		while moreIs[-1]>0.34 and abs((moreTs[-2]-moreTs[-1])/min(_Ts))>1e-6: #0.01 is arbitrary can change later!
+		while moreIs[-1]>0.34 and abs((moreTs[-2]-moreTs[-1])/min(_Ts))>1e-3: #(older >1e-6)0.01 is arbitrary can change later!
 			m=(moreIs[-1]-moreIs[-2])/(Ts[-1]-Ts[-2])
 			c=moreIs[-1]-moreTs[-1]*m
 			

@@ -1,0 +1,7 @@
+/home/m.ulloacalzonzin/GW_eta/Eta-Prime-GWs
+c0702a-s1.ufhpc
+Sun Nov  9 01:47:34 PM EST 2025
+  File "/home/m.ulloacalzonzin/GW_eta/Eta-Prime-GWs/Plotter.py", line 237
+    def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False)
+                                                                         ^
+SyntaxError: expected ':'

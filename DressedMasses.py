@@ -21,9 +21,6 @@ plt.rcParams["font.size"]= 12
 NUMBEROFPOINTS = 150
 EPSILON = 0.1
 
-#if not Potential2.PLOT_RUN:
-#	matplotlib.use('Agg') 
-
 
 
 def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
@@ -75,11 +72,7 @@ def SolveMasses(V, plot=False):
 
 
     #Setting up the scan.
-<<<<<<< HEAD
     TRange = np.linspace(0. ,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
-=======
-    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)[::-1]
->>>>>>> upstream/main
     sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
@@ -91,10 +84,10 @@ def SolveMasses(V, plot=False):
     # Store previous solutions at each grid (T, σ) to enable 2D warm starts 
     solution_grid = np.full((len(TRange), len(sigmaRange), 4), np.nan)
     
-    t_total = time.time()
+    #t_total = time.time()
 
     for i,T in enumerate(TRange):
-        t_row = time.time()
+        #t_row = time.time()
         prev_solution = None # stores last successful solution (Mσ², Mη², MX², Mπ²)
         for j,sigma in enumerate(sigmaRange):
             if T<EPSILON:
@@ -252,14 +245,8 @@ def SolveMasses(V, plot=False):
                     
                     failPoints.append([sigma, T])
 
-        print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
-     
-    TRange = TRange[::-1]
-    MSqSigData = MSqSigData[::-1]
-    MSqEtaData = MSqEtaData[::-1]
-    MSqXData = MSqXData[::-1]
-    MSqPiData = MSqPiData[::-1]
-    
+        #print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
+      
      
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
@@ -494,7 +481,7 @@ def SolveMasses(V, plot=False):
 
 def plotMassData(massData, V, minT=None, minimal=False):
     #Make sure these are exactly the same ranges as above!
-    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)[::-1]
+    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
     sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData=massData[0]
