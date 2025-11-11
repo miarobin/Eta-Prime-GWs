@@ -118,17 +118,23 @@ def integrate_plasma(v0,vw,w0,c2,shock_wave=True):
         print("WARNING: desired precision not reached in ’integrate_plasma’") 
     return sol
 
+
 def shooting(vw,alN,cb2,cs2,psiN):
     nu,mu = 1+1/cb2,1+1/cs2
     vm = min(np.sqrt(cb2),vw)
     al = solve_alpha(vw, alN, cb2, cs2, psiN) 
     vp = get_vp(vm, al, cb2)
     wp = w_from_alpha(al, alN, nu, mu)
-    sol = integrate_plasma((vw-vp)/(1-vw*vp), vw, wp, cs2) 
-    vp_sw = sol.y[0,-1]
-    vm_sw = (vp_sw-sol.t[-1])/(1-vp_sw*sol.t[-1])
-    wm_sw = sol.y[1,-1]
-    return vp_sw/vm_sw - ((mu-1)*wm_sw+1)/((mu-1)+wm_sw)
+    try:
+        sol = integrate_plasma((vw-vp)/(1-vw*vp), vw, wp, cs2) 
+        vp_sw = sol.y[0,-1]
+        vm_sw = (vp_sw-sol.t[-1])/(1-vp_sw*sol.t[-1])
+        wm_sw = sol.y[1,-1]
+        return vp_sw/vm_sw - ((mu-1)*wm_sw+1)/((mu-1)+wm_sw)
+    except ValueError as e:
+        print(e)
+        print(f'Inputs Causing Error: vw={vw} and wp={wp}. Returns large numerical value.')
+        return 1e20
 
 def find_vw(alN,cb2,cs2,psiN):
     nu,mu = 1+1/cb2,1+1/cs2
@@ -168,16 +174,27 @@ def find_kappa (alN, cb2, cs2, psiN, vw=None):
         al = solve_alpha(vw, alN, cb2, cs2, psiN)
         vp = get_vp(vm, al, cb2)
         wp = w_from_alpha(al, alN, nu, mu)
-        sol = integrate_plasma((vw - vp)/(1 - vw * vp), vw, wp, cs2)
-        v , xi , w = sol.t, sol.y[0], sol .y[1]
-        kappa += 4*simpson((xi * v)**2*w/(1 - v**2), xi)/(vw**3*alN)
+        try:
+            sol = integrate_plasma((vw - vp)/(1 - vw * vp), vw, wp, cs2)
+            v , xi , w = sol.t, sol.y[0], sol .y[1]
+            kappa += 4*simpson((xi * v)**2*w/(1 - v**2), xi)/(vw**3*alN)
+        except ValueError as e:
+            print(e)
+            print(f'Inputs Causing Error: vw={vw},wp={wp}. Adds nothing to efficiency factor.')
+            return kappa
+
     if vw **2 > cb2 :
         w0 = psiN * wp**(nu / mu)*((1 - vm**2)/(1 - v**2))**(nu/2) if vw < 1 else 1+6*alN/(nu-2)
         v0 = (vw - vm) /(1 - vw * vm) if vw < 1 else 3* alN /(nu-2+3*alN)
-        sol = integrate_plasma(v0, vw, w0, cb2, False)
-        v , xi , w = np.flip(sol.t), np.flip(sol.y[0]), np.flip(sol.y[1])
-        mask = np.append(xi[1:] > xi[: -1], True)
-        kappa += 4*simpson(((xi * v)**2*w/(1 - v **2))[mask], xi[mask]) /(vw**3*alN)
+        try:
+            sol = integrate_plasma(v0, vw, w0, cb2, False)
+            v , xi , w = np.flip(sol.t), np.flip(sol.y[0]), np.flip(sol.y[1])
+            mask = np.append(xi[1:] > xi[: -1], True)
+            kappa += 4*simpson(((xi * v)**2*w/(1 - v **2))[mask], xi[mask]) /(vw**3*alN)
+        except ValueError as e:
+            print(e)
+            print(f'Inputs Causing Error: vw={vw},wp={w0}. Adds nothing to efficiency factor.')
+        
     return kappa
 
 

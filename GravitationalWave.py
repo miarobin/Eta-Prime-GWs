@@ -7,7 +7,7 @@ from scipy import interpolate, optimize, integrate
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
-
+matplotlib.use('Agg')
 import csv
 import traceback
 from debug_plot import debug_plot
@@ -23,8 +23,7 @@ CYAN = "\033[36m" # Cyan color
 
 #Set constants
 MPl = 2.435E18; 
-if not Potential2.PLOT_RUN:
-	matplotlib.use('Agg')
+
 
 def IRProblem():
 	return None
@@ -142,8 +141,8 @@ def plotV(V, Ts):
 	for T in Ts:
 		plt.plot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100),V.Vtot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100),T)-V.Vtot(0,T),label=f"T={T}")
 	plt.legend()
-	if not Potential2.PLOT_RUN:debug_plot(name="debug", overwrite=False)
-	else:plt.show()
+	debug_plot(name="debug", overwrite=False)
+	
 	
 #Plots actions as a function of T
 def plotAs(As, Ts):
@@ -175,10 +174,18 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	
 	
 	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
-	minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)),tc*(2/3), bounds=[(tc*(1/2),maxT-1)], method='Nelder-Mead')
-	if minTy.fun/V.fSIGMA**4<1:
+	if ext_minT is None:
+		minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-Potential2.TOL*V.fSIGMA**4)/V.fSIGMA**2,tc*.8, bounds=[(tc*.70,maxT)])
+	else:
+		minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-Potential2.TOL*V.fSIGMA**4)/V.fSIGMA**2,(ext_minT+maxT)/2, bounds=[(ext_minT,maxT)])
+	
+	print(f'minTy = {minTy}')
+
+
+	if minTy.fun/V.fSIGMA**2<1:
 		#Sometimes minTy is a terrible estimate so manually setting a minimum based on where we cutoff the noise monitoring. 
 		if ext_minT is not None:
+			print(f'extmin={ext_minT}')
 			minT = max(minTy.x[0],tc*.75,ext_minT) 
 		else:
 			minT = max(minTy.x[0],tc*.75)
@@ -206,10 +213,13 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 		if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
 		else: plt.show()
 	
-	numberOfEvaluations = 90
+	if (maxT - minT)/80>0.5:
+		numberOfEvaluations = 80
+	else:
+		numberOfEvaluations = 50
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
-	Test_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
-	for i,_T in enumerate(Test_Ts):
+	Sample_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
+	for i,_T in enumerate(Sample_Ts):
 		try:
 			if plot and i%15==0:
 				#Plots perturbativity every 5th evaluation.
@@ -227,8 +237,11 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 			break
 	
 	#FINE SAMPLE.
-	Test_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+50); As = []; Ts = []; IRDiv = False
-	for i,_T in enumerate(Test_Ts):
+	if (maxT-minT)/(numberOfEvaluations+40) > 0.01: 
+		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+40); As = []; Ts = []; IRDiv = False
+	else:
+		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+5); As = []; Ts = []; IRDiv = False
+	for i,_T in enumerate(Sample_Ts):
 		try:
 			if plot and i%15==0:
 				#Plots perturbativity every 5th evaluation.
@@ -303,7 +316,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	
 
 		#SAWTOOTH:
-		while moreIs[-1]>0.34 and abs((moreTs[-2]-moreTs[-1])/min(_Ts))>1e-3: #(older >1e-6)0.01 is arbitrary can change later!
+		while moreIs[-1]>0.34 and abs((moreTs[-2]-moreTs[-1])/min(_Ts))>1e-2: #0.01 is arbitrary can change later!
 			m=(moreIs[-1]-moreIs[-2])/(Ts[-1]-Ts[-2])
 			c=moreIs[-1]-moreTs[-1]*m
 			

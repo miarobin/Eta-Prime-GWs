@@ -33,7 +33,7 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
             
 
 def IB(R2):
-    eps = 1e-6  # small offset to avoid singularities
+    eps = 1e-3  # small offset to avoid singularities
     if not isinstance(R2, (int, float)):
         raise ValueError("R2 must be a numeric value.")
     
@@ -60,7 +60,7 @@ def IB(R2):
     
 def dIB(R2):
     #Derivative of Ib wrt R2.
-    eps = 1e-4  # small offset to avoid singularities
+    eps = 1e-3 # small offset to avoid singularities
     if not isinstance(R2, (int, float)):
         raise ValueError("R2 must be a numeric value.")
     
@@ -73,21 +73,27 @@ def dIB(R2):
         return result
     
     if R2<0:
-        integrand1 = lambda x: (-1/2) * (x**2 / (x**2 + R2)) * (1 / (np.exp(np.sqrt(x**2 + R2)) - 1)) * (np.exp(np.sqrt(x**2 + R2))/(np.exp(np.sqrt(x**2 + R2)) - 1) + 1/np.sqrt(x**2 + R2))
-        integrand2 = lambda x: (-1/4) * (x**2 / (x**2 - np.abs(R2))) * (1 / (1 - np.cos(np.sqrt(np.abs(R2) - x**2)))) * (-1 + 1/np.sqrt(np.abs(R2) - x**2) * np.sin(np.sqrt(np.abs(R2) - x**2)))
+        a2 = np.abs(R2)
+        integrand1 = lambda x: (-1/2) * (x**2 / (x**2 - a2)**(3/2)) * (1 / (np.exp(np.sqrt(x**2 - a2)) - 1))**2 * (np.exp(np.sqrt(x**2 - a2))*( 1 + np.sqrt(x**2 - a2)) - 1)
+        integrand2 = lambda x: (1/4) * (x**2 / (x**2 - a2)) * (1 / (1 - np.cos(np.sqrt(a2 - x**2)))) * (1 + 1/np.sqrt(a2 - x**2) * np.sin(np.sqrt(a2 - x**2)))
 
-        a = np.abs(R2)
+        
         #print(f'R2={R2}')
         #print(f'int={integrand2(0.0001)}')
         #plt.plot(np.linspace(0.001,np.sqrt(a),num=200), integrand2(np.linspace(0.001,np.sqrt(a),num=200)))
         #plt.show()
         
-
-        result = quad(integrand1, np.sqrt(a)+eps, 30)[0]*0 + quad(integrand2, 0, np.sqrt(a)-eps)[0]+0#LOOK AT THIS LATER IT'S A LITTLE DODGY
-        if result is not None:
-            return result
+        if np.sqrt(a2)>10*eps:
+            resultA = quad(integrand1, np.sqrt(a2)+eps, 100)[0] 
+            resultB = quad(integrand2, 0, np.sqrt(a2)-eps)[0] 
+            result= resultA + resultB + 1/(2*eps) - np.sqrt(np.sqrt(a2)/(2*eps))/4
+    
+            if result is not None:
+                return result
+            else:
+                return 0
         else:
-            return 0
+            return 1/eps
     
     if R2==0:
         return 10**(2)

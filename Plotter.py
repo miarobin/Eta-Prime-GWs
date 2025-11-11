@@ -13,18 +13,14 @@ import pickle
 import hashlib
 import cProfile
 import pstats
-
 import WallVelocity
 import WallVelocityLargeN
-
-if not Potential2.PLOT_RUN:
-	matplotlib.use('Agg') 
+matplotlib.use('Agg')
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
 CORES = 36  # default to 1 if not set
 print(f"Using {CORES} cores")
-
 
 
 '''
@@ -83,7 +79,7 @@ print(f"Using {CORES} cores")
 		INPUTS (m2Sig, m2Eta, m2X, fPI, N, F)
 				(np.array, np.array, np.array, np.array, int, int)
 		
-	NOTE The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
+	The code at the end of the file only runs when this file is run directly. Adjust the scan ranges as necessary.
 '''
 
 
@@ -173,6 +169,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 		#Calculating wave parameters.
 		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd)
 		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}, message = {message}")
+		
 		
 		#Wall Velocity 2303.10171:
 		minima = V.findminima(Tn)
@@ -276,7 +273,7 @@ def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False):
 
 	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
-	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov,xi=xi, plot=plot, fSIGMA=fPI)]
+	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, xi=xi, plot=plot, fSIGMA=fPI)]
 
 
 def populate_safe_wrapperN(*args):
@@ -298,7 +295,7 @@ def populate_safe_wrapperlN(*args):
  
  
 #Just make sure to delete the old file before running   
-def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1,  crop=None):
+def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, crop=None):
    
     data = []
     for i in m2Sig:
@@ -364,7 +361,7 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
                 # This calls both wrappers on each point
                 lambda m2Sig, m2Eta, m2X, fPI, N, F: (
                     populate_safe_wrapperN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=Polyakov, xi=xi),
-                    populate_safe_wrapperlN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=Polyakov, xi=xi)
+                    populate_safe_wrapperlN(m2Sig, m2Eta, m2X, fPI, N, F,  Polyakov=Polyakov, xi=xi)
                 ),
                 [tuple(pt) for pt in todo]
             )
@@ -390,12 +387,12 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
 
 
 #Just make sure to delete the old file before running
-def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov= False, xi=1,  crop=None, filename=None):
+def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, crop=None, filename=None):
     
-    if filename is None and Polyakov is True:
-        filename = f'Test_N{N}F{F}xi{xi}_Normal.csv'
-    else:
-        filename = f'Test_N{N}F{F}_Normal.csv'
+    if filename is None and Polyakov:
+        filename = f'StressTest_N{N}F{F}xi{xi}_Normal.csv'
+    if filename is None and not Polyakov:
+        filename = f'PolyakovComp_N{N}F{F}_Normal.csv'
 
     # Build full parameter list
     data = []
@@ -459,30 +456,31 @@ if __name__ == "__main__":
     N=3; F=3
 
     m2Sig = np.linspace(1., 10., num=7)*1000**2
-    #m2Eta = np.linspace(0.01, 0.5, num=7)*1000**2 #for N3F5 N3F6 
+    #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
     m2Eta = np.linspace(1., 25., num=7)*1000**2
     m2X = np.linspace(1., 25., num=7)*1000**2
- 
+
     fPi = np.linspace(0.5,1.5,num=7)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
-    parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True, xi=2)
-	
+    parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True,xi=5)
 	
 
-'''
+	
     # SINGLE POINT FROM SCAN
     
-	POINT_OF_INTEREST=7   
+'''
+    Potential2.PLOT_RUN=True
+    POINT_OF_INTEREST=22
 
-	filename = 'Test_N3F3_Normal.csv'; delimiter = ','
-	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
+    filename = 'PolyakovComp_N3F3xi5_Normal.csv'; delimiter = ','
+    data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
-	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,_ = data[POINT_OF_INTEREST-2]
+    m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
 
-	print(f'm2Sig = {m2Sig}, m2Eta = {m2Eta}, m2X = {m2X}, fPI = {fPI}')
-	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
-	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
+    print(f'm2Sig = {m2Sig}, m2Eta = {m2Eta}, m2X = {m2X}, fPI = {fPI}')
+    print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
+    print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-	print(populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=2, plot=True))'''
+    print(populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, plot=True)) '''
 

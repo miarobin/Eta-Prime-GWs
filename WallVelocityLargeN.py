@@ -90,7 +90,7 @@ def eqWall(al,alN,vm,nu,mu,solution=-1):
 def solve_alpha(vw,alN,cb2,cs2): 
     nu,mu = 1+1/cb2,1+1/cs2
     vm = min(np.sqrt(cb2),vw)
-    vp_max = min(cs2/vw,vw)
+    vp_max = min(cs2/(vw+1e-10),vw)
     al_min = max((vm-vp_max)*(cb2-vm*vp_max)/(3*cb2*vm*(1-vp_max**2)),(mu-nu) /(3*mu))
     al_max = 1/3
     branch = -1
@@ -100,6 +100,10 @@ def solve_alpha(vw,alN,cb2,cs2):
     al_max),rtol=1e-10,xtol=1e-10) 
     if not sol.converged:
         print("WARNING: desired precision not reached in ’solve_alpha’") 
+        print(f'alN={alN},vm={vm},nu={nu},mu={mu},branch={branch}')
+        print(eqWall(al_min,alN,vm,nu,mu))
+        print(eqWall(al_max,alN,vm,nu,mu))
+        print(sol)
     return sol.root
 
 def dfdv(v,X,cs2): 
@@ -129,12 +133,16 @@ def shooting(vw,alN,cb2,cs2):
     al = solve_alpha(vw, alN, cb2, cs2) 
     vp = get_vp()
     wp = w_from_alpha(al, alN, nu, mu)
-    sol = integrate_plasma((vw-vp)/(1-vw*vp), vw, wp, cs2) 
-    vp_sw = sol.y[0,-1]
-    vm_sw = (vp_sw-sol.t[-1])/(1-vp_sw*sol.t[-1])
-    wm_sw = sol.y[1,-1]
-    return vp_sw/vm_sw - ((mu-1)*wm_sw+1)/((mu-1)+wm_sw)
-
+    try:
+        sol = integrate_plasma((vw-vp)/(1-vw*vp), vw, wp, cs2) 
+        vp_sw = sol.y[0,-1]
+        vm_sw = (vp_sw-sol.t[-1])/(1-vp_sw*sol.t[-1])
+        wm_sw = sol.y[1,-1]
+        return vp_sw/vm_sw - ((mu-1)*wm_sw+1)/((mu-1)+wm_sw)
+    except ValueError as e:
+        print(e)
+        print(f'Inputs Causing Error: vw={vw} and wp={wp}. Returns large numerical value.')
+        return 1e20
 
 def find_vw(alN,cb2,cs2):
     nu,mu = 1+1/cb2,1+1/cs2
@@ -145,6 +153,7 @@ def find_vw(alN,cb2,cs2):
     if alN > max_al(cb2,cs2,100) or shooting(vJ,alN,cb2,cs2) < 0:
         print('alN too large')
         return 1
+
     sol = root_scalar(shooting ,(alN,cb2,cs2),bracket=[1e-3,vJ],rtol=1e-10,xtol=1e-10)
     return sol.root
 
@@ -174,18 +183,30 @@ def find_kappa (alN, cb2, cs2, psiN, vw=None):
         al = solve_alpha(vw, alN, cb2, cs2)
         vp = get_vp()
         wp = w_from_alpha(al, alN, nu, mu)
-        sol = integrate_plasma((vw - vp)/(1 - vw * vp), vw, wp, cs2)
-        v , xi , w = sol.t, sol.y[0], sol .y[1]
-        kappa += 4*simpson((xi * v)**2*w/(1 - v**2), xi)/(vw**3*alN)
+        try:
+            sol = integrate_plasma((vw - vp)/(1 - vw * vp), vw, wp, cs2)
+            v , xi , w = sol.t, sol.y[0], sol .y[1]
+            kappa += 4*simpson((xi * v)**2*w/(1 - v**2), xi)/(vw**3*alN)
+        except ValueError as e:
+            print(e)
+            print('Value Error Exception in WallVelocityLargeN.find_kappa line 188')
+            print(f'Test: al={al}, alN={alN},nu={nu},mu={mu}')
+            print(f'Inputs Causing Error: vw={vw},wp={wp}. Adds nothing to efficiency factor.')
+            return kappa
+
     if vw **2 > cb2 :
         w0 = psiN * wp**(nu / mu)*((1 - vm**2)/(1 - v**2))**(nu/2) if vw < 1 else 1+6*alN/(nu-2)
         v0 = (vw - vm) /(1 - vw * vm) if vw < 1 else 3* alN /(nu-2+3*alN)
-        sol = integrate_plasma(v0, vw, w0, cb2, False)
-        v , xi , w = np.flip(sol.t), np.flip(sol.y[0]), np.flip(sol.y[1])
-        mask = np.append(xi[1:] > xi[: -1], True)
-        kappa += 4*simpson(((xi * v)**2*w/(1 - v **2))[mask], xi[mask]) /(vw**3*alN)
+        try:
+            sol = integrate_plasma(v0, vw, w0, cb2, False)
+            v , xi , w = np.flip(sol.t), np.flip(sol.y[0]), np.flip(sol.y[1])
+            mask = np.append(xi[1:] > xi[: -1], True)
+            kappa += 4*simpson(((xi * v)**2*w/(1 - v **2))[mask], xi[mask]) /(vw**3*alN)
+        except ValueError as e:
+            print(e)
+            print('Value Error Exception in WallVelocityLargeN.find_kappa line 203')
+            print(f'Inputs Causing Error: vw={vw},wp={w0}. Adds nothing to efficiency factor.')
     return kappa
-
 
 def testAgainstVdV():
     #Plotting Fig3 from 2312.09964.
