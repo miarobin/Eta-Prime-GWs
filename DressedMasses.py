@@ -203,10 +203,10 @@ def SolveMasses(V, plot=False):
             else:
                 # <-- keep your original Debye-based guess
                 initial_guess = [
-                    V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - c1 * sigma**(V.F*V.detPow-4)),
-                    V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + c1 * sigma**(V.F*V.detPow-4)),
-                    V.mSq['X'][0](sigma)  + (T**2/24)*(V.lambdas + 2*V.lambdaa + c2 * sigma**(V.F*V.detPow-4)),
-                    V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - c2 * sigma**(V.F*V.detPow-4)),
+                    V.mSq['Sig'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa),
+                    V.mSq['Eta'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa),
+                    V.mSq['X'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa),
+                    V.mSq['Pi'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa)
                 ]
 
             
@@ -228,15 +228,14 @@ def SolveMasses(V, plot=False):
                 solution_grid[i, j] = sol.x
                 prev_solution = sol.x
 
-                
-
             else:
                 
-                initial_guess = [V.mSq['Sig'][0](sigma) + (T**2/24)*(3*V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)), 
-                                V.mSq['Eta'][0](sigma) + (T**2/24)*(V.lambdas + (V.c*V.detPow/V.F)*(V.detPow*V.F-1)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
-                                V.mSq['X'][0](sigma) + (T**2/24)*(V.lambdas + 2*V.lambdaa + (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4)),
-                                V.mSq['Pi'][0](sigma) + (T**2/24)*(V.lambdas - (V.c*V.detPow/V.F)*(V.detPow*V.F-2)*(V.detPow*V.F-3)*sigma**(V.detPow*V.F-4))]
-                
+                initial_guess = [
+                    V.mSq['Sig'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa),
+                    V.mSq['Eta'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa),
+                    V.mSq['X'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa),
+                    V.mSq['Pi'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa)
+                ]
                 sol = root(bagEquations, initial_guess, jac=jac, method='hybr')
                 
                 if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):
@@ -261,12 +260,7 @@ def SolveMasses(V, plot=False):
 
         print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
      
-    '''
-    TRange = TRange[::-1]
-    MSqSigData = MSqSigData[::-1]
-    MSqEtaData = MSqEtaData[::-1]
-    MSqXData = MSqXData[::-1]
-    MSqPiData = MSqPiData[::-1]'''
+
     
      
 

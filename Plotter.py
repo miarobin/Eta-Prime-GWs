@@ -174,6 +174,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 		alpha = abs(GravitationalWave.alpha(V,Tn)); betaH = GravitationalWave.beta_over_H(V,Tn,grd)
 		print(f"Tn = {Tn}, alpha = {alpha}, betaH = {betaH}, message = {message}")
 		
+		
 		#Wall Velocity 2303.10171:
 		minima = V.findminima(Tn)
 		psiN = V.dVdT(minima,Tn)/V.dVdT(0,Tn)
@@ -289,6 +290,8 @@ def populate_safe_wrapperN(*args):
         
 
 def populate_safe_wrapperlN(*args):
+    out = populatelN(*args)
+    return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
     try:
         out = populatelN(*args)
         return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
@@ -393,9 +396,9 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
 def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, crop=None, filename=None):
     
     if filename is None and Polyakov:
-        filename = f'SmallTest_N{N}F{F}xi{xi}_Normal.csv'
+        filename = f'StressTest_N{N}F{F}xi{xi}_Normal.csv'
     if filename is None and not Polyakov:
-        filename = f'SmallTest_N{N}F{F}_Normal.csv'
+        filename = f'PolyakovComp_N{N}F{F}_Normal.csv'
 
     # Build full parameter list
     data = []
@@ -458,27 +461,28 @@ if __name__ == "__main__":
     #LARGE SCANS
     N=3; F=3
 
-    m2Sig = np.linspace(1., 10., num=3)*1000**2
+    m2Sig = np.linspace(1., 10., num=7)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=3)*1000**2
-    m2X = np.linspace(1., 25., num=3)*1000**2
+    m2Eta = np.linspace(1., 25., num=7)*1000**2
+    m2X = np.linspace(1., 25., num=7)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
+    fPi = np.linspace(0.5,1.5,num=7)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
-    #parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True,xi=1)
-	
+    parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True,xi=5,crop=50)
 	
 
-
+	
     # SINGLE POINT FROM SCAN
+    
+    
     Potential2.PLOT_RUN=True
-    POINT_OF_INTEREST=1017
+    POINT_OF_INTEREST=22
 
-    filename = 'Test_N3F3xi1_Normal.csv'; delimiter = ','
+    filename = 'PolyakovComp_N3F3xi5_Normal.csv'; delimiter = ','
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
-    m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-1]
+    m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
 
     print(f'm2Sig = {m2Sig}, m2Eta = {m2Eta}, m2X = {m2X}, fPI = {fPI}')
     print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')

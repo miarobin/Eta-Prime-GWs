@@ -180,8 +180,6 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 		minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-Potential2.TOL*V.fSIGMA**4)/V.fSIGMA**2,(ext_minT+maxT)/2, bounds=[(ext_minT,maxT)])
 	
 	print(f'minTy = {minTy}')
-	print(f'tc*0.75 = {tc*0.75}')
-	plotV(V,[minTy.x[0],tc*0.75])
 
 
 	if minTy.fun/V.fSIGMA**2<1:
