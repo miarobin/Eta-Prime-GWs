@@ -17,8 +17,7 @@ import pstats
 import WallVelocity
 import WallVelocityLargeN
 
-if not Potential2.PLOT_RUN:
-	matplotlib.use('Agg') 
+matplotlib.use('Agg') 
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
@@ -181,27 +180,42 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
             
 		cs2 = V.dVdT(0,Tn)/(Tn*V.d2VdT2(0,Tn))
 		cb2 = V.dVdT(minima,Tn)/(Tn*V.d2VdT2(minima,Tn))
-		alN = WallVelocity.alpha(V, Tn, cb2)
-            
-		vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
-		kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)
-		
 
-		#Wall Velocity 2312.09964. Large N refers to number of degrees of freedom here!
-		#NOTE for this to be valid, DoFBroken << DoFSym.
-		DoFSym = (7/2*V.F*V.N) + 2*(V.N**2-1) + Potential2._g_starSM(Tn)
-		DoFBroken = 2*V.F**2 + Potential2._g_starSM(Tn)
-		
-		if DoFBroken<DoFSym:#Maybe make harsher! DoFBroken needs to be negligible 
-			alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym)
-			vwLN = WallVelocityLargeN.find_vw(alNLN,cb2,cs2)
-			kappaLN = WallVelocityLargeN.find_kappa(alNLN, cb2, cs2, psiN, vw=vwLN)
+		print(f'cs2={cs2}, cb2={cb2}')
+
+		if 0.1<cb2<2/3 and 0.1<cs2<2/3:
+			if 0.5<alN<0.99:
+				alN = WallVelocity.alpha(V, Tn, cb2)
+				print(f'alN={alN}')
+					
+				vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
+				kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)
+			else:
+				vwLTE=None
+				kappaLTE=None
+			
+
+			#Wall Velocity 2312.09964. Large N refers to number of degrees of freedom here!
+			#NOTE for this to be valid, DoFBroken << DoFSym.
+			DoFSym = (7/2*V.F*V.N) + 2*(V.N**2-1) + Potential2._g_starSM(Tn)
+			DoFBroken = 2*V.F**2 + Potential2._g_starSM(Tn)
+			
+			if DoFBroken<DoFSym:#Maybe make harsher! DoFBroken needs to be negligible 
+				alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym)
+				vwLN = WallVelocityLargeN.find_vw(alNLN,cb2,cs2)
+				kappaLN = WallVelocityLargeN.find_kappa(alNLN, cb2, cs2, psiN, vw=vwLN)
+			else:
+				vwLN = None
+				kappaLN = None
 		else:
+			vwLTE=None
+			kappaLTE=None
 			vwLN = None
 			kappaLN = None
-			
+
+				
 		print(f"vwLTE = {vwLTE}, kappaLTE = {kappaLTE}, vwLN = {vwLN}, kappaLN = {kappaLN}")
-		
+			
 		#Returning wave parameters and zero-temperature particle masses.
 		return (Tn, alpha, betaH, tc, message, vwLTE, kappaLTE, vwLN, kappaLN)
 
