@@ -15,7 +15,8 @@ import cProfile
 import pstats
 import WallVelocity
 import WallVelocityLargeN
-matplotlib.use('Agg')
+
+matplotlib.use('Agg') 
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
@@ -177,27 +178,42 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
             
 		cs2 = V.dVdT(0,Tn)/(Tn*V.d2VdT2(0,Tn))
 		cb2 = V.dVdT(minima,Tn)/(Tn*V.d2VdT2(minima,Tn))
-		alN = WallVelocity.alpha(V, Tn, cb2)
-            
-		vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
-		kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)
-		
 
-		#Wall Velocity 2312.09964. Large N refers to number of degrees of freedom here!
-		#NOTE for this to be valid, DoFBroken << DoFSym.
-		DoFSym = (7/2*V.F*V.N) + 2*(V.N**2-1) + Potential2._g_starSM(Tn)
-		DoFBroken = 2*V.F**2 + Potential2._g_starSM(Tn)
-		
-		if DoFBroken<DoFSym:#Maybe make harsher! DoFBroken needs to be negligible 
-			alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym)
-			vwLN = WallVelocityLargeN.find_vw(alNLN,cb2,cs2)
-			kappaLN = WallVelocityLargeN.find_kappa(alNLN, cb2, cs2, psiN, vw=vwLN)
+		print(f'cs2={cs2}, cb2={cb2}')
+
+		if 0.1<cb2<2/3 and 0.1<cs2<2/3:
+			alN = WallVelocity.alpha(V, Tn, cb2)
+			if 0.5<alN<0.99:
+				print(f'alN={alN}')
+					
+				vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
+				kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)
+			else:
+				vwLTE=None
+				kappaLTE=None
+			
+
+			#Wall Velocity 2312.09964. Large N refers to number of degrees of freedom here!
+			#NOTE for this to be valid, DoFBroken << DoFSym.
+			DoFSym = (7/2*V.F*V.N) + 2*(V.N**2-1) + Potential2._g_starSM(Tn)
+			DoFBroken = 2*V.F**2 + Potential2._g_starSM(Tn)
+			
+			if DoFBroken<DoFSym:#Maybe make harsher! DoFBroken needs to be negligible 
+				alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym)
+				vwLN = WallVelocityLargeN.find_vw(alNLN,cb2,cs2)
+				kappaLN = WallVelocityLargeN.find_kappa(alNLN, cb2, cs2, psiN, vw=vwLN)
+			else:
+				vwLN = None
+				kappaLN = None
 		else:
+			vwLTE=None
+			kappaLTE=None
 			vwLN = None
 			kappaLN = None
-			
+
+				
 		print(f"vwLTE = {vwLTE}, kappaLTE = {kappaLTE}, vwLN = {vwLN}, kappaLN = {kappaLN}")
-		
+			
 		#Returning wave parameters and zero-temperature particle masses.
 		return (Tn, alpha, betaH, tc, message, vwLTE, kappaLTE, vwLN, kappaLN)
 
@@ -390,7 +406,7 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
 def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, crop=None, filename=None):
     
     if filename is None and Polyakov:
-        filename = f'StressTest_N{N}F{F}xi{xi}_Normal.csv'
+        filename = f'PolyakovComp_N{N}F{F}xi{xi}_Normal.csv'
     if filename is None and not Polyakov:
         filename = f'PolyakovComp_N{N}F{F}_Normal.csv'
 
@@ -453,14 +469,14 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=3; F=3
+    N=3; F=4
 
-    m2Sig = np.linspace(1., 10., num=7)*1000**2
+    m2Sig = np.linspace(1., 10., num=5)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=7)*1000**2
-    m2X = np.linspace(1., 25., num=7)*1000**2
+    m2Eta = np.linspace(1., 25., num=5)*1000**2
+    m2X = np.linspace(1., 25., num=5)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=7)*1000*np.sqrt(F/2)
+    fPi = np.linspace(0.5,1.5,num=5)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
     parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True,xi=5)

@@ -85,7 +85,7 @@ def eqWall(al,alN,vm,nu,mu,psiN,solution=-1):
 def solve_alpha(vw,alN,cb2,cs2,psiN): 
     nu,mu = 1+1/cb2,1+1/cs2
     vm = min(np.sqrt(cb2),vw)
-    vp_max = min(cs2/vw,vw)
+    vp_max = min(cs2/(vw+1e-10),vw)
     al_min = max((vm-vp_max)*(cb2-vm*vp_max)/(3*cb2*vm*(1-vp_max**2)),(mu-nu) /(3*mu))
     al_max = 1/3
     branch = -1
@@ -94,7 +94,11 @@ def solve_alpha(vw,alN,cb2,cs2,psiN):
     sol = root_scalar(eqWall,(alN,vm,nu,mu,psiN,branch),bracket=(al_min,
     al_max),rtol=1e-10,xtol=1e-10) 
     if not sol.converged:
-        print("WARNING: desired precision not reached in ’solve_alpha’") 
+        print("WARNING: desired precision not reached in ’solve_alpha’")
+        print(f'alN={alN},vm={vm},nu={nu},mu={mu},branch={branch}')
+        print(eqWall(al_min,alN,vm,nu,mu))
+        print(eqWall(al_max,alN,vm,nu,mu))
+        print(sol)
     return sol.root
 
 def dfdv(v,X,cs2): 
