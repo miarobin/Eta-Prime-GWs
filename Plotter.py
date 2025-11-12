@@ -21,7 +21,7 @@ matplotlib.use('Agg')
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = 10  # default to 1 if not set
+CORES = 4  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
@@ -183,17 +183,12 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 
 		print(f'cs2={cs2}, cb2={cb2}')
 
-		if 0.1<cb2<2/3 and 0.1<cs2<2/3:
+		if 0.1<cb2<2/3 and 0.1<cs2<2/3 and 0.5<psiN<0.99:
 			alN = WallVelocity.alpha(V, Tn, cb2)
-			if 0.5<alN<0.99:
-				print(f'alN={alN}')
-					
-				vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
-				kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)
-			else:
-				vwLTE=None
-				kappaLTE=None
+			print(f'alN={alN}, psiN={psiN}')
 			
+			vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
+			kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)			
 
 			#Wall Velocity 2312.09964. Large N refers to number of degrees of freedom here!
 			#NOTE for this to be valid, DoFBroken << DoFSym.
@@ -202,6 +197,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 			
 			if DoFBroken<DoFSym:#Maybe make harsher! DoFBroken needs to be negligible 
 				alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym)
+				print(f'alNLN={alNLN}')
 				vwLN = WallVelocityLargeN.find_vw(alNLN,cb2,cs2)
 				kappaLN = WallVelocityLargeN.find_kappa(alNLN, cb2, cs2, psiN, vw=vwLN)
 			else:
@@ -473,17 +469,17 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=3; F=4
+    N=4; F=3
 
     m2Sig = np.linspace(1., 10., num=5)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
     m2Eta = np.linspace(1., 25., num=5)*1000**2
     m2X = np.linspace(1., 25., num=5)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=7)*1000*np.sqrt(F/2)
+    fPi = np.linspace(0.5,1.5,num=5)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
-    parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True,xi=1,crop=50)
+    #parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True,xi=2)
 	
 
 	
@@ -491,9 +487,9 @@ if __name__ == "__main__":
     
     
     Potential2.PLOT_RUN=True
-    POINT_OF_INTEREST=22
+    POINT_OF_INTEREST=6
 
-    filename = 'PolyakovComp_N3F3xi5_Normal.csv'; delimiter = ','
+    filename = 'N4F3/PolyakovComp_N4F3xi1_Normal.csv'; delimiter = ','
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
