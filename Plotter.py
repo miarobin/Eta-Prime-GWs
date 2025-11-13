@@ -86,11 +86,9 @@ print(f"Using {CORES} cores")
 '''
 
 
-def unwrap_populateN(args):
-    return populate_safe_wrapperN(*args)
+def unwrap_populate(args):
+    return populate_safe_wrapper(*args)
 
-def unwrap_populatelN(args): 
-    return populate_safe_wrapperlN(*args)
 
 def plotV(V, Ts):
 	for T in Ts:
@@ -242,12 +240,10 @@ def populate_safe(*args, **kwargs):
     
     return safe_results
 
-	
-	
-	
-def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False):
+
+def populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, detType, plot=False):
 	#Wrapper function for normal case.
-	detPow = Potential2.get_detPow(N,F,"Normal")
+	detPow = Potential2.get_detPow(N,F,detType)
 	
 	try:
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
@@ -261,154 +257,29 @@ def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False):
 		print(e)
 		return (0, 0, 0, 0, 0, 0, 0, 0, 22., 0, 0, 0, 0)
 
-				
 	
-	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
+	print(f'{detType}: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, xi=xi, plot=plot, fSIGMA=fPI)]
 
 
-def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False):
-	#Wrapper for the largeN case.
-	detPow = Potential2.get_detPow(N,F,"largeN")
-	
-	try:
-		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
-	except Potential2.NonUnitary as e:
-		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 20., 0, 0, 0, 0)
-	except Potential2.NonTunnelling as e:
-		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 21., 0, 0, 0, 0)
-	except Potential2.BoundedFromBelow as e:
-		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 22., 0, 0, 0, 0)
-	
 
-
-	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
-	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, xi=xi, plot=plot, fSIGMA=fPI)]
-
-
-def populate_safe_wrapperN(*args):
+def populate_safe_wrapper(*args):
     try:
-        out = populateN(*args)
+        out = populateWrapper(*args)
         return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
-    except Exception as e:
-        print(f"populateN failed: {e}")
+    except ValueError as e:
+        print(f"populate failed: {e}")
         return [0.0]*13  # same number of outputs you expect
         
 
-def populate_safe_wrapperlN(*args):
-    out = populatelN(*args)
-    return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
-    try:
-        out = populatelN(*args)
-        return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
-    except Exception as e:
-        print(f"populatelN failed: {e}")
-        return [0.0]*13
- 
- 
-#Just make sure to delete the old file before running   
-def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, crop=None):
-   
-    data = []
-    for i in m2Sig:
-        for j in m2Eta:
-            for k in m2X:
-                for l in fPI:
-                    if k > j and k > i:  
-                        data.append([i, j, k, l, N, F])
-    data = np.array(data)
-
-    if crop and crop < len(data):
-        data = data[:crop]
-
-    normal_file = f"Test_N{N}F{F}_Normal.csv"
-    largeN_file = f"Test_N{N}F{F}_largeN.csv"
-
-    def init_csv(fname):
-        if not os.path.exists(fname):
-            with open(fname, 'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
-                             'lambda_a','Tc','Tn','Alpha','Beta','Message',
-                             'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN'])
-
-    init_csv(normal_file)
-    init_csv(largeN_file)
-
-    #  Load finished parameter points to skip them
-    def load_done(fname):
-        done = set()
-        if os.path.exists(fname):
-            with open(fname, 'r') as f:
-                reader = csv.reader(f)
-                next(reader)  # skip header
-                for row in reader:
-                    if row:
-                        done.add(tuple(map(float, row[:4])))
-        return done
-
-    done_normal = load_done(normal_file)
-    done_largeN = load_done(largeN_file)
-
-    # Only compute points not already done in BOTH files
-    todo = [pt for pt in data if (tuple(pt[:4]) not in done_normal) or (tuple(pt[:4]) not in done_largeN)]
-
-    print(f"[Checkpoint] Total points = {len(data)}, still to do = {len(todo)}")
-
-    if not todo:
-        print("[Checkpoint] All points are already done.")
-        return
-
-    #  Run in parallel, but save as soon as each result comes back
-    with Pool(CORES) as p, \
-        open(normal_file, 'a', newline='') as fn, \
-        open(largeN_file, 'a', newline='') as fl:
-
-        writer_norm = csv.writer(fn)
-        writer_lN   = csv.writer(fl)
-
-        for params, results in zip(
-            todo,
-            p.starmap(
-                # This calls both wrappers on each point
-                lambda m2Sig, m2Eta, m2X, fPI, N, F: (
-                    populate_safe_wrapperN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=Polyakov, xi=xi),
-                    populate_safe_wrapperlN(m2Sig, m2Eta, m2X, fPI, N, F,  Polyakov=Polyakov, xi=xi)
-                ),
-                [tuple(pt) for pt in todo]
-            )
-        ):
-            resN, reslN = results
-
-            #  Save Normal 
-
-            writer_norm.writerow(list(params[:4]) +  [ resN[0], resN[1], resN[2], resN[3], resN[7],
-												resN[4], resN[5], resN[6],  resN[8], 
-                                                resN[9], resN[10], resN[11], resN[12] ])
-            fn.flush()
-
-            #  Save large-N 
-            writer_lN.writerow(list(params[:4]) +  [ reslN[0], reslN[1], reslN[2], reslN[3], reslN[7],
-												reslN[4], reslN[5], reslN[6],  reslN[8], 
-                                                reslN[9], reslN[10], reslN[11], reslN[12] ])
-            fl.flush()
-
-            print(f"[Saved] {params[:4]}")
-
-    print("Scan Finished")
-
 
 #Just make sure to delete the old file before running
-def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, crop=None, filename=None):
+def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, detType='Normal', crop=None, filename=None):
     
     if filename is None and Polyakov:
-        filename = f'PolyakovComp_N{N}F{F}xi{xi}_Normal.csv'
+        filename = f'PolyakovComp_N{N}F{F}xi{xi}_{detType}.csv'
     if filename is None and not Polyakov:
-        filename = f'PolyakovComp_N{N}F{F}_Normal.csv'
+        filename = f'PolyakovComp_N{N}F{F}_{detType}.csv'
 
     # Build full parameter list
     data = []
@@ -416,7 +287,7 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi
         for j in m2Eta:
             for k in m2X:
                 for l in fPI:
-                    data.append([i, j, k, l, N, F, Polyakov, xi])
+                    data.append([i, j, k, l, N, F, Polyakov, xi, detType])
     data = np.array(data)
 
     if crop and crop < len(data):
@@ -452,9 +323,12 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi
     # Run in parallel and write results one-by-one
     with Pool(CORES) as p, open(filename, 'a', newline='') as f:
         writer = csv.writer(f)
-        for params, result in zip(todo, p.imap(unwrap_populateN, todo)):
-            print(result)
-            #for params, result in zip(todo, p.imap_unordered(unwrap_populateN, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
+        for params, result in zip(todo, p.imap(unwrap_populate, todo)):
+            print(f'Summary: m2Sig={params[0]}, m2Eta={params[1]}, m2X={params[2]}, fPI={params[3]}')
+            print(f'm2 = {result[0]}, c={result[1]}, ls={result[2]}, la={result[3]}')
+            print(f'Tc={result[7]}, Tn={result[4]}, alpha={result[5]}, beta/H={result[6]}, message={result[8]}')
+            print(f'vwLTE={result[9]}, kappaLTE={result[10]}, vwLN={result[11]}, kappaLN={result[12]}')
+            #for params, result in zip(todo, p.imap_unordered(unwrap_populate, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
             writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[7], 
 												result[4], result[5], result[6],  result[8], 
                                                 result[9], result[10], result[11], result[12] ])
@@ -469,25 +343,25 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=4; F=3
+    N=3.; F=6.
 
-    m2Sig = np.linspace(1., 10., num=5)*1000**2
+    m2Sig = np.linspace(1., 10., num=2)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=5)*1000**2
-    m2X = np.linspace(1., 25., num=5)*1000**2
+    m2Eta = np.linspace(1., 25., num=2)*1000**2
+    m2X = np.linspace(1., 25., num=2)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=5)*1000*np.sqrt(F/2)
+    fPi = np.linspace(0.5,1.5,num=2)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
-    #parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True,xi=2)
+    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='AMSB', Polyakov=False,xi=2)
 	
 
 	
     # SINGLE POINT FROM SCAN
     
-    
+    '''
     Potential2.PLOT_RUN=True
-    POINT_OF_INTEREST=6
+    POINT_OF_INTEREST=7
 
     filename = 'N4F3/PolyakovComp_N4F3xi1_Normal.csv'; delimiter = ','
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
@@ -498,5 +372,5 @@ if __name__ == "__main__":
     print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
     print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-    print(populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, plot=True))
+    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, detType='AMSB', plot=True))'''
 
