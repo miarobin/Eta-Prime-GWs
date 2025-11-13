@@ -9,10 +9,7 @@ from multiprocessing import Pool
 import DressedMasses
 import os
 from debug_plot import debug_plot
-import pickle
-import hashlib
-import cProfile
-import pstats
+from functools import partial
 
 import WallVelocity
 import WallVelocityLargeN
@@ -86,8 +83,8 @@ print(f"Using {CORES} cores")
 '''
 
 
-def unwrap_populate(args):
-    return populate_safe_wrapper(*args)
+def unwrap_populate(args, N, F, Polyakov, xi, detType):	
+	return populate_safe_wrapper(*args, N, F, Polyakov, xi, detType)
 
 
 def plotV(V, Ts):
@@ -267,7 +264,7 @@ def populate_safe_wrapper(*args):
     try:
         out = populateWrapper(*args)
         return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
-    except ValueError as e:
+    except Exception as e:
         print(f"populate failed: {e}")
         return [0.0]*13  # same number of outputs you expect
         
@@ -287,7 +284,7 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
         for j in m2Eta:
             for k in m2X:
                 for l in fPI:
-                    data.append([i, j, k, l, N, F, Polyakov, xi, detType])
+                    data.append([i, j, k, l])
     data = np.array(data)
 
     if crop and crop < len(data):
@@ -320,10 +317,12 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
         print("[Checkpoint] All points already completed.")
         return
 
+    unwrap_populate_static = partial(unwrap_populate, N=N, F=F, Polyakov=Polyakov, xi=xi, detType=detType)
+
     # Run in parallel and write results one-by-one
     with Pool(CORES) as p, open(filename, 'a', newline='') as f:
         writer = csv.writer(f)
-        for params, result in zip(todo, p.imap(unwrap_populate, todo)):
+        for params, result in zip(todo, p.imap(unwrap_populate_static, todo)):
             print(f'Summary: m2Sig={params[0]}, m2Eta={params[1]}, m2X={params[2]}, fPI={params[3]}')
             print(f'm2 = {result[0]}, c={result[1]}, ls={result[2]}, la={result[3]}')
             print(f'Tc={result[7]}, Tn={result[4]}, alpha={result[5]}, beta/H={result[6]}, message={result[8]}')
@@ -343,25 +342,25 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=3.; F=6.
+    N=3; F=6
 
-    m2Sig = np.linspace(1., 10., num=2)*1000**2
+    m2Sig = np.linspace(1., 10., num=5)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=2)*1000**2
-    m2X = np.linspace(1., 25., num=2)*1000**2
+    m2Eta = np.linspace(1., 25., num=5)*1000**2
+    m2X = np.linspace(1., 25., num=5)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=2)*1000*np.sqrt(F/2)
+    fPi = np.linspace(0.5,1.5,num=5)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
-    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='AMSB', Polyakov=False,xi=2)
+    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='AMSB', Polyakov=True,xi=1)
 	
 
-	
+    '''
     # SINGLE POINT FROM SCAN
     
-    '''
+    
     Potential2.PLOT_RUN=True
-    POINT_OF_INTEREST=7
+    POINT_OF_INTEREST=12
 
     filename = 'N4F3/PolyakovComp_N4F3xi1_Normal.csv'; delimiter = ','
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
