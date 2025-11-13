@@ -9,10 +9,13 @@ from multiprocessing import Pool
 import DressedMasses
 import os
 from debug_plot import debug_plot
-import pickle
-import hashlib
+from functools import partial
 import cProfile
+<<<<<<< HEAD
 import pstats
+=======
+
+>>>>>>> upstream/main
 import WallVelocity
 import WallVelocityLargeN
 
@@ -20,7 +23,11 @@ matplotlib.use('Agg')
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
+<<<<<<< HEAD
 CORES = 36  # default to 1 if not set
+=======
+CORES = 8  # default to 1 if not set
+>>>>>>> upstream/main
 print(f"Using {CORES} cores")
 
 
@@ -84,11 +91,9 @@ print(f"Using {CORES} cores")
 '''
 
 
-def unwrap_populateN(args):
-    return populate_safe_wrapperN(*args)
+def unwrap_populate(args, N, F, Polyakov, xi, detType):	
+	return populate_safe_wrapper(*args, N, F, Polyakov, xi, detType)
 
-def unwrap_populatelN(args): 
-    return populate_safe_wrapperlN(*args)
 
 def plotV(V, Ts):
 	for T in Ts:
@@ -181,17 +186,12 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 
 		print(f'cs2={cs2}, cb2={cb2}')
 
-		if 0.1<cb2<2/3 and 0.1<cs2<2/3:
+		if 0.1<cb2<2/3 and 0.1<cs2<2/3 and 0.5<psiN<0.99:
 			alN = WallVelocity.alpha(V, Tn, cb2)
-			if 0.5<alN<0.99:
-				print(f'alN={alN}')
-					
-				vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
-				kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)
-			else:
-				vwLTE=None
-				kappaLTE=None
+			print(f'alN={alN}, psiN={psiN}')
 			
+			vwLTE = WallVelocity.find_vw(alN,cb2,cs2, psiN)
+			kappaLTE = WallVelocity.find_kappa(alN, cb2, cs2, psiN, vw=vwLTE)			
 
 			#Wall Velocity 2312.09964. Large N refers to number of degrees of freedom here!
 			#NOTE for this to be valid, DoFBroken << DoFSym.
@@ -200,6 +200,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 			
 			if DoFBroken<DoFSym:#Maybe make harsher! DoFBroken needs to be negligible 
 				alNLN = WallVelocityLargeN.find_alphaN(tc, Tn, cb2, DoFSym)
+				print(f'alNLN={alNLN}')
 				vwLN = WallVelocityLargeN.find_vw(alNLN,cb2,cs2)
 				kappaLN = WallVelocityLargeN.find_kappa(alNLN, cb2, cs2, psiN, vw=vwLN)
 			else:
@@ -244,12 +245,10 @@ def populate_safe(*args, **kwargs):
     
     return safe_results
 
-	
-	
-	
-def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False):
+
+def populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, detType, plot=False):
 	#Wrapper function for normal case.
-	detPow = Potential2.get_detPow(N,F,"Normal")
+	detPow = Potential2.get_detPow(N,F,detType)
 	
 	try:
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
@@ -263,44 +262,22 @@ def populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False):
 		print(e)
 		return (0, 0, 0, 0, 0, 0, 0, 0, 22., 0, 0, 0, 0)
 
-				
 	
-	print(f'Normal: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
+	print(f'{detType}: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
 	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, xi=xi, plot=plot, fSIGMA=fPI)]
 
 
-def populatelN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, plot=False):
-	#Wrapper for the largeN case.
-	detPow = Potential2.get_detPow(N,F,"largeN")
-	
-	try:
-		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
-	except Potential2.NonUnitary as e:
-		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 20., 0, 0, 0, 0)
-	except Potential2.NonTunnelling as e:
-		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 21., 0, 0, 0, 0)
-	except Potential2.BoundedFromBelow as e:
-		print(e)
-		return (0, 0, 0, 0, 0, 0, 0, 0, 22., 0, 0, 0, 0)
-	
 
-
-	print(f'largeN: m2={mSq},c={c},ls={ls},la={la},N={N},F={F},p={detPow}')
-	#return [mSq, c, ls, la, *populate(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, plot=plot, fSIGMA=fPI)]
-	return [mSq, c, ls, la, *populate_safe(mSq, c, ls, la, N, F, detPow, Polyakov=Polyakov, xi=xi, plot=plot, fSIGMA=fPI)]
-
-
-def populate_safe_wrapperN(*args):
+def populate_safe_wrapper(*args):
     try:
-        out = populateN(*args)
+        out = populateWrapper(*args)
         return [float(x) if isinstance(x, (int, float, np.floating)) else 0.0 for x in np.ravel(out)]
     except Exception as e:
-        print(f"populateN failed: {e}")
+        print(f"populate failed: {e}")
         return [0.0]*13  # same number of outputs you expect
         
 
+<<<<<<< HEAD
 def populate_safe_wrapperlN(*args):
     try:
         out = populatelN(*args)
@@ -401,14 +378,16 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
 
     print("Scan Finished")
 
+=======
+>>>>>>> upstream/main
 
 #Just make sure to delete the old file before running
-def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, crop=None, filename=None):
+def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, detType='Normal', crop=None, filename=None):
     
     if filename is None and Polyakov:
-        filename = f'PolyakovComp_N{N}F{F}xi{xi}_Normal.csv'
+        filename = f'PolyakovComp_N{N}F{F}xi{xi}_{detType}.csv'
     if filename is None and not Polyakov:
-        filename = f'PolyakovComp_N{N}F{F}_Normal.csv'
+        filename = f'PolyakovComp_N{N}F{F}_{detType}.csv'
 
     # Build full parameter list
     data = []
@@ -416,7 +395,7 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi
         for j in m2Eta:
             for k in m2X:
                 for l in fPI:
-                    data.append([i, j, k, l, N, F, Polyakov, xi])
+                    data.append([i, j, k, l])
     data = np.array(data)
 
     if crop and crop < len(data):
@@ -449,12 +428,17 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi
         print("[Checkpoint] All points already completed.")
         return
 
+    unwrap_populate_static = partial(unwrap_populate, N=N, F=F, Polyakov=Polyakov, xi=xi, detType=detType)
+
     # Run in parallel and write results one-by-one
     with Pool(CORES) as p, open(filename, 'a', newline='') as f:
         writer = csv.writer(f)
-        for params, result in zip(todo, p.imap(unwrap_populateN, todo)):
-            print(result)
-            #for params, result in zip(todo, p.imap_unordered(unwrap_populateN, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
+        for params, result in zip(todo, p.imap(unwrap_populate_static, todo)):
+            print(f'Summary: m2Sig={params[0]}, m2Eta={params[1]}, m2X={params[2]}, fPI={params[3]}')
+            print(f'm2 = {result[0]}, c={result[1]}, ls={result[2]}, la={result[3]}')
+            print(f'Tc={result[7]}, Tn={result[4]}, alpha={result[5]}, beta/H={result[6]}, message={result[8]}')
+            print(f'vwLTE={result[9]}, kappaLTE={result[10]}, vwLN={result[11]}, kappaLN={result[12]}')
+            #for params, result in zip(todo, p.imap_unordered(unwrap_populate, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
             writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[7], 
 												result[4], result[5], result[6],  result[8], 
                                                 result[9], result[10], result[11], result[12] ])
@@ -469,27 +453,36 @@ def parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=3; F=4
+    N=3; F=6
 
-    m2Sig = np.linspace(1., 10., num=5)*1000**2
+    m2Sig = np.linspace(1., 25., num=3)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=5)*1000**2
-    m2X = np.linspace(1., 25., num=5)*1000**2
+    m2Eta = np.linspace(1., 25., num=3)*1000**2
+    m2X = np.linspace(1., 25., num=3)*1000**2
 
+<<<<<<< HEAD
     fPi = np.linspace(0.5,1.5,num=5)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
     parallelScanNorm_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, Polyakov=True,xi=5)
+=======
+    fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
+
+    #comment out parallelscan norm to plot
+    #parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='Normal', Polyakov=False,xi=1)
+>>>>>>> upstream/main
 	
 
-	
+    
     # SINGLE POINT FROM SCAN
     
 '''
     Potential2.PLOT_RUN=True
-    POINT_OF_INTEREST=22
+    POINT_OF_INTEREST=7
 
-    filename = 'PolyakovComp_N3F3xi5_Normal.csv'; delimiter = ','
+	
+
+    filename = 'PolyakovComp_N3F6xi1_AMSB.csv'; delimiter = ','
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
@@ -498,5 +491,9 @@ if __name__ == "__main__":
     print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
     print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
+<<<<<<< HEAD
     print(populateN(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, plot=True)) '''
+=======
+    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))
+>>>>>>> upstream/main
 

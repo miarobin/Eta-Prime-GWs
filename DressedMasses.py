@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.integrate import quad
-from scipy.optimize import root
+from scipy.optimize import root, root_scalar
 from scipy import optimize, differentiate
 import time
 import matplotlib
@@ -98,7 +98,54 @@ def SolveMasses(V, plot=False):
                 RMS[i,j] = 0
                 
                 continue
+
+            if sigma<0:
+                def bagEquationSymmetric(M2):
+                    prefactor = T**2 / (4 * np.pi**2)
+
+                    lhs = M2
+                    rhs = - V.m2 + prefactor * ((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa) * Ib_spline(M2/T**2)
+
+                    bagEquationSymmetric.lhs = lhs
+                    bagEquationSymmetric.rhs = rhs
+                
+                    #residuals = LHS - RHS
+                    return lhs - rhs 
+
+                def jacSymmetric(M2):
+                    if T<EPSILON: return 1
+
+                    prefactor = 1. / (4 * np.pi**2)
+                    return - prefactor * (((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa)*dIb_spline(M2 / T**2) - 1/prefactor) 
+                    
+                initial_guess = -V.m2 + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa)
+                
             
+                #Scipy root function to solve the coupled equations.
+                sol = root_scalar(bagEquationSymmetric, x0=initial_guess, fprime=jacSymmetric)
+                #Root mean squared error with a cutoff at 1.
+                RMS[i,j]=min(np.sqrt(np.mean((bagEquationSymmetric.lhs-bagEquationSymmetric.rhs)**2)),1)
+            
+                if RMS[i,j]<1/V.fSIGMA:#arbitrary for now.
+                    MSqSigData[i,j]=sol.root
+                    MSqEtaData[i,j]=sol.root
+                    MSqXData[i,j]=sol.root
+                    MSqPiData[i,j]=sol.root
+                
+                    # SAVE solution for future neighbor-based warm-start
+                    solution_grid[i, j] = [sol.root, sol.root, sol.root, sol.root]
+                    prev_solution = [sol.root, sol.root, sol.root, sol.root]
+                else:
+                    MSqSigData[i,j]=None
+                    MSqEtaData[i,j]=None
+                    MSqXData[i,j]=None
+                    MSqPiData[i,j]=None
+                
+                    failPoints.append([sigma, T])
+                continue
+
+
+
             def bagEquations(vars):                
 
                 M_sigma2, M_eta2, M_X2, M_Pi2 = vars
@@ -180,6 +227,8 @@ def SolveMasses(V, plot=False):
 
                 return res
                      
+            
+            
             if j > 0 and np.all(np.isfinite(solution_grid[i, j-1])):
                 initial_guess = solution_grid[i, j-1]            # left neighbor
             elif i > 0 and np.all(np.isfinite(solution_grid[i-1, j])):
@@ -313,7 +362,7 @@ def SolveMasses(V, plot=False):
 
     #CHECK IF RUN IS NOISY OR NOT.
     tc = V.criticalT(prnt=plot)
-
+    print(f'First Try at tc={tc}')
     #Checking for the convergence of dressedMasses around the critical temperature.
     counter = 0; noisyPoint=False
     if tc is None: noisyPoint = True #Quick initial check.
@@ -340,15 +389,15 @@ def SolveMasses(V, plot=False):
         #Now we have the histogram...
         exit = False; i=starti
         while not exit:
-            if hist[i]==0 and np.sum(hist[:i])/len(failPoints)>0.33:  #Checks to see if we've cleared 33% of failed points.
+            if np.sum(hist[i:i+5])==0 and np.sum(hist[:i])/len(failPoints)>0.50:  #Checks to see if we've cleared 50% of failed points.
                 minT = TRange[i]
                 exit = True
             
-            elif hist[i]==0 and hist[i-1]>hist[i] and np.sum(hist[:i])/len(failPoints)>0.33:
+            elif np.sum(hist[i:i+5])==0 and hist[i-1]>hist[i] and np.sum(hist[:i])/len(failPoints)>0.50:
                 minT = TRange[i]
                 exit = True
             i+=1
-            if i>=NUMBEROFPOINTS:
+            if i>=NUMBEROFPOINTS-5:
                 raise Potential2.BadDressedMassConvergence("Dressed Masses not converging properly around phase transition region.")
             
 
@@ -481,7 +530,7 @@ def SolveMasses(V, plot=False):
 def plotMassData(massData, V, minT=None, minimal=False):
     #Make sure these are exactly the same ranges as above!
     TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData=massData[0]
     MSqEtaData=massData[1]
@@ -565,7 +614,7 @@ def plotMassData(massData, V, minT=None, minimal=False):
 def plotInterpMasses(V):
     #Make sure these are exactly the same ranges as above!
     TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     massDict = V.MSq
     RMS = V.RMS
