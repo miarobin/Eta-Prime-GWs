@@ -85,7 +85,7 @@ def SolveMasses(V, plot=False):
 
     #Setting up the scan.
     TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(EPSILON/2, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
     MSqEtaData = np.zeros((len(TRange),len(sigmaRange)))
@@ -111,9 +111,9 @@ def SolveMasses(V, plot=False):
                 
                 continue
 
-            if sigma<EPSILON:
+            if sigma<0:
                 def bagEquationSymmetric(M2):
-                    prefactor = T**2 / (2 * np.pi**2)
+                    prefactor = T**2 / (4 * np.pi**2)
 
                     lhs = M2
                     rhs = - V.m2 + prefactor * ((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa) * Ib_spline(M2/T**2)
@@ -127,7 +127,7 @@ def SolveMasses(V, plot=False):
                 def jacSymmetric(M2):
                     if T<EPSILON: return 1
 
-                    prefactor = 1. / (2 * np.pi**2)
+                    prefactor = 1. / (4 * np.pi**2)
                     return - prefactor * (((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa)*dIb_spline(M2 / T**2) - 1/prefactor) 
                     
                 initial_guess = -V.m2 + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa)
@@ -287,7 +287,7 @@ def SolveMasses(V, plot=False):
                 ]
                 sol = root(bagEquations, initial_guess, jac=jac, method='hybr')
                 
-                if sol.success and RMS[i,j]<1/np.sqrt(V.fSIGMA):
+                if sol.success and RMS[i,j]<1/V.fSIGMA:
                     M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                     MSqSigData[i,j]=M_sigma2
@@ -404,15 +404,15 @@ def SolveMasses(V, plot=False):
         #Now we have the histogram...
         exit = False; i=starti
         while not exit:
-            if hist[i]==0 and np.sum(hist[:i])/len(failPoints)>0.33:  #Checks to see if we've cleared 33% of failed points.
+            if np.sum(hist[i:i+5])==0 and np.sum(hist[:i])/len(failPoints)>0.50:  #Checks to see if we've cleared 50% of failed points.
                 minT = TRange[i]
                 exit = True
             
-            elif hist[i]==0 and hist[i-1]>hist[i] and np.sum(hist[:i])/len(failPoints)>0.33:
+            elif np.sum(hist[i:i+5])==0 and hist[i-1]>hist[i] and np.sum(hist[:i])/len(failPoints)>0.50:
                 minT = TRange[i]
                 exit = True
             i+=1
-            if i>=NUMBEROFPOINTS:
+            if i>=NUMBEROFPOINTS-5:
                 raise Potential2.BadDressedMassConvergence("Dressed Masses not converging properly around phase transition region.")
             
 
@@ -545,7 +545,7 @@ def SolveMasses(V, plot=False):
 def plotMassData(massData, V, minT=None, minimal=False):
     #Make sure these are exactly the same ranges as above!
     TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData=massData[0]
     MSqEtaData=massData[1]
@@ -629,7 +629,7 @@ def plotMassData(massData, V, minT=None, minimal=False):
 def plotInterpMasses(V):
     #Make sure these are exactly the same ranges as above!
     TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(0.01, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
     
     massDict = V.MSq
     RMS = V.RMS

@@ -10,6 +10,7 @@ import DressedMasses
 import os
 from debug_plot import debug_plot
 from functools import partial
+import cProfile
 
 import WallVelocity
 import WallVelocityLargeN
@@ -18,7 +19,7 @@ matplotlib.use('Agg')
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = 4  # default to 1 if not set
+CORES = 8  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
@@ -344,25 +345,27 @@ if __name__ == "__main__":
     #LARGE SCANS
     N=3; F=6
 
-    m2Sig = np.linspace(1., 10., num=5)*1000**2
+    m2Sig = np.linspace(1., 25., num=3)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=5)*1000**2
-    m2X = np.linspace(1., 25., num=5)*1000**2
+    m2Eta = np.linspace(1., 25., num=3)*1000**2
+    m2X = np.linspace(1., 25., num=3)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=5)*1000*np.sqrt(F/2)
+    fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
-    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='AMSB', Polyakov=True,xi=1)
+    #parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='Normal', Polyakov=False,xi=1)
 	
 
-    '''
+    
     # SINGLE POINT FROM SCAN
     
     
     Potential2.PLOT_RUN=True
-    POINT_OF_INTEREST=12
+    POINT_OF_INTEREST=7
 
-    filename = 'N4F3/PolyakovComp_N4F3xi1_Normal.csv'; delimiter = ','
+	
+
+    filename = 'PolyakovComp_N3F6xi1_AMSB.csv'; delimiter = ','
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
@@ -371,5 +374,5 @@ if __name__ == "__main__":
     print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
     print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, detType='AMSB', plot=True))'''
+    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))
 

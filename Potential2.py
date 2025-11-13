@@ -263,12 +263,6 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         raise NonTunnelling('Symmetric minimum is true minimum')
     if abs(dV(fPI))>TOL:
         print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
-        plt.title(f'detPow={detPow}')
-        plt.plot(np.arange(0,2*fPI),V(np.arange(0,2*fPI)),label='V')
-        plt.plot(np.arange(0,2*fPI),dV(np.arange(0,2*fPI)),label='dV')
-        plt.legend()
-        debug_plot(name="debug", overwrite=False)
-        #plt.show()
         raise NonTunnelling('Symmetric minimum is true minimum')
 
     if ddV(fPI)<-TOL:
@@ -325,9 +319,9 @@ class Potential:
         # New interpolator now.
         if Polyakov:
             ##GLUONIC FITS
-            gluonicdata = np.genfromtxt(f'VGluonicDataF{int(self.F)}N{int(self.N)}.csv', delimiter=',', dtype=float, skip_header=0)
-            TTcs = np.genfromtxt(f'VGluonicDataF{int(self.F)}N{int(self.N)}TTcs.csv', delimiter=',', dtype=float, skip_header=0)
-            sigTcs = np.genfromtxt(f'VGluonicDataF{int(self.F)}N{int(self.N)}mqTcs.csv', delimiter=',', dtype=float, skip_header=0)
+            gluonicdata = np.genfromtxt(f'VGluonicData/VGluonicDataF{int(self.F)}N{int(self.N)}.csv', delimiter=',', dtype=float, skip_header=0)
+            TTcs = np.genfromtxt(f'VGluonicData/VGluonicDataF{int(self.F)}N{int(self.N)}TTcs.csv', delimiter=',', dtype=float, skip_header=0)
+            sigTcs = np.genfromtxt(f'VGluonicData/VGluonicDataF{int(self.F)}N{int(self.N)}mqTcs.csv', delimiter=',', dtype=float, skip_header=0)
             
             self.VGluonicTc = interpolate.RectBivariateSpline(TTcs,sigTcs,gluonicdata)
 
