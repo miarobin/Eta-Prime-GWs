@@ -96,10 +96,9 @@ def SolveMasses(V, plot=False):
     # Store previous solutions at each grid (T, σ) to enable 2D warm starts 
     solution_grid = np.full((len(TRange), len(sigmaRange), 4), np.nan)
     
-    t_total = time.time()
 
     for i,T in enumerate(TRange):
-        t_row = time.time()
+        if Potential2.PRNT_RUN: t_row = time.time()
         prev_solution = None # stores last successful solution (Mσ², Mη², MX², Mπ²)
         for j,sigma in enumerate(sigmaRange):
             if T<EPSILON:
@@ -294,7 +293,7 @@ def SolveMasses(V, plot=False):
                     MSqEtaData[i,j]=M_eta2
                     MSqXData[i,j]=M_X2
                     MSqPiData[i,j]=M_Pi2
-                    prevSol=sol.x
+                    
                 else:
                         
                     #if plot:
@@ -307,7 +306,7 @@ def SolveMasses(V, plot=False):
                     
                     failPoints.append([sigma, T])
 
-        print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
+        if Potential2.PRNT_RUN: print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
      
 
     

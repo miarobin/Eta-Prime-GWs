@@ -15,6 +15,8 @@ import cProfile
 import WallVelocity
 import WallVelocityLargeN
 
+from datetime import date
+
 matplotlib.use('Agg') 
 
 # Get number of CPUs allocated by SLURM
@@ -117,7 +119,6 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 	try:
 		V = Potential2.Potential(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=Polyakov, xi=xi, fSIGMA=fSIGMA)
 	except Potential2.InvalidPotential as e:
-		print(e)
 		return (0, 0, 0, 0, 16., 0, 0, 0, 0) #Dressed mass calculation has failed for this.
 	except Potential2.BadDressedMassConvergence as e:
 		return (0, 0, 0, 0, 23., 0, 0, 0, 0)
@@ -153,7 +154,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 	#   a) Nucleation temperature Tn,
 	#   b) An interpolated function grd of action over temperature w/ temperature,
 	#   c) and an error code.
-	Tn, grd, tc, message = GravitationalWave.grid(V,prnt=True,plot=plot,ext_minT=V.minT)
+	Tn, grd, tc, message = GravitationalWave.grid(V,ext_minT=V.minT)
 	
 
 
@@ -246,13 +247,10 @@ def populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov, xi, detType, plot=Fa
 	try:
 		mSq, c, ls, la = Potential2.masses_to_lagrangian(m2Sig,m2Eta,m2X,fPI,N,F,detPow)
 	except Potential2.NonUnitary as e:
-		print(e)
 		return (0, 0, 0, 0, 0, 0, 0, 0, 20., 0, 0, 0, 0)
 	except Potential2.NonTunnelling as e:
-		print(e)
 		return (0, 0, 0, 0, 0, 0, 0, 0, 21., 0, 0, 0, 0)
 	except Potential2.BoundedFromBelow as e:
-		print(e)
 		return (0, 0, 0, 0, 0, 0, 0, 0, 22., 0, 0, 0, 0)
 
 	
@@ -274,10 +272,17 @@ def populate_safe_wrapper(*args):
 #Just make sure to delete the old file before running
 def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, detType='Normal', crop=None, filename=None):
     
-    if filename is None and Polyakov:
-        filename = f'PolyakovComp_N{N}F{F}xi{xi}_{detType}.csv'
-    if filename is None and not Polyakov:
-        filename = f'PolyakovComp_N{N}F{F}_{detType}.csv'
+    if filename is None:
+        today = date.today()
+        day = today.day
+        hour = today.hour
+
+        if Polyakov:
+            filename = f'F{F}/N{N}/N{N}F{F}xi{xi}_{detType}_{day}Nov{hour}hr.csv'
+        if not Polyakov and detType == 'Normal':
+            filename = f'F{F}/N{N}F{F}_{detType}_{day}Nov{hour}hr.csv'
+        elif not Polyakov:
+            filename = f'F{F}/N{N}/N{N}F{F}_{detType}_{day}Nov{hour}hr.csv'
 
     # Build full parameter list
     data = []
@@ -324,10 +329,6 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
     with Pool(CORES) as p, open(filename, 'a', newline='') as f:
         writer = csv.writer(f)
         for params, result in zip(todo, p.imap(unwrap_populate_static, todo)):
-            print(f'Summary: m2Sig={params[0]}, m2Eta={params[1]}, m2X={params[2]}, fPI={params[3]}')
-            print(f'm2 = {result[0]}, c={result[1]}, ls={result[2]}, la={result[3]}')
-            print(f'Tc={result[7]}, Tn={result[4]}, alpha={result[5]}, beta/H={result[6]}, message={result[8]}')
-            print(f'vwLTE={result[9]}, kappaLTE={result[10]}, vwLN={result[11]}, kappaLN={result[12]}')
             #for params, result in zip(todo, p.imap_unordered(unwrap_populate, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
             writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[7], 
 												result[4], result[5], result[6],  result[8], 
@@ -337,6 +338,105 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
 
 
     print("Scan Finished")
+    
+
+
+#Just make sure to delete the old file before running
+def parallelScan_refill(N, F, Polyakov, xi, detType, day, hour):
+    
+	
+    if Polyakov:
+        filename = f'F{F}/N{N}/N{N}F{F}xi{xi}_{detType}_{day}Nov{hour}hr.csv'
+        refill_filename = f'F{F}/N{N}/N{N}F{F}xi{xi}_{detType}_{day}Nov{hour}hr_refill.csv'
+        new_filename = f'F{F}/N{N}/N{N}F{F}xi{xi}_{detType}_{day}Nov{hour}hr_toppedup.csv'
+    if not Polyakov and detType == 'Normal':
+        filename = f'F{F}/N{N}F{F}_{detType}_{day}Nov{hour}hr.csv'
+        refill_filename = f'F{F}/N{N}F{F}_{detType}_{day}Nov{hour}hr_refill.csv'
+        new_filename = f'F{F}/N{N}F{F}_{detType}_{day}Nov{hour}hr_toppedup.csv'
+    elif not Polyakov:
+        filename = f'F{F}/N{N}/N{N}F{F}_{detType}_{day}Nov{hour}hr.csv'
+        refill_filename = f'F{F}/N{N}/N{N}F{F}_{detType}_{day}Nov{hour}hr_refill.csv'
+        new_filename = f'F{F}/N{N}/N{N}F{F}_{detType}_{day}Nov{hour}hr_toppedup.csv'
+    
+	#OPERATIONAL TEST
+    #filename = 'RefillTestArray_F6N3_AMSB.csv'
+    #refill_filename = 'RefillTestArray_refill.csv'
+    #new_filename = 'RefillTestArray_toppedup.csv'
+
+	
+    # Check if checkpoint file exists
+    todo = set()
+    if os.path.exists(filename):
+        print(f"[Checkpoint] Resuming from {filename}")
+        with open(filename, 'r') as f:
+            reader = csv.reader(f)
+            next(reader)  # skip header
+            for row in reader:
+                if row:
+                    if abs(float(row[12]))<Potential2.TOL:
+                        if not float(row[9])>0:
+                            todo.add(tuple(map(float, row[:4])))
+    else:
+        print(f'File with name {filename} does not exist')
+
+    # Filter out completed points
+    print(f"[Checkpoint] Remaining={len(todo)}")
+
+    if not todo:
+        print("[Checkpoint] All points already correct.")
+        return
+
+    print(todo)
+    with open(refill_filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
+                             'lambda_a','Tc','Tn','Alpha','Beta','Message',
+                             'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN'])
+
+	#Fills in static arguments for populate.
+    unwrap_populate_static = partial(unwrap_populate, N=N, F=F, Polyakov=Polyakov, xi=xi, detType=detType)
+
+    # Run in parallel and write results one-by-one
+    with Pool(CORES) as p, open(refill_filename, 'a', newline='') as f:
+        writer = csv.writer(f)
+        for params, result in zip(todo, p.imap(unwrap_populate_static, todo)):
+            #for params, result in zip(todo, p.imap_unordered(unwrap_populate, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
+            writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[7], 
+												result[4], result[5], result[6],  result[8], 
+                                                result[9], result[10], result[11], result[12] ])
+            f.flush()
+            print(f"[Saved] {params[:4]} → result saved.")
+            
+    print("Scan Finished")
+    
+    #Now refill the original dataset.
+    refill(filename,refill_filename,new_filename)
+         
+    
+def refill(original_filename, refill_filename, new_filename):
+	data = np.array(np.genfromtxt(original_filename, delimiter=',', skip_header=1, dtype=float))
+	refill_data = np.array(np.genfromtxt(refill_filename, delimiter=',', skip_header=1, dtype=float))
+    
+	for row in refill_data:
+		mask = np.all(np.isclose(data[:, :4], row[:4]),axis=1)
+		data[mask] = row
+    
+	# Save the array to a CSV file
+	with open(new_filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
+                             'lambda_a','Tc','Tn','Alpha','Beta','Message',
+                             'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN'])
+
+
+	# Run in parallel and write results one-by-one
+	with open(new_filename, 'a', newline='') as f:
+		writer = csv.writer(f)
+		for row in data:
+			writer.writerow(list(row))
+			f.flush()
+     
+	return data
 
 
 
@@ -345,27 +445,27 @@ if __name__ == "__main__":
     #LARGE SCANS
     N=3; F=6
 
-    m2Sig = np.linspace(1., 25., num=3)*1000**2
+    m2Sig = np.linspace(1., 10., num=5)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=3)*1000**2
-    m2X = np.linspace(1., 25., num=3)*1000**2
+    m2Eta = np.linspace(1., 25., num=5)*1000**2
+    m2X = np.linspace(1., 25., num=5)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=3)*1000*np.sqrt(F/2)
+    fPi = np.linspace(0.5,1.5,num=5)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
-    #parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='Normal', Polyakov=False,xi=1)
-	
-
+    #parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='AMSB', Polyakov=False,xi=1)
+    
     
     # SINGLE POINT FROM SCAN
     
-    
-    Potential2.PLOT_RUN=True
-    POINT_OF_INTEREST=7
+    '''
+    Potential2.PLOT_RUN=False
+    Potential2.PRNT_RUN=False
+    POINT_OF_INTEREST=24
 
 	
 
-    filename = 'PolyakovComp_N3F6xi1_AMSB.csv'; delimiter = ','
+    filename = 'F6/N4/N4F6xi1_AMSB_13Nov.csv'; delimiter = ','
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
@@ -374,5 +474,14 @@ if __name__ == "__main__":
     print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
     print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))
+    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))'''
 
+
+	#REFILL TEST (You have to go into the function to manually change the test filenames)
+    Potential2.PRNT_RUN=True
+    parallelScan_refill(N, F, False, None, 'AMSB', None, None)
+    
+    #original_filename = 'RefillTestArray_F6N3_AMSB.csv'
+    #refill_filename = 'RefillTestArray_refill.csv'
+    #new_filename = 'RefillTestArray_toppedup.csv'
+    #refill(original_filename, refill_filename, new_filename)
