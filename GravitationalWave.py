@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use('Agg')
 import csv
 import traceback
-from debug_plot import debug_plot
+
 
 class BadlyIRDivergent(Exception):
     pass

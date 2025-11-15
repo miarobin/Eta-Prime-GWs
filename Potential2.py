@@ -11,7 +11,6 @@ import DressedMasses
 from debug_plot import debug_plot
 
 
-
 '''
     This file does the following:
     0. "get_detPow" takes a combination of number of flavours F, number of colours N and termType to produce the power

@@ -1,9 +1,10 @@
 import numpy as np
 from scipy.integrate import quad
-from scipy.optimize import root, root_scalar
+from scipy.optimize import root
 from scipy import optimize, differentiate
 import time
 import matplotlib
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from scipy import interpolate
 import csv
@@ -12,7 +13,6 @@ import cosmoTransitions
 from IBInterpolation import IB
 from scipy.ndimage import gaussian_filter
 from debug_plot import debug_plot
-
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
