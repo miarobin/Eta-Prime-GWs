@@ -29,7 +29,8 @@ def IRProblem():
 	return None
 
 #Calculate the action S3 for a given temperature T using CosmoTransitions SingleFieldInstanton class.
-def action(V,T,prnt=True, plot=False):
+def action(V,T, plot=False):
+    prnt = Potential2.PRNT_RUN
     #First find & classify the true & false minima
     vT = V.findminima(T)
     IRDivSmoothing = Potential2.IRDIVSMOOTHING
@@ -42,7 +43,7 @@ def action(V,T,prnt=True, plot=False):
     true_min = min([0,vT], key=lambda phi: V.Vtot(phi,T))
     false_min = max([0,vT], key=lambda phi: V.Vtot(phi,T))
     
-    print(f'True Min = {true_min}, False Min = {false_min}, T = {T}')
+    if prnt: print(f'True Min = {true_min}, False Min = {false_min}, T = {T}')
     
  
     if false_min > true_min:
@@ -85,23 +86,24 @@ def action(V,T,prnt=True, plot=False):
  
     
     else:
-        _V = lambda _sigma: V.Vtot(_sigma,T)
+        _V = lambda sigma: V.Vtot(sigma,T)
  
  
     #DO SOME PLOTS!
     if plot:
-        plt.plot(sigmas,V.Vtot(sigmas,T)/V.fSIGMA**4*100-V.Vtot(0,T)/V.fSIGMA**4*100, label='Vtot')
+        plt.plot(sigmas,V.Vtot(sigmas,T)/V.fSIGMA**3-V.Vtot(0,T)/V.fSIGMA**3, label='Vtot')
         if IRDivSmoothing:
             plt.plot(_sigmas,weights,label='weights')
-            plt.plot(sigmas,_V(sigmas)/V.fSIGMA**4-_V(0)/V.fSIGMA**4,label='Weighted Vtot')
-        plt.plot(sigmas,-pSig(sigmas)/V.fSIGMA,label='Sigma effective')
-        plt.plot(sigmas,-pPi(sigmas)/V.fSIGMA,label='Pi effective')
-        plt.plot(sigmas,V.MSq['Sig'][0](sigmas,T)/V.fSIGMA**2-V.MSq['Sig'][0](0,T)/V.fSIGMA**2,label='sig-mass')
-        plt.plot(sigmas,V.MSq['Pi'][0](sigmas,T)/V.fSIGMA**2-V.MSq['Sig'][0](0,T)/V.fSIGMA**2,label='pi-mass')
+        plt.plot(sigmas,_V(sigmas)/V.fSIGMA**3-_V(0)/V.fSIGMA**3,label='Weighted Vtot')
+        #plt.plot(sigmas,-pSig(sigmas)/V.fSIGMA,label='Sigma effective')
+        #plt.plot(sigmas,-pPi(sigmas)/V.fSIGMA,label='Pi effective')
+        #plt.plot(sigmas,V.MSq['Sig'][0](sigmas,T)/V.fSIGMA**2-V.MSq['Sig'][0](0,T)/V.fSIGMA**2,label='sig-mass')
+        #plt.plot(sigmas,V.MSq['Pi'][0](sigmas,T)/V.fSIGMA**2-V.MSq['Sig'][0](0,T)/V.fSIGMA**2,label='pi-mass')
+        #plt.ylim = (_V(V.fSIGMA)/V.fSIGMA**4-_V(0)/V.fSIGMA**4-0.01, +0.01)
         plt.title(f'T={T}')
         plt.legend()
-        if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-        else: plt.show()
+        debug_plot(name="debug", overwrite=False)
+  
  
     try:
         #Initialise instanton in CosmoTransitions.
@@ -155,10 +157,12 @@ def plotAs(As, Ts):
 
 #Finds an interpolated function of 3D Action/T as a function of T, and Tn if it exists.
 	#NOTE Print just shows you all of the individual broken points in detail so it can be manually fixed.
-def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
+def grid(V, tc=None, ext_minT=None):
 	IRDivSmoothing = Potential2.IRDIVSMOOTHING
+	plot = Potential2.PLOT_RUN
+	prnt = Potential2.PRNT_RUN
 	
-	#Range of T's to consider.
+	### SETTING THE RANGE OF TEMPERATURES TO SCAN OVER ###
 	if tc==None:
 		tc = V.criticalT(prnt=plot)
 		if prnt: print(f"Tc = {tc}")
@@ -179,20 +183,21 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	else:
 		minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-Potential2.TOL*V.fSIGMA**4)/V.fSIGMA**2,(ext_minT+maxT)/2, bounds=[(ext_minT,maxT)])
 	
-	print(f'minTy = {minTy}')
-
+	if prnt: print(f'minTy = {minTy}')
 
 	if minTy.fun/V.fSIGMA**2<1:
 		#Sometimes minTy is a terrible estimate so manually setting a minimum based on where we cutoff the noise monitoring. 
 		if ext_minT is not None:
-			print(f'extmin={ext_minT}')
+			if prnt: print(f'extmin={ext_minT}')
 			minT = max(minTy.x[0],tc*.75,ext_minT) 
 		else:
 			minT = max(minTy.x[0],tc*.75)
 	else:
 		return None, None, tc, 2
-	print(f'maximum T = {maxT}, minimum T = {minT}')
+	if prnt: print(f'maximum T = {maxT}, minimum T = {minT}')
 	
+
+	#Some potential plots around the important area.
 	if plot:
 		xs=np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100)
 		plt.plot(xs,V.V(xs)-V.V(0),label=f"Vtree")
@@ -210,9 +215,10 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 		plt.legend()
 		plt.xlabel('sigma')
 		plt.ylabel('V')
-		if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-		else: plt.show()
-	
+		debug_plot(name="debug", overwrite=False)
+
+
+	#Setting sample size based on temperature jumps.
 	if (maxT - minT)/80>0.5:
 		numberOfEvaluations = 80
 	else:
@@ -241,6 +247,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+40); As = []; Ts = []; IRDiv = False
 	else:
 		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+5); As = []; Ts = []; IRDiv = False
+
 	for i,_T in enumerate(Sample_Ts):
 		try:
 			if plot and i%15==0:
@@ -249,7 +256,7 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 			else:
 				rollingAction,_ = action(V, _T)
 		except BadlyIRDivergent as e:
-			print(e)
+			if prnt: print(e)
 			IRDiv=True #If the PT fails to nucleate because of IR divergences, we return a different error code.
 			rollingAction=None
 			
@@ -257,10 +264,13 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 			As.append(rollingAction)
 			Ts.append(_T)
 			if prnt: print(f'Temperature {_T}, Action {rollingAction}, S/T = {rollingAction/_T}')
-			
-		#if plot and i%20==0:
-		#	plotV(V,[0,_T-1,_T,_T+1])
-	
+
+			b = 12*np.pi* (30/(V._g_star(tc)*np.pi**2))**2 * 1/(2*np.pi)**(3/2)
+			weightContrib = b * (1/_T)**2 * (rollingAction/_T)**(3/2) * np.exp(-rollingAction/_T + 4*np.log(MPl))
+			if prnt: print(f'Contribution to Weight: {weightContrib}')
+
+			if weightContrib < 1e-20: #Stop if the (way overconservative) contribution to the weight is too small.
+				break
 
 	if len(As)==0:
 		return None, None, tc, 3
@@ -282,17 +292,19 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 
 
 
-	#Previous interpolator just interpolates S_3/T but new interpolator interpolates the integrand of eq 3.10 of 2309.16755.
-	Ts = np.array(Ts); As = np.array(As)
-
-
-	#ADD WALL VELOCITY!
+	### WEIGHT FUNCTION ###
 	#NOTE TO FUTURE SELVES: defining SM part of g_star at the CRITICAL TEMPERATURE.
 	b = 12*np.pi* (30/(V._g_star(tc)*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
 	def Integrand(T, intAs, intTs):
 		return np.array([(1/intTs[i])**2 * (intAs[i]/intTs[i])**(3/2) * np.exp(-intAs[i]/intTs[i] + 4*np.log(MPl)) * (1/T - 1/intTs[i])**3 if T<intTs[i] else 0 for i in range(len(intTs))])
-	
+
+
+	#Previous interpolator just interpolates S_3/T but new interpolator interpolates the integrand of eq 3.10 of 2309.16755.
+	Ts = np.array(Ts); As = np.array(As)
 	Is = [b*integrate.trapezoid(Integrand(T, As, Ts), Ts) for T in Ts]
+
+	if prnt: print(Is)
+	if prnt: print(Ts)
 
 	ICutoff = 150
 	_Is = np.array([I for I, T, A in zip(Is,Ts,As) if I<ICutoff])
@@ -300,55 +312,42 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 	_As = np.array([A for I, T, A in zip(Is,Ts,As) if I<ICutoff])
 	
 	if max(Is) > ICutoff and max(_Is)<0.34:
-		print(Is)
-		print(Ts)
+		print('HELLO WE MADE IT')
+		if prnt: print(Is)
+		if prnt: print(Ts)
 		
-		print(_Is)
-		print(_Ts)
+		if prnt: print(_Is)
+		if prnt: print(_Ts)
 		if abs(max(_Is))<Potential2.TOL:
 			return None, None, tc, 9 #An action has been found, but not less than I=ICutoff.
 
 		#Stepsize is too small so now iterating between the two values.
 		#1: find the lowest two values with Is above 150.
-		jminus,jplus = np.where(np.array(Is)>ICutoff)[0][-2:]
-
-		moreTs = [Ts[jminus],Ts[jplus]]; moreAs = [As[jminus],As[jplus]]; moreIs = [Is[jminus],Is[jplus]]
+		jminus = np.where(np.array(Is)>ICutoff)[0][-1]
+		jplus = np.where(np.array(Is)<0.34)[0][0]
+		checkBetween = np.linspace(Ts[jminus], Ts[jplus], num=10, endpoint=False)
 	
-
-		#SAWTOOTH:
-		while moreIs[-1]>0.34 and abs((moreTs[-2]-moreTs[-1])/min(_Ts))>1e-2: #0.01 is arbitrary can change later!
-			m=(moreIs[-1]-moreIs[-2])/(Ts[-1]-Ts[-2])
-			c=moreIs[-1]-moreTs[-1]*m
-			
-			if m<0:
-				#Data is way too noisy.
-				return None,None,tc,17
-			
-			if prnt: print(f'm={m},c={c},runningT={-c/m}')
-			
-			runningT = -c/m
+		for i,_T in enumerate(checkBetween):
 			try:
-				runningA,_ = action(V,runningT)
-				if prnt and runningA is not None: print(f'Temperature {runningT}, Action {runningA}, S/T = {runningA/runningT}')
+				rollingAction,_ = action(V,_T)
+				if prnt and rollingAction is not None: print(f'Temperature {_T}, Action {rollingAction}, S/T = {rollingAction/_T}')
 			except BadlyIRDivergent as e:
-				print(e)
-				runningA=None 
-			if runningA is None or runningA<0:
+				if prnt: print(e)
+				rollingAction=None 
+			if rollingAction is None or rollingAction<0:
 				return None, None, tc, 12 #If this happens, kill the code and look at the point individually.
+
 			
-			#We only need to consider the Ts greater than the running T for the integral.
-			runningI = b*integrate.trapezoid(Integrand(runningT, np.concatenate(([runningA],_As)),np.concatenate(([runningT],_Ts))))
-			moreTs.append(runningT); moreAs.append(runningA); moreIs.append(runningI)
-			
-			
-		if moreIs[-1]>0.34:
-			print(f'Fraction changing between points before exit = {(moreTs[-1]-moreTs[-2])/min(_Ts)}')
-			return None, None, tc, 12 #StepSize is still too small!
-		else:
-			_Is=np.concatenate((moreTs,_Ts)); _Ts=np.concatenate((moreTs,_Ts)); _As=np.concatenate((moreAs,_As))
-			_Is = np.array([I for I, T, A in zip(_Is,_Ts,_As) if I<ICutoff])
-			_Ts = np.array([T for I, T, A in zip(_Is,_Ts,_As) if I<ICutoff])
-			_As = np.array([A for I, T, A in zip(_Is,_Ts,_As) if I<ICutoff])
+			_Ts = np.insert(_Ts, i, _T)
+			_As = np.insert(_As, i, rollingAction)
+		
+
+		#Recalculating weights...
+		_Is = np.array([b*integrate.trapezoid(Integrand(_T, _As, _Ts), _Ts) for _T in _Ts])
+		#Try again...
+		_Is = np.array([I for I, T, A in zip(_Is,_Ts,_As) if I<ICutoff])
+		_Ts = np.array([T for I, T, A in zip(_Is,_Ts,_As) if I<ICutoff])
+		_As = np.array([A for I, T, A in zip(_Is,_Ts,_As) if I<ICutoff])
 			
 
 	if len(_As)==0:
@@ -359,7 +358,6 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 			try:
 				rollingAction,_=action(V,_T)
 			except BadlyIRDivergent as e:
-				print(e)
 				IRDiv=True
 				rollingAction=None #Same steps as above.
 				
@@ -375,16 +373,16 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 
 	#Either no nucleation or Ts have started to high.
 	if max(_Is)<0.34:
-		print(_Is)
+		if prnt: print(_Is)
 		if plot:
 			plt.plot(_Ts, _As)
 			plt.xlabel('Temperature'); plt.ylabel('A(T)')
-			if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-			else: plt.show()
+			debug_plot(name="debug", overwrite=False)
+			
 			plt.plot(_Ts, _Is)
 			plt.xlabel('Temperature'); plt.ylabel('I(T)')
-			if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-			else: plt.show()
+			debug_plot(name="debug", overwrite=False)
+			
 		if IRDiv:
 			return None, None, tc, 11 #PT failed probably due to IR divergences.
 		else:
@@ -399,8 +397,8 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 		plt.plot(moreTs, [interpolator(_T) for _T in moreTs])
 		plt.plot(_Ts, _Is)
 		plt.xlabel('Temperature'); plt.ylabel('I(T)')
-		if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-		else: plt.show()
+		debug_plot(name="debug", overwrite=False)
+		
 		
 	res = 0
 	try:
@@ -414,15 +412,15 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 			print(f"Tn = {res.x[0]}, Minimisation method L-BFGS-B")
 			plt.plot(_Ts, [interpolator(_T) for _T in _Ts])
 			plt.xlabel('Temperature'); plt.ylabel('I(T)')
-			if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-			else: plt.show()
+			debug_plot(name="debug", overwrite=False)
+			
 			
 			interp = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))(moreTs)
 			plotAs(_As,_Ts)#Comparing with original data
 			plt.plot(moreTs,interp)#Check if the interpolator is doing well.
 			plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
-			if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-			else: plt.show()
+			debug_plot(name="debug", overwrite=False)
+			
 			print(res)
 			
 			tn=res.x[0]
@@ -445,8 +443,8 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 			plt.legend()
 			plt.xlabel('sigma')
 			plt.ylabel('V')
-			if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-			else: plt.show()
+			debug_plot(name="debug", overwrite=False)
+			
 			
 					
 		spl = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))
@@ -464,8 +462,8 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 				plotAs(_As,_Ts)#Comparing with original data
 				plt.plot(moreTs,interp)#Check if the interpolator is doing well.
 				plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
-				if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-				else: plt.show()
+				debug_plot(name="debug", overwrite=False)
+				
 				print(res)
 			if all(spl.derivatives(_Ts)[1]>0):
 				if not IRDivSmoothing:
@@ -485,15 +483,15 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 				print(res)
 				plt.plot(_Ts, [interpolator(_T) for _T in _Ts])
 				plt.xlabel('Temperature'); plt.ylabel('I(T)')
-				if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-				else: plt.show()
+				debug_plot(name="debug", overwrite=False)
+				
 					
 				interp = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))(moreTs)
 				plotAs(_As,_Ts)#Comparing with original data
 				plt.plot(moreTs,interp)#Check if the interpolator is doing well.
 				plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
-				if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-				else: plt.show()
+				debug_plot(name="debug", overwrite=False)
+				
 
 			#Need to return Tn, S_3/T and success error message.
 			spl = interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))
@@ -511,8 +509,8 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 					plotAs(_As,_Ts)#Comparing with original data
 					plt.plot(moreTs,interp)#Check if the interpolator is doing well.
 					plt.xlabel('Temperature'); plt.ylabel('S(T)/T')
-					if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-					else: plt.show()
+					debug_plot(name="debug", overwrite=False)
+					
 					print(res)
 				if all(spl.derivatives(_Ts)[1]>0):
 					if not IRDivSmoothing:
@@ -523,13 +521,13 @@ def grid(V, tc=None, prnt=True, plot=True, ext_minT=None):
 				else:
 					return None,None,tc,17
 		
-		print(res)
+		if prnt: print(res)
 		if plot:
 			print('abject failure')
 			plt.plot(_Ts, np.array(_As)/np.array(_Ts))
 			plt.plot(np.linspace(_Ts[0],_Ts[-1]), (interpolate.UnivariateSpline(_Ts,_As/_Ts,k=2, s=len(_Ts)+np.sqrt(2*len(_Ts)))(np.linspace(_Ts[0],_Ts[-1]))))
-			if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
-			else: plt.show()
+			debug_plot(name="debug", overwrite=False)
+			
 		return None, None, tc, 7
 	
 	#If you reach this point something's gone totally wrong...

@@ -33,30 +33,40 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     global NUMBEROFPOINTS
     old_POINTS = NUMBEROFPOINTS      
     old_TMULT = Potential2.TMULT      # store original T max multiplier
-    
-    
+ 
     # 1) Coarse scan (fast)
     print(f"[Adaptive] Coarse scan with {coarse_points} points...")
     NUMBEROFPOINTS = coarse_points
     Potential2.TMULT = old_TMULT      # keep same T max (just fewer points)
-   
+ 
     dressed, RMS, _ = SolveMasses(V, plot=False)
     tc = V.criticalT(plot=False)
-
+ 
     # 2) If no phase transition → done
     if tc is None:
         print("[Adaptive] No Tc found. Skipping refinement.")
         NUMBEROFPOINTS = old_POINTS
         Potential2.TMULT = old_TMULT
         return dressed, RMS, None
-
+ 
+    # 3) Refine only around Tc
+    print(f"[Adaptive] Tc ≈ {tc:.2f}. Refining only near transition...")
+ 
+    # Narrow region in T, e.g. 0.8 Tc – 1.2 Tc
+    Tmin = max(0, tc * 0.8)
     Tmax = tc * 1.2
-    Potential2.TMULT = Tmax / V.fSIGMA
-    
-    
-
+ 
     # Restore fine resolution
     NUMBEROFPOINTS = fine_points
+ 
+    # Adjust only the T-range (TMULT = Tmax / fπ)
+    Potential2.TMULT = Tmax / V.fSIGMA
+ 
+    # Re-run with fine grid, only near Tc
+    result = SolveMasses(V, plot=False)
+ 
+    # Restore original settings (important to not affect next parameter point)
+    NUMBEROFPOINTS = old_POINTS
     Potential2.TMULT = old_TMULT
     return result
 
@@ -84,10 +94,9 @@ def SolveMasses(V, plot=False):
     # Store previous solutions at each grid (T, σ) to enable 2D warm starts 
     solution_grid = np.full((len(TRange), len(sigmaRange), 4), np.nan)
     
-    #t_total = time.time()
 
     for i,T in enumerate(TRange):
-        #t_row = time.time()
+        if Potential2.PRNT_RUN: t_row = time.time()
         prev_solution = None # stores last successful solution (Mσ², Mη², MX², Mπ²)
         for j,sigma in enumerate(sigmaRange):
             if T<EPSILON:
@@ -284,7 +293,7 @@ def SolveMasses(V, plot=False):
                     MSqEtaData[i,j]=M_eta2
                     MSqXData[i,j]=M_X2
                     MSqPiData[i,j]=M_Pi2
-                    prevSol=sol.x
+                    
                 else:
                         
                     MSqSigData[i,j]=None
@@ -294,9 +303,8 @@ def SolveMasses(V, plot=False):
                     
                     failPoints.append([sigma, T])
 
-        #print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
-      
-     
+        if Potential2.PRNT_RUN: print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
+
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
     points = np.column_stack((X.ravel(), Y.ravel()))
