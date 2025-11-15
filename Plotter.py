@@ -21,7 +21,11 @@ matplotlib.use('Agg')
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
+<<<<<<< HEAD
 CORES = 36  # default to 1 if not set
+=======
+CORES = 6  # default to 1 if not set
+>>>>>>> upstream/main
 print(f"Using {CORES} cores")
 
 
@@ -385,7 +389,6 @@ def parallelScan_refill(N, F, Polyakov, xi, detType, day, hour):
         print("[Checkpoint] All points already correct.")
         return
 
-    print(todo)
     with open(refill_filename, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
@@ -400,6 +403,11 @@ def parallelScan_refill(N, F, Polyakov, xi, detType, day, hour):
         writer = csv.writer(f)
         for params, result in zip(todo, p.imap(unwrap_populate_static, todo)):
             #for params, result in zip(todo, p.imap_unordered(unwrap_populate, todo)): #we can go to unordered once we did all checks, decreasing speed code by 3%
+            print(f'Summary: m2Sig={params[0]}, m2Eta={params[1]}, m2X={params[2]}, fPI={params[3]}')
+            print(f'm2 = {result[0]}, c={result[1]}, ls={result[2]}, la={result[3]}')
+            print(f'Tc={result[7]}, Tn={result[4]}, alpha={result[5]}, beta/H={result[6]}, message={result[8]}')
+            print(f'vwLTE={result[9]}, kappaLTE={result[10]}, vwLN={result[11]}, kappaLN={result[12]}')
+            
             writer.writerow(list(params[:4]) +  [ result[0],  result[1],  result[2],  result[3], result[7], 
 												result[4], result[5], result[6],  result[8], 
                                                 result[9], result[10], result[11], result[12] ])
@@ -441,7 +449,7 @@ def refill(original_filename, refill_filename, new_filename):
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=3; F=6
+    N=4; F=6
 
     m2Sig = np.linspace(1., 10., num=5)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
@@ -472,6 +480,7 @@ if __name__ == "__main__":
 
     #comment out parallelscan norm to plot
     #parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='AMSB', Polyakov=False,xi=1)
+    parallelScan_refill(N, F, True, 1, 'AMSB', 13, 0)
     
     
     # SINGLE POINT FROM SCAN

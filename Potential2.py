@@ -272,7 +272,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         raise NonTunnelling('Point is Invalid as fPI is not stable')
                                
 #Cut off    
-    if dV(4*np.pi*fPI)<0 :
+    if V(4*np.pi*fPI)<V(fPI):
         print(f'Point is Invalid as potential unbounded from below by cutoff')
         raise BoundedFromBelow('Point is not bounded from below by cutoff')
     
