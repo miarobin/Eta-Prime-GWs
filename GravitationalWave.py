@@ -1,3 +1,4 @@
+import config
 from cosmoTransitions.tunneling1D import SingleFieldInstanton
 from cosmoTransitions.tunneling1D import PotentialError
 from cosmoTransitions import helper_functions
@@ -5,12 +6,13 @@ from functools import reduce
 import Potential2
 from scipy import interpolate, optimize, integrate
 import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import csv
 import traceback
-from debug_plot import debug_plot
+if config.PLOT_RUN:
+	from debug_plot import debug_plot
 
 class BadlyIRDivergent(Exception):
     pass
@@ -30,10 +32,10 @@ def IRProblem():
 
 #Calculate the action S3 for a given temperature T using CosmoTransitions SingleFieldInstanton class.
 def action(V,T, plot=False):
-    prnt = Potential2.PRNT_RUN
+    prnt = config.PRNT_RUN
     #First find & classify the true & false minima
     vT = V.findminima(T)
-    IRDivSmoothing = Potential2.IRDIVSMOOTHING
+    IRDivSmoothing = config.IRDIVSMOOTHING
     
     #If rhs is none at this point it means there's only one minima. Return action as None.
     if vT == None:
@@ -158,9 +160,9 @@ def plotAs(As, Ts):
 #Finds an interpolated function of 3D Action/T as a function of T, and Tn if it exists.
 	#NOTE Print just shows you all of the individual broken points in detail so it can be manually fixed.
 def grid(V, tc=None, ext_minT=None):
-	IRDivSmoothing = Potential2.IRDIVSMOOTHING
-	plot = Potential2.PLOT_RUN
-	prnt = Potential2.PRNT_RUN
+	IRDivSmoothing = config.IRDIVSMOOTHING
+	plot = config.PLOT_RUN
+	prnt = config.PRNT_RUN
 	
 	### SETTING THE RANGE OF TEMPERATURES TO SCAN OVER ###
 	if tc==None:
@@ -179,10 +181,13 @@ def grid(V, tc=None, ext_minT=None):
 	
 	#To ensure targeting of the right area, check where a transition must have already occured by seeing if \phi=0 is a local minima or maxima.
 	if ext_minT is None:
-		minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-Potential2.TOL*V.fSIGMA**4)/V.fSIGMA**2,tc*.8, bounds=[(tc*.70,maxT)])
+		minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-config.TOL*V.fSIGMA**4)/V.fSIGMA**2,tc*.8, bounds=[(tc*.70,maxT)])
 	else:
-		minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-Potential2.TOL*V.fSIGMA**4)/V.fSIGMA**2,(ext_minT+maxT)/2, bounds=[(ext_minT,maxT)])
-	
+		if ext_minT<maxT:
+			minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-config.TOL*V.fSIGMA**4)/V.fSIGMA**2,(ext_minT+maxT)/2, bounds=[(ext_minT,maxT)])
+		else:
+			return None, None, tc, 23	
+
 	if prnt: print(f'minTy = {minTy}')
 
 	if minTy.fun/V.fSIGMA**2<1:
@@ -199,7 +204,7 @@ def grid(V, tc=None, ext_minT=None):
 
 	#Some potential plots around the important area.
 	if plot:
-		xs=np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100)
+		xs=np.linspace(-5,V.fSIGMA*config.SIGMULT,num=100)
 		plt.plot(xs,V.V(xs)-V.V(0),label=f"Vtree")
 
 		plt.plot(xs,V.Vtot(xs,minT)-V.Vtot(0,minT),linestyle='-.',label=f"T={round(minT,4)} Vtot")
@@ -219,10 +224,10 @@ def grid(V, tc=None, ext_minT=None):
 
 
 	#Setting sample size based on temperature jumps.
-	if (maxT - minT)/80>0.5:
-		numberOfEvaluations = 80
-	else:
+	if (maxT - minT)/50>0.5:
 		numberOfEvaluations = 50
+	else:
+		numberOfEvaluations = 30
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
 	Sample_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for i,_T in enumerate(Sample_Ts):
@@ -243,8 +248,8 @@ def grid(V, tc=None, ext_minT=None):
 			break
 	
 	#FINE SAMPLE.
-	if (maxT-minT)/(numberOfEvaluations+40) > 0.01: 
-		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+40); As = []; Ts = []; IRDiv = False
+	if (maxT-minT)/(numberOfEvaluations+35) > 0.075: 
+		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+35); As = []; Ts = []; IRDiv = False
 	else:
 		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+5); As = []; Ts = []; IRDiv = False
 
@@ -318,14 +323,14 @@ def grid(V, tc=None, ext_minT=None):
 		
 		if prnt: print(_Is)
 		if prnt: print(_Ts)
-		if abs(max(_Is))<Potential2.TOL:
+		if abs(max(_Is))<config.TOL:
 			return None, None, tc, 9 #An action has been found, but not less than I=ICutoff.
 
 		#Stepsize is too small so now iterating between the two values.
 		#1: find the lowest two values with Is above 150.
 		jminus = np.where(np.array(Is)>ICutoff)[0][-1]
 		jplus = np.where(np.array(Is)<0.34)[0][0]
-		checkBetween = np.linspace(Ts[jminus], Ts[jplus], num=10, endpoint=False)
+		checkBetween = np.linspace(Ts[jminus], Ts[jplus], num=20, endpoint=False)
 	
 		for i,_T in enumerate(checkBetween):
 			try:
@@ -424,7 +429,7 @@ def grid(V, tc=None, ext_minT=None):
 			print(res)
 			
 			tn=res.x[0]
-			xs=np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100)
+			xs=np.linspace(-5,V.fSIGMA*config.SIGMULT,num=100)
 			plt.plot(xs,V.V(xs)-V.V(0),label=f"Vtree")
 
 			plt.plot(xs,V.Vtot(xs,tc)-V.Vtot(0,tc),linestyle='-.',label=f"T={round(tc,4)} Tc Vtot")
@@ -549,7 +554,7 @@ def checkProfile(V, Instanton, Profile, T):
 		plt.plot(Profile.R[5:], rhs, label='rhs')
 		plt.xlabel('r')
 		plt.legend()
-		if not Potential2.PLOT_RUN: debug_plot(name="debug", overwrite=False)
+		if not config.PLOT_RUN: debug_plot(name="debug", overwrite=False)
 		else: plt.show()
 	
 	except ValueError as e:
@@ -625,7 +630,7 @@ if __name__ == "__main__":
 	#test.testSymmRestoration(1,3)
 	
 	#xi, muSig, lmb, kappa, m2Sig, N, F, detPow
-	V=Potential2.Potential(0,*[0.2, 2, 1, 100**2],1,4,1)
+	V=config.Potential(0,*[0.2, 2, 1, 100**2],1,4,1)
 	
 	def fSig1_function(muSig, lmb, kappa, m2Sig): return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
 	fSig1 = fSig1_function(0.2, 2, 1, 100**2)	

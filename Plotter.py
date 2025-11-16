@@ -1,7 +1,9 @@
+import config
 import Potential2
 import GravitationalWave
 import numpy as np
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import csv
@@ -10,18 +12,18 @@ import DressedMasses
 import os
 from debug_plot import debug_plot
 from functools import partial
-import cProfile
+
 
 import WallVelocity
 import WallVelocityLargeN
 
-from datetime import date
+from datetime import datetime
 
-matplotlib.use('Agg') 
+
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = 6  # default to 1 if not set
+CORES = 2  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
@@ -92,7 +94,7 @@ def unwrap_populate(args, N, F, Polyakov, xi, detType):
 
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100)/V.fSIGMA,V.Vtot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100),T)/V.fSIGMA**4-V.Vtot(0,T)/V.fSIGMA**4,label=f"T={T}")
+		plt.plot(np.linspace(-5,V.fSIGMA*config.SIGMULT,num=100)/V.fSIGMA,V.Vtot(np.linspace(-5,V.fSIGMA*config.SIGMULT,num=100),T)/V.fSIGMA**4-V.Vtot(0,T)/V.fSIGMA**4,label=f"T={T}")
 
 
 def save_arrays_to_csv(file_path, column_titles, *arrays):
@@ -273,7 +275,7 @@ def populate_safe_wrapper(*args):
 def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, detType='Normal', crop=None, filename=None):
     
     if filename is None:
-        today = date.today()
+        today = datetime.today()
         day = today.day
         hour = today.hour
 
@@ -373,7 +375,7 @@ def parallelScan_refill(N, F, Polyakov, xi, detType, day, hour):
             next(reader)  # skip header
             for row in reader:
                 if row:
-                    if abs(float(row[12]))<Potential2.TOL:
+                    if abs(float(row[12]))<config.TOL:
                         if not float(row[9])>0:
                             todo.add(tuple(map(float, row[:4])))
     else:
@@ -420,18 +422,17 @@ def parallelScan_refill(N, F, Polyakov, xi, detType, day, hour):
 def refill(original_filename, refill_filename, new_filename):
 	data = np.array(np.genfromtxt(original_filename, delimiter=',', skip_header=1, dtype=float))
 	refill_data = np.array(np.genfromtxt(refill_filename, delimiter=',', skip_header=1, dtype=float))
-    
+
 	for row in refill_data:
 		mask = np.all(np.isclose(data[:, :4], row[:4]),axis=1)
 		data[mask] = row
-    
+
 	# Save the array to a CSV file
 	with open(new_filename, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
-                             'lambda_a','Tc','Tn','Alpha','Beta','Message',
-                             'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN'])
-
+			writer = csv.writer(f)
+			writer.writerow(['m2Sig','m2Eta','m2X','fPI','m2','c','lambda_sigma',
+							'lambda_a','Tc','Tn','Alpha','Beta','Message',
+							'vwLTE', 'kappaLTE', 'vwLN', 'kappaLN'])
 
 	# Run in parallel and write results one-by-one
 	with open(new_filename, 'a', newline='') as f:
@@ -439,7 +440,7 @@ def refill(original_filename, refill_filename, new_filename):
 		for row in data:
 			writer.writerow(list(row))
 			f.flush()
-     
+
 	return data
 
 
@@ -447,7 +448,7 @@ def refill(original_filename, refill_filename, new_filename):
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=4; F=6
+    N=3; F=3
 
     m2Sig = np.linspace(1., 10., num=5)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
@@ -457,20 +458,17 @@ if __name__ == "__main__":
     fPi = np.linspace(0.5,1.5,num=5)*1000*np.sqrt(F/2)
 
     #comment out parallelscan norm to plot
-    #parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='AMSB', Polyakov=False,xi=1)
-    parallelScan_refill(N, F, True, 1, 'AMSB', 13, 0)
+    
+    #parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='Normal', Polyakov=True,xi=2)
+    #parallelScan_refill(N, F, True, 1, 'AMSB', 13, 0)
     
     
     # SINGLE POINT FROM SCAN
-    
-    '''
-    Potential2.PLOT_RUN=False
-    Potential2.PRNT_RUN=False
-    POINT_OF_INTEREST=24
+    POINT_OF_INTEREST=4
 
 	
 
-    filename = 'F6/N4/N4F6xi1_AMSB_13Nov.csv'; delimiter = ','
+    filename = 'F3/N3/N3F3xi2_Normal_15Nov22hr.csv'; delimiter = ','
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
@@ -479,12 +477,12 @@ if __name__ == "__main__":
     print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
     print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
-    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))'''
+    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=2, detType='Normal', plot=True))
 
 
 	#REFILL TEST (You have to go into the function to manually change the test filenames)
-    Potential2.PRNT_RUN=True
-    parallelScan_refill(N, F, False, None, 'AMSB', None, None)
+    #config.PRNT_RUN=True
+    #parallelScan_refill(N, F, False, None, 'AMSB', None, None)
     
     #original_filename = 'RefillTestArray_F6N3_AMSB.csv'
     #refill_filename = 'RefillTestArray_refill.csv'
