@@ -2,7 +2,7 @@ import Potential2
 import GravitationalWave
 import numpy as np
 import matplotlib
-matplotlib.use('Agg') 
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import csv
@@ -459,7 +459,7 @@ def refill(original_filename, refill_filename, new_filename):
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=3; F=6
+    N=4; F=8
 
     m2Sig = np.linspace(1., 10., num=6)*1000**2
     #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 

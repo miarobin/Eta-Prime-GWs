@@ -1,12 +1,10 @@
 import cosmoTransitions.finiteT as fT
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import optimize, misc, signal
-from sympy import diff
+from scipy import optimize
 from scipy import interpolate, integrate
 from itertools import takewhile
 import os
-from mpl_toolkits.mplot3d import Axes3D
 import DressedMasses
 from debug_plot import debug_plot
 

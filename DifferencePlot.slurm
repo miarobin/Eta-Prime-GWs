@@ -1,12 +1,16 @@
 #!/bin/bash
 
-#SBATCH --cpus-per-task=1        # Number of CPU cores
-#SBATCH --mem=400M               # Memory limit
-# #SBATCH --mail-type=END,FAIL     # Mail events
+#SBATCH --cpus-per-task=9        # Number of CPU cores
+#SBATCH --mem=1G              # Memory limit
+#SBATCH --mail-type=END,FAIL     # Mail events
 #SBATCH --mail-user=m.ulloacalzonzin@ufl.edu  # Where to send mail
-#SBATCH --time=01:00:00          # Max run time
+#SBATCH --time=15:00:00          # Max run time
 #SBATCH --output=%j.out    # Output file, %j = job ID
-#SBATCH --job-name=DifferencePlot # Job name
+#SBATCH --job-name=N4F6xi5AMSB
+#SBATCH --qos=rachel.houtz
+##SBATCH --qos=rachel.houtz-b # Use burst QoS to borrow resources
+
+
 
 # Print info for debugging
 pwd
@@ -18,4 +22,5 @@ module load python/3.12
 
 
 # Run your Python script
-python DifferencePlot.py
+python Plotter.py
+

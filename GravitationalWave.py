@@ -181,8 +181,10 @@ def grid(V, tc=None, ext_minT=None):
 	if ext_minT is None:
 		minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-Potential2.TOL*V.fSIGMA**4)/V.fSIGMA**2,tc*.8, bounds=[(tc*.70,maxT)])
 	else:
-		minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-Potential2.TOL*V.fSIGMA**4)/V.fSIGMA**2,(ext_minT+maxT)/2, bounds=[(ext_minT,maxT)])
-	
+		if ext_minT<maxT:
+			minTy = optimize.minimize(lambda T: abs(V.d2VdT2(0,T)-Potential2.TOL*V.fSIGMA**4)/V.fSIGMA**2,(ext_minT+maxT)/2, bounds=[(ext_minT,maxT)])
+		else:
+			return None, None, tc, 23   
 	if prnt: print(f'minTy = {minTy}')
 
 	if minTy.fun/V.fSIGMA**2<1:
@@ -219,10 +221,10 @@ def grid(V, tc=None, ext_minT=None):
 
 
 	#Setting sample size based on temperature jumps.
-	if (maxT - minT)/80>0.5:
-		numberOfEvaluations = 80
-	else:
+	if (maxT - minT)/50>0.5:
 		numberOfEvaluations = 50
+	else:
+		numberOfEvaluations = 30
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
 	Sample_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for i,_T in enumerate(Sample_Ts):
@@ -243,8 +245,8 @@ def grid(V, tc=None, ext_minT=None):
 			break
 	
 	#FINE SAMPLE.
-	if (maxT-minT)/(numberOfEvaluations+40) > 0.01: 
-		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+40); As = []; Ts = []; IRDiv = False
+	if (maxT-minT)/(numberOfEvaluations+35) > 0.075: 
+		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+35); As = []; Ts = []; IRDiv = False
 	else:
 		Sample_Ts = moreTs = minT+(maxT-minT)*np.linspace(0, 1,num=numberOfEvaluations+5); As = []; Ts = []; IRDiv = False
 
@@ -290,8 +292,6 @@ def grid(V, tc=None, ext_minT=None):
 	As=_As
 	Ts=_Ts
 
-
-
 	### WEIGHT FUNCTION ###
 	#NOTE TO FUTURE SELVES: defining SM part of g_star at the CRITICAL TEMPERATURE.
 	b = 12*np.pi* (30/(V._g_star(tc)*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision
@@ -325,7 +325,7 @@ def grid(V, tc=None, ext_minT=None):
 		#1: find the lowest two values with Is above 150.
 		jminus = np.where(np.array(Is)>ICutoff)[0][-1]
 		jplus = np.where(np.array(Is)<0.34)[0][0]
-		checkBetween = np.linspace(Ts[jminus], Ts[jplus], num=10, endpoint=False)
+		checkBetween = np.linspace(Ts[jminus], Ts[jplus], num=20, endpoint=False)
 	
 		for i,_T in enumerate(checkBetween):
 			try:

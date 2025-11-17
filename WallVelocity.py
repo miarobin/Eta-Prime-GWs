@@ -1,9 +1,3 @@
-from cosmoTransitions.tunneling1D import SingleFieldInstanton
-from cosmoTransitions.tunneling1D import PotentialError
-from cosmoTransitions import helper_functions
-from functools import reduce
-import Potential2, GravitationalWave
-from scipy import interpolate, optimize
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
