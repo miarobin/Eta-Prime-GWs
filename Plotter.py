@@ -448,14 +448,14 @@ def refill(original_filename, refill_filename, new_filename):
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=4; F=4; detType = 'AMSB'; 
-    num=6
+    N=4; F=6; detType='Normal'; 
+    num=3
     
     detPow = Potential2.get_detPow(N,F,detType)
 
     m2Sig = np.linspace(1., 10., num=num)*1000**2
     if F*detPow>4:
-        maxm2Eta = (16*np.pi/3) * 1.5**2 * (F*detPow)**3 / (16*(4*np.pi)**(F*detPow-4)) 
+        maxm2Eta = (16*np.pi/3) * 1.5**2 * (F*detPow)**3 / (16*(4*np.pi)**(F*detPow-4) * 25) 
         minm2Eta = maxm2Eta/25 #Arbitrary.
         m2Eta = np.linspace(minm2Eta, maxm2Eta, num=num)*1000**2 
     else:
@@ -463,7 +463,7 @@ if __name__ == "__main__":
     m2X = np.linspace(1., 25., num=num)*1000**2
     fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)
     
-    #parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='Normal', Polyakov=True,xi=1)
+    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=True,xi=1)
     #parallelScan_refill(N, F, False, 1, 'Normal', 13, 0)
     
     '''
