@@ -242,8 +242,13 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     
     VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
     if config.PLOT_RUN:
-        plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
-        debug_plot(name="VTree Test", overwrite=False)
+        if VTree(4*np.pi*fPI)<VTree(fPI):
+            plt.plot(np.linspace(0,4*np.pi*fPI),VTree(np.linspace(0,4*np.pi*fPI)))
+            plt.title('Not BfB')
+        else:
+            plt.plot(np.linspace(0,4*np.pi*fPI),VTree(np.linspace(0,4*np.pi*fPI)))
+            plt.title('BfB')
+        debug_plot(name="Bounded from Below Test", overwrite=False)
 
 
     #CHECKS
@@ -271,7 +276,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
         print(f'Point is Invalid as fPI is not minimum')
         raise NonTunnelling('Point is Invalid as fPI is not stable')
                                
-#Cut off    
+#Boundedness from below:  
     if V(4*np.pi*fPI)<V(fPI):
         print(f'Point is Invalid as potential unbounded from below by cutoff')
         raise BoundedFromBelow('Point is not bounded from below by cutoff')
