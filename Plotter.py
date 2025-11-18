@@ -455,33 +455,30 @@ def refill(original_filename, refill_filename, new_filename):
 	return data
 
 
-
 if __name__ == "__main__":
 
     #LARGE SCANS
-    N=4; F=8
+    N=4; F=6; detType='Normal'; 
+    num=6
 
-    m2Sig = np.linspace(1., 10., num=6)*1000**2
-    #m2Eta = np.linspace(0.01, 0.5, num=3)*1000**2 #for N3F5 N3F6 
-    m2Eta = np.linspace(1., 25., num=6)*1000**2
-    m2X = np.linspace(1., 25., num=6)*1000**2
+    detPow = Potential2.get_detPow(N,F,detType)
+    m2Sig = np.linspace(1., 10., num=num)*1000**2
 
-    fPi = np.linspace(0.5,1.5,num=6)*1000*np.sqrt(F/2)
+    if F*detPow>4:
+        maxm2Eta = (16*np.pi/3) * 1.5**2 * (F*detPow)**3 / (16*(4*np.pi)**(F*detPow-4) * 25) 
+        minm2Eta = maxm2Eta/25 #Arbitrary.
+        m2Eta = np.linspace(minm2Eta, maxm2Eta, num=num)*1000**2 
+    else:
+        m2Eta = np.linspace(1., 25., num=num)*1000**2
+    m2X = np.linspace(1., 25., num=num)*1000**2
+    fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)
 
-    #comment out parallelscan norm to plot
-    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='AMSB', Polyakov=True,xi=2)
-    #parallelScan_refill(N, F, False, 1, 'AMSB', 13, 0)
-    
-    
-    # SINGLE POINT FROM SCAN
-    
-    '''
-    Potential2.PLOT_RUN=False
+    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=False,xi=1)
+
+    #parallelScan_refill(N, F, False, 1, 'Normal', 13, 0)
     Potential2.PRNT_RUN=False
-    POINT_OF_INTEREST=24
-
 	
-
+    '''
     filename = 'F6/N4/N4F6xi1_AMSB_13Nov.csv'; delimiter = ','
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
@@ -492,13 +489,14 @@ if __name__ == "__main__":
     print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
     print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))'''
-
-
+    '''
+    
+    
+    '''
 	#REFILL TEST (You have to go into the function to manually change the test filenames)
-    Potential2.PRNT_RUN=False
     #parallelScan_refill(N, F, False, None, 'AMSB', None, None)
     
     #original_filename = 'RefillTestArray_F6N3_AMSB.csv'
     #refill_filename = 'RefillTestArray_refill.csv'
     #new_filename = 'RefillTestArray_toppedup.csv'
-    #refill(original_filename, refill_filename, new_filename)
+    #refill(original_filename, refill_filename, new_filename)'''
