@@ -101,9 +101,12 @@ def SolveMasses(V, plot=False):
     plot=config.PLOT_RUN
     
     #Distinct Feynman rule structures.
-    c1 = (V.c/V.F**2)*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)
-    c2 = (V.c/V.F)*V.fSIGMA**(V.F*V.detPow-4)*V.detPow*(V.F*V.detPow-2)*(V.F*V.detPow-3)
-    c3 = (V.c/V.F)*V.fSIGMA**(V.F*V.detPow-4)*V.detPow*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6)
+    if abs(V.F*V.detPow-4)<1e-20:
+        c1 = (V.c/V.F**2)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)
+        c2 = (V.c/V.F)*V.detPow*(V.F*V.detPow-2)*(V.F*V.detPow-3)
+        c3 = (V.c/V.F)*V.detPow*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6)
+    else:
+        c1=0; c2=0; c3=0
     ctilde = (V.F**2-1)
 
 
@@ -753,9 +756,9 @@ def plotInterpMasses(V):
     #plt.show()
         
  
-    #Plot 2: RMS error and perturbativity.
+    #Plot 2: RMS error. #SPLIT PLOTS!
  
-    fig, ax = plt.subplots(nrows=1,ncols=2)
+    fig, ax = plt.subplots(nrows=1,ncols=1)
         
     im0 = ax[0].contourf(X/V.fSIGMA, Y/V.fSIGMA, RMS.T)
     cbar0 = plt.colorbar(im0)
@@ -765,6 +768,8 @@ def plotInterpMasses(V):
     
 
     #IR Problem:
+    fig, ax = plt.subplots(nrows=1,ncols=2)
+    
     #4-point effective vertices.
     gSig_eff = np.abs(3*V.lambdas - V.c*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)/V.F**2)
         
@@ -783,6 +788,8 @@ def plotInterpMasses(V):
     cbar1.set_label(r'Effective Coupling $g_eff$',fontsize=14)
     ax[1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
     ax[1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15)
+    
+    fig, ax = plt.subplots(nrows=1,ncols=2)
     
     
 ##SPLINE FIT FOR Ib
