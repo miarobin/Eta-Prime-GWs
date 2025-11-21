@@ -575,10 +575,10 @@ def beta_over_H(V, Tn, act):
 	
 def alpha(V, Tn):
 	minima = V.findminima(Tn)
-	delV = abs(V.Vtot(0,Tn) - V.Vtot(minima,Tn))
-	ddelVdT = abs(V.dVdT(0,Tn) - V.dVdT(minima,Tn))
-	
-	return (30/(V._g_star(Tn)*np.pi**2*Tn**4)) * (-delV + Tn*ddelVdT/4)
+	delV = (V.Vtot(0,Tn) - V.Vtot(minima,Tn))
+	ddelVdT = (V.dVdT(0,Tn) - V.dVdT(minima,Tn))
+
+	return (30/(V._g_star(Tn)*np.pi**2*Tn**4)) * (delV - Tn*ddelVdT/4)
 	
 	
 def gravitationalWave(V):
