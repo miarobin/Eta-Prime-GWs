@@ -28,6 +28,7 @@ from datetime import datetime
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 CORES = 9  # default to 1 if not set
 =======
 CORES = 2  # default to 1 if not set
@@ -35,6 +36,9 @@ CORES = 2  # default to 1 if not set
 =======
 CORES = 4  # default to 1 if not set
 >>>>>>> 5bba593 (Scan Ranges)
+=======
+CORES = 8  # default to 1 if not set
+>>>>>>> 6f78d6a (Correcting alpha definition, modifying dressed masses.)
 print(f"Using {CORES} cores")
 
 
@@ -354,7 +358,6 @@ def parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=False, xi=1, 
     
 
 
-#Just make sure to delete the old file before running
 def parallelScan_refill(N, F, Polyakov, xi, detType, day, hour):
     
 	
@@ -399,9 +402,8 @@ def parallelScan_refill(N, F, Polyakov, xi, detType, day, hour):
             next(reader)  # skip header
             for row in reader:
                 if row:
-                    if abs(float(row[12]))<config.TOL:
-                        if not float(row[9])>0:
-                            todo.add(tuple(map(float, row[:4])))
+                    if float(row[9])>0:
+                        todo.add(tuple(map(float, row[:4])))
     else:
         print(f'File with name {filename} does not exist')
 
@@ -475,6 +477,7 @@ def refill(original_filename, refill_filename, new_filename):
 
 if __name__ == "__main__":
 
+<<<<<<< HEAD
     #LARGE SCANS
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -517,25 +520,29 @@ if __name__ == "__main__":
 >>>>>>> a3bdce8 (Fixing scan ranges)
     
     detPow = Potential2.get_detPow(N,F,detType)
+=======
+	#LARGE SCANS
+	'''
+	N=3; F=3; detType='Normal'; 
+	num=6
+>>>>>>> 6f78d6a (Correcting alpha definition, modifying dressed masses.)
 
-    m2Sig = np.linspace(1., 10., num=num)*1000**2
-    if F*detPow>4:
-        maxm2Eta = (16*np.pi/3) * 1.5**2 * (F*detPow)**3 / (16*(4*np.pi)**(F*detPow-4) * 25) 
-        minm2Eta = maxm2Eta/25 #Arbitrary.
-        m2Eta = np.linspace(minm2Eta, maxm2Eta, num=num)*1000**2 
-    else:
-        m2Eta = np.linspace(1., 25., num=num)*1000**2
-    m2X = np.linspace(1., 25., num=num)*1000**2
-    fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)
-    
-    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=True,xi=1)
-    #parallelScan_refill(N, F, False, 1, 'Normal', 13, 0)
-    
-    '''
-    # SINGLE POINT FROM SCAN
-    POINT_OF_INTEREST=13
+	detPow = Potential2.get_detPow(N,F,detType)
 
+	#m2Sig = np.linspace(1., 10., num=num)*1000**2
+	m2Sig = np.array([1.])*1000**2
+	if F*detPow>4:
+		maxm2Eta = (16*np.pi/3) * 1.5**2 * (F*detPow)**3 / (16*(4*np.pi)**(F*detPow-4) * 25) 
+		minm2Eta = maxm2Eta/25 #Arbitrary.
+		m2Eta = np.linspace(minm2Eta, maxm2Eta, num=num)*1000**2 
+	else:
+		m2Eta = np.linspace(1., 25., num=num)*1000**2
+	m2X = np.linspace(1., 25., num=num)*1000**2
+	fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)#CHANGE
+
+	parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=False,xi=1)'''
 	
+<<<<<<< HEAD
 <<<<<<< HEAD
 
     filename = 'F3/N3/N3F3xi2_Normal_15Nov22hr.csv'; delimiter = ','
@@ -545,14 +552,15 @@ if __name__ == "__main__":
     filename = 'F6/N4/N4F6xi1_AMSB_13Nov0hr.csv'; delimiter = ','
 >>>>>>> 5bba593 (Scan Ranges)
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
+=======
+	#REFILL
+	N=3; F=3; detType='Normal'; Day=19; Hour=23; Polyakov=True; xi=1
+>>>>>>> 6f78d6a (Correcting alpha definition, modifying dressed masses.)
 
-    m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
+	parallelScan_refill(N, F, Polyakov, xi, detType, Day, Hour)
 
-    print(f'm2Sig = {m2Sig}, m2Eta = {m2Eta}, m2X = {m2X}, fPI = {fPI}')
-    print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
-    print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
-    
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))'''
@@ -577,3 +585,41 @@ if __name__ == "__main__":
     #refill_filename = 'RefillTestArray_refill.csv'
     #new_filename = 'RefillTestArray_toppedup.csv'
     #refill(original_filename, refill_filename, new_filename)'''
+=======
+
+
+	# SINGLE POINT FROM SCAN
+	POINT_OF_INTEREST=13
+
+
+
+	N=3; F=3; detType='Normal'; Polyakov=True; xi=2
+
+
+	filename = 'F3/N3/N3F3xi2_Normal_16Nov13hr.csv'; delimiter = ','
+	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
+
+	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
+
+	print(f'm2Sig = {m2Sig}, m2Eta = {m2Eta}, m2X = {m2X}, fPI = {fPI}')
+	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
+	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
+      
+	fPI = 72 * np.sqrt(3/2)
+	m2Sig= 248**2
+	m2Eta= 458**2
+	m2X= 491**2
+
+
+	print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=Polyakov, xi=xi, detType=detType, plot=True))
+
+
+	#REFILL TEST (You have to go into the function to manually change the test filenames)
+	#config.PRNT_RUN=True
+	#parallelScan_refill(N, F, False, None, 'AMSB', None, None)
+
+	#original_filename = 'RefillTestArray_F6N3_AMSB.csv'
+	#refill_filename = 'RefillTestArray_refill.csv'
+	#new_filename = 'RefillTestArray_toppedup.csv'
+	#refill(original_filename, refill_filename, new_filename)
+>>>>>>> 6f78d6a (Correcting alpha definition, modifying dressed masses.)
