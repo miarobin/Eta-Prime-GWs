@@ -18,14 +18,11 @@ import WallVelocity
 import WallVelocityLargeN
 
 from datetime import datetime
-<<<<<<< HEAD
-=======
-
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -39,6 +36,9 @@ CORES = 4  # default to 1 if not set
 =======
 CORES = 8  # default to 1 if not set
 >>>>>>> 6f78d6a (Correcting alpha definition, modifying dressed masses.)
+=======
+CORES = 36  # default to 1 if not set
+>>>>>>> 50a06a2 (last modifications running code)
 print(f"Using {CORES} cores")
 
 
@@ -172,6 +172,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 	#   b) An interpolated function grd of action over temperature w/ temperature,
 	#   c) and an error code.
 	Tn, grd, tc, message = GravitationalWave.grid(V,ext_minT=V.minT)
+	V.Tn = Tn
 	
 
 
@@ -466,27 +467,24 @@ def refill(original_filename, refill_filename, new_filename):
 		for row in data:
 			writer.writerow(list(row))
 			f.flush()
-<<<<<<< HEAD
-=======
+
 
 	return data
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
+
 
 	return data
 
 
 if __name__ == "__main__":
 
-<<<<<<< HEAD
+
     #LARGE SCANS
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
+
     N=4; F=6; detType='Normal'; 
     num=6
-=======
+
     N=3; F=3
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
+
 
     detPow = Potential2.get_detPow(N,F,detType)
     m2Sig = np.linspace(1., 10., num=num)*1000**2
@@ -500,7 +498,7 @@ if __name__ == "__main__":
     m2X = np.linspace(1., 25., num=num)*1000**2
     fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)
 
-<<<<<<< HEAD
+
     parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=False,xi=1)
 
     #parallelScan_refill(N, F, False, 1, 'Normal', 13, 0)
@@ -522,15 +520,17 @@ if __name__ == "__main__":
     detPow = Potential2.get_detPow(N,F,detType)
 =======
 	#LARGE SCANS
+=======
+>>>>>>> 50a06a2 (last modifications running code)
 	'''
+	#LARGE SCANS
 	N=3; F=3; detType='Normal'; 
 	num=6
->>>>>>> 6f78d6a (Correcting alpha definition, modifying dressed masses.)
 
 	detPow = Potential2.get_detPow(N,F,detType)
 
-	#m2Sig = np.linspace(1., 10., num=num)*1000**2
-	m2Sig = np.array([1.])*1000**2
+	m2Sig = np.linspace(1., 10., num=num)*1000**2
+	#m2Sig = np.array([1.])*1000**2
 	if F*detPow>4:
 		maxm2Eta = (16*np.pi/3) * 1.5**2 * (F*detPow)**3 / (16*(4*np.pi)**(F*detPow-4) * 25) 
 		minm2Eta = maxm2Eta/25 #Arbitrary.
@@ -540,29 +540,24 @@ if __name__ == "__main__":
 	m2X = np.linspace(1., 25., num=num)*1000**2
 	fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)#CHANGE
 
-	parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=False,xi=1)'''
+	parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=True,xi=5)
 	
-<<<<<<< HEAD
-<<<<<<< HEAD
+
 
     filename = 'F3/N3/N3F3xi2_Normal_15Nov22hr.csv'; delimiter = ','
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
-=======
+
     
     filename = 'F6/N4/N4F6xi1_AMSB_13Nov0hr.csv'; delimiter = ','
->>>>>>> 5bba593 (Scan Ranges)
+
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
-=======
+
 	#REFILL
 	N=3; F=3; detType='Normal'; Day=19; Hour=23; Polyakov=True; xi=1
->>>>>>> 6f78d6a (Correcting alpha definition, modifying dressed masses.)
 
 	parallelScan_refill(N, F, Polyakov, xi, detType, Day, Hour)
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
+
     print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))'''
     '''
     
@@ -573,30 +568,33 @@ if __name__ == "__main__":
     print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=2, detType='Normal', plot=True))
 =======
     print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))'''
->>>>>>> 5bba593 (Scan Ranges)
+
 
 
 	#REFILL TEST (You have to go into the function to manually change the test filenames)
     #config.PRNT_RUN=True
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
     #parallelScan_refill(N, F, False, None, 'AMSB', None, None)
     
     #original_filename = 'RefillTestArray_F6N3_AMSB.csv'
     #refill_filename = 'RefillTestArray_refill.csv'
     #new_filename = 'RefillTestArray_toppedup.csv'
     #refill(original_filename, refill_filename, new_filename)'''
-=======
 
 
+	#REFILL
+	N=3; F=3; detType='Normal'; Day=17; Hour=0; Polyakov=True; xi=5
+
+	parallelScan_refill(N, F, Polyakov, xi, detType, Day, Hour)
+   
+	'''
+>>>>>>> 50a06a2 (last modifications running code)
 	# SINGLE POINT FROM SCAN
-	POINT_OF_INTEREST=13
+	POINT_OF_INTEREST=10
+
+	N=3; F=3; detType='Normal'; Polyakov=True; xi=1
 
 
-
-	N=3; F=3; detType='Normal'; Polyakov=True; xi=2
-
-
-	filename = 'F3/N3/N3F3xi2_Normal_16Nov13hr.csv'; delimiter = ','
+	filename = 'F3/N3/N3F3xi1_Normal_24Nov19hr.csv'; delimiter = ','
 	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
 	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
@@ -605,14 +603,15 @@ if __name__ == "__main__":
 	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
 	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
       
-	fPI = 72 * np.sqrt(3/2)
-	m2Sig= 248**2
-	m2Eta= 458**2
-	m2X= 491**2
+      
+	#fPI = 72 * np.sqrt(3/2)
+	#m2Sig= 248**2
+	#m2Eta= 458**2
+	#m2X= 491**2
 
 
 	print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=Polyakov, xi=xi, detType=detType, plot=True))
-
+	'''
 
 	#REFILL TEST (You have to go into the function to manually change the test filenames)
 	#config.PRNT_RUN=True
@@ -621,5 +620,6 @@ if __name__ == "__main__":
 	#original_filename = 'RefillTestArray_F6N3_AMSB.csv'
 	#refill_filename = 'RefillTestArray_refill.csv'
 	#new_filename = 'RefillTestArray_toppedup.csv'
+
 	#refill(original_filename, refill_filename, new_filename)
->>>>>>> 6f78d6a (Correcting alpha definition, modifying dressed masses.)
+	#refill(original_filename, refill_filename, new_filename)'''
