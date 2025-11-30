@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+import Potential2
 
 from scipy.integrate import solve_ivp ,simpson
 from scipy.optimize import root_scalar
@@ -9,7 +10,9 @@ from scipy.optimize import root_scalar
 '''Computes the Bubble Wall Velocity in large N limit from https://arxiv.org/pdf/2312.09964. 
 The first functions are taken from the code snippet in https://arxiv.org/abs/2303.10171.
 
-The two additional functions I have written are:
+This approximation works well if there is a large drop in degrees of freedom i.e. degrees of freedom in the symmetric phase >> broken phase.
+
+The additional functions we have written are:
 	1. "save_arrays_to_csv" is a generic function for saving data as a csv array.
 
 	    save_arrays_to_csv: 
@@ -33,17 +36,17 @@ The two additional functions I have written are:
         Note N^2 is the number of degrees of freedom in the high enthalpy/symmetric phase. Adjust as needed.
 
         find_alphaN:
-        INPUTS: (Tc, Tn, cb2, N)
-                (float, float, float, int)
+        INPUTS: (Tc, Tn, cb2, DoFSym)
+                (float, float, float, float)
                 
         OUTPUTS: alN
                 (float)
     
     NOTE:
         
-    > I have modified the functions "get_vp" to align with 2312.09964. 
-    > I have also written a function to calculate alN from the template model named "find_alphaN". 
-    > I have also set PsiN=0 as-per the same paper (although one has to see oneself that this scales with 1/N^2).
+    > We have modified the functions "get_vp" to align with 2312.09964. 
+    > We have also written a function to calculate alN from the template model named "find_alphaN". 
+    > We have also set PsiN=0 as-per the same paper (although one has to see oneself that this scales with 1/DoFSym).
 
     '''
     
@@ -64,7 +67,7 @@ def find_alphaN(Tc, Tn, cb2, DoFSym):
     return DThetaBar/( 3 * symEnthalpy +1e-10)
 
 def find_psiN():
-    return 0 #Scales as 1/N**2.
+    return 0 #Scales as 1/N**2 eq. 8 in 2312.09964.
 
 def find_vJ(alN, cb2):
     return np.sqrt(cb2)*(1+np.sqrt(3*alN*(1-cb2+3*cb2*alN)))/(1+3*cb2*alN)
@@ -202,11 +205,11 @@ def find_kappa (alN, cb2, cs2, psiN, vw=None):
             print(f'Inputs Causing Error: vw={vw},wp={w0}. Adds nothing to efficiency factor.')
     return kappa
 
-def testAgainstVdV():
-    #Plotting Fig3 from 2312.09964.
+def test():
+    #Plotting Fig. 3 from 2312.09964.
     Tc=1000; cb2=1/3; cs2=1/3; vws=[]; N=30
     for Tn in range(0,1000):
-        alN=find_alphaN(Tc, Tn, cb2,N)
+        alN=find_alphaN(Tc, Tn, cb2,N**2)
         vws.append(find_vw(alN,cb2,cs2))
         
     plt.plot(np.array(range(0,1000))/Tc,vws)
@@ -277,9 +280,6 @@ def readAndEdit(filename, N, F, termType):
                             m2Sigs, m2Etas, m2Xs, fPIs, m2s, cs, lss, las, Tcs, Tns, Alphas, Betas, VwsLN, kappasLN)
 
 if __name__ == "__main__":
-    
-    readAndEdit('Test_N3F6_Normal.csv', 3, 6, "Normal")
-    readAndEdit('Test_N3F6_largeN.csv', 3, 6, "largeN")
-    #testAgainstVdV()
+    test()
 
 

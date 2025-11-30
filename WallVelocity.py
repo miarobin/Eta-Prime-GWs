@@ -7,7 +7,7 @@ from scipy.optimize import root_scalar
 
 '''Computes the Bubble Wall Velocity. The first functions are taken from the code snippet in https://arxiv.org/abs/2303.10171
 
-The two additional functions I have written are:
+The additional functions we have written are:
 	1. "save_arrays_to_csv" is a generic function for saving data as a csv array.
 
 	    save_arrays_to_csv: 
@@ -177,6 +177,7 @@ def find_kappa (alN, cb2, cs2, psiN, vw=None):
             kappa += 4*simpson((xi * v)**2*w/(1 - v**2), xi)/(vw**3*alN)
         except ValueError as e:
             print(e)
+            print('Value Error Exception in WallVelocity.find_kappa line 179')
             print(f'Inputs Causing Error: vw={vw},wp={wp}. Adds nothing to efficiency factor.')
             return kappa
 
@@ -190,6 +191,7 @@ def find_kappa (alN, cb2, cs2, psiN, vw=None):
             kappa += 4*simpson(((xi * v)**2*w/(1 - v **2))[mask], xi[mask]) /(vw**3*alN)
         except ValueError as e:
             print(e)
+            print('Value Error Exception in WallVelocity.find_kappa line 192')
             print(f'Inputs Causing Error: vw={vw},wp={w0}. Adds nothing to efficiency factor.')
         
     return kappa
@@ -211,6 +213,7 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
         #Writes in data rows.
         for row in transposed_arrays:
             writer.writerow(row)
+
 
 def readAndEdit(filename, N, F, termType):
     delimiter = ','
@@ -262,53 +265,5 @@ def readAndEdit(filename, N, F, termType):
 
 
 if __name__ == "__main__":
-    '''
-    eps = 0.045; g4 = 1.6; delta = -0.1; beta = np.sqrt(0.1)
-    print(f"$\gamma_a$ = {Potential.gammaa(eps,g4,delta)}")
-    #The Potential Object.
-    V = Potential.Potential(eps,g4,Potential.gammaa(eps,g4,delta),beta,higgs_corr=True,loop=True)
-
-    Tn, _, message = GravitationalWave.grid(V)
-    print(f'Tn = {Tn} and message = {message}')
-    alp = alpha(V, Tn, 1/np.sqrt(3))
-    vw = wallVelocity(V,alp,Tn)
-    print(f'new alpha = {alp}, formula vw = {vw}')
-    
-
-    oldalp = GravitationalWave.alpha(V, Tn)
-    oldvw = GravitationalWave.wallVelocity(V, oldalp, Tn)
-    print(f'old alpha = {oldalp}, vw = {oldvw}')
-    
-    minima = V.findminima(Tn)
-    psiN = V.dVdT(minima[1],Tn)/V.dVdT(minima[0],Tn)
-    print(f'Numerical Vw = {find_vw(alp,1/3,1/3,psiN)}')
-    '''
-
-    
     readAndEdit('Test_N3F3_Normal2401.csv', 3, 3, "Normal")
-    '''
-    F=6; N=3
-    
-    m2=	65016.666666666700;	c= 1E-10;ls=0.13006666666666700;la=	1.7499666666666700	
-    Tc=264.3718266272440;Tn=	229.1092491831630
-    detPow = Potential2.get_detPow(N,F,'Normal')
-    V = Potential2.Potential(m2, c, ls, la, N, F, detPow)
-    
-    Ts = np.linspace(Tn, Tc)
-    Vws = []
-    for T in Ts:
-        minima = V.findminima(T)
-        psiN = V.dVdT(minima,T)/V.dVdT(0,T)
-                
-        cs2 = V.dVdT(0,T)/(T*V.d2VdT2(0,T))
-        cb2 = V.dVdT(minima,T)/(T*V.d2VdT2(minima,T))
-        alN = alpha(V, T, cb2)
-                    
-        Vws.append(find_vw(alN,cb2,cs2))
-        
-    plt.plot(Ts, Vws)
-    plt.show()'''
-    
-    
-
 
