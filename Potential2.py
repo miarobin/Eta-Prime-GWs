@@ -5,17 +5,12 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize
-<<<<<<< HEAD
 from scipy import interpolate, integrate
 from itertools import takewhile
 import os
-=======
 from sympy import diff
-from scipy import interpolate, integrate
-from itertools import takewhile
-import os
 
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
+
 import DressedMasses
 if config.PLOT_RUN:
     from debug_plot import debug_plot

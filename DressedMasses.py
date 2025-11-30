@@ -1,16 +1,6 @@
 import config
 import numpy as np
 from scipy.integrate import quad
-
-from scipy.optimize import root
-import time
-import matplotlib
-matplotlib.use('Agg') 
-import matplotlib.pyplot as plt
-from scipy import interpolate
-import Potential2
-from debug_plot import debug_plot
-
 from scipy.optimize import root, root_scalar
 import time
 import matplotlib
@@ -22,6 +12,11 @@ if config.PLOT_RUN:
     from debug_plot import debug_plot
 
 
+<<<<<<< HEAD
+=======
+#import seaborn as sns
+
+>>>>>>> refs/remotes/origin/Martha
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["font.size"]= 12
@@ -44,6 +39,7 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     # 1) Coarse scan (fast)
     print(f"[Adaptive] Coarse scan with {coarse_points} points...")
     NUMBEROFPOINTS = coarse_points
+
     config.TMULT = old_TMULT      # keep same T max (just fewer points)
 
     dressed, RMS, _ = SolveMasses(V, plot=False)
@@ -78,14 +74,8 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     return result
 
 
-def SolveMasses(V, plot=None, Tn=None):
-    # If caller doesn’t specify, fall back to global flag
-    if plot is None:
-        plot = config.PLOT_RUN
-    
-    if Tn is not None:
-        V.Tn = float(Tn)
-
+def SolveMasses(V, plot=False):
+    plot=config.PLOT_RUN
     
     #Distinct Feynman rule structures.
     if abs(V.F*V.detPow-4)<1e-20:
@@ -320,7 +310,10 @@ def SolveMasses(V, plot=None, Tn=None):
                     failPoints.append([sigma, T])
 
         if config.PRNT_RUN: print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
+<<<<<<< HEAD
      
+=======
+>>>>>>> refs/remotes/origin/Martha
 
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
