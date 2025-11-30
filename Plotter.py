@@ -20,6 +20,8 @@ from datetime import datetime
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
 CORES = 9  # default to 1 if not set
+print(f"Using {CORES} cores")
+
 
 '''
 	Please see the dockstring in "Potential2.py" for a parameter dictionary!!

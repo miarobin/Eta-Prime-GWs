@@ -18,8 +18,16 @@ if config.PLOT_RUN:
 
 '''
     This file does the following:
+    -1. "_g_starSM" takes a temperature in GeV and returns the number of active SM Degrees of Freedom at that temperature(TGeV):
+    
+        _g_starSM:
+        INPUTS: (TGeV)
+                (float)
+        RETURNS: (g_starSM)
+                (float)
+    
     0. "get_detPow" takes a combination of number of flavours F, number of colours N and termType to produce the power
-        on the determinant term ~-2c fPI^{pF-2} (det(\sigma)^p+det(\sigma^\dagger)^p), i.e. detPow = p.
+        on the determinant term ~-2c fPI^{pF-2} (det(\Phi)^p+det(\Phi^\dagger)^p), i.e. detPow = p.
         
         termType can be one of three options:
             "normal" -> detPow=1
@@ -32,22 +40,31 @@ if config.PLOT_RUN:
         OUTPUTS: (detPow)
                 (float)
     
-    1. Converts physical particle masses to Lagrangian parameters in "masses_to_lagrangian". See appendix D of the draft.
+    1. Converts physical particle masses to Lagrangian parameters in "masses_to_lagrangian".
     
         masses_to_lagrangian/masses_to_lagrangian: 
         INPUTS:  (_m2Sig, _m2Eta, _m2X, _m2Pi, N, F)
                 (float, float, float, float, int, int)
         OUTPUTS: (m2, c, ls, la)
-        RAISES: NotImplemented (as each N, F case must be handcoded), NonUnitary (if unitarity is broken) and ...
+        RAISES: NotImplemented (as each N, F and p case must be handcoded), BoundedFromBelow (if potential is not bounded from below) 
+                and NonTunnelling (if tree-level true minimum is not separated from \sigma=0 axis).
         
     2. Creates a 'Potential' class, which has the following properties:
-    
         Potential:
-        INPUTS: m2, c, lambdas, lambdaa, N, F, CsakiTerm
-                (float, float, float, float, int, int, bool)
-        ADDITIONAL PROPERTIES:  detPow, mSq
-                                (float, dictionary)
-        RAISES: NonLinear (If F/N is not integer)
+        INPUTS: m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, xi=1, fSIGMA=None:
+                (float, float, float, float, int, int, float, bool, float, float)
+        ADDITIONAL PROPERTIES:  mSq, MSq, tc, minT, _g_star
+                                (dictionary, dictionary, float, float, lambdaFunction)
+        RAISES: NonLinear (If F/N is not integer), InvalidPotential (if any required input variables are None), 
+                BadDressedMassConvergence (if criteria are met signifying DressedMasses.py has bad convergence in PT region).
+        
+        SET FUNCTIONS:
+        a."setMsq" is used by DressedMasses.py to set the thermal effective masses.
+        
+            setMSq:
+            INPUTS: (dressedMasses)
+                    (dict[str, RectBivariateSpline])
+            OUTPUTS: None
                                 
     3. A number of functions construct the potential. These are:
         a. "V". The tree level potential as a function of sigma.
@@ -65,28 +82,10 @@ if config.PLOT_RUN:
                     (np.array, np.array)
             OUTPUTS: V_thermal,one-loop
                     (np.array)
-                    
-                    
-        b. "_Vg" and helper function "_Vg_f". 
-            "_Vg_f" samples the interpolated gluonic potentials 'linear_small' at small sigma and 'linear_large' at large sigma for 
-            single values of sigma and T. Beyond sigma = GLUONIC_CUTOFF, the potential is assumed constant. 
-            "_Vg" extends this to deal with array inputs.
+                
+        b. "VGluonic". Finds the gluonic potential given N and F. Needs 'VGluonicData' files. Sets confining critical temperature to xi*fPi.
             
-            _Vg:
-            INPUTS: (sig, T)
-                    (np.array, np.array)
-            OUTPUTS: V_gluonic
-                    (np.array)
-            RAISES: NotImplemented (as each N, F case must be individually set)
-            _Vg_f:
-            INPUTS: (sig, T)
-                    (float, float)
-            OUTPUTS: V_gluonic
-                    (float)
-            RAISES: NotImplemented (as each N, F case must be individually set)
-            
-            "VGluonic" is a wrapper function for "_Vg" with VGluonic(T=0)=0.
-            VGluoic:
+            VGluonic:
             INPUTS: (sig, T)
                     (float, float)
             OUTPUTS: V_gluonic
@@ -100,6 +99,7 @@ if config.PLOT_RUN:
                     (np.array, np.array, bool)
             OUTPUTS V_total
                     (np.array)
+                    
                     
     4. A bunch of properties of the potential which we'll need later.
         a. "dVdT" derivative of "Vtot" with respect to T. Formula: https://en.wikipedia.org/wiki/Five-point_stencil
@@ -123,7 +123,7 @@ if config.PLOT_RUN:
             INPUTS ()
             OUTPUTS fSigma
                     (float)
-            RAISES: NotImplemented (as each N, F case must be handcoded)
+            RAISES: NotImplemented (as each N, F case must be handcoded), InvalidPotential (If there are not enough solutions to tree-level potential etc)
             
         c. "findMinimum" finds the minimum (if it exists) at sigma>0. Returns None if the second minimum does not exist. Uses Nelder-Mead minimisation.
             rstart sets the starting value for the minimisation algorithm, default is the result of "fSigms" and rcounter is a recursive mechanism for bringing the start value closer to sigma=0.
@@ -138,7 +138,7 @@ if config.PLOT_RUN:
             guessIn allows you to input a guess for the critical temperature and prnt plots a bunch of intermediary checks. See code for detailed explanation.
         
             criticalT:
-            INPUTS (guessIn=None,prnt=True)
+            INPUTS (guessIn=None,minT=None)
                     (float, bool)
             OUTPUTS criticalT OR None
                     (float)
@@ -167,7 +167,6 @@ if config.PLOT_RUN:
         > F (int) = number of flavours,
         > Polyakov (bool) = include Polyakov corrections.
         
-        > CsakiTerm (bool) = True if this is for the Csaki case, False if the normal case.
         > detPow (float) = Power of the chiral symmetry breaking determinant term. Modified in the Normal/Large N/AMSB case as per the draft.
         
         > m2, c, ls/lambdas, la/lambdaa (float) = Lagrangian parameters. See Eq 4 of 2309.16755.
@@ -186,7 +185,7 @@ interp_g_starSM = interpolate.interp1d(TsMeV, g_stars)
 
 
 def _g_starSM(TGeV):
-    TGeV = np.array(TGeV)
+    TGeV = np.array(TGeV) 
     result = np.empty_like(TGeV)
     mask = TGeV * 1000 >= max(TsMeV)
     result[mask] = max(g_stars)
@@ -224,7 +223,6 @@ def get_detPow(N, F, termType):
         raise InvalidPotential("Check what have you written as termType. It's wrong.")
 
 def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
-    #See appendix D in draft for these formulae.
     if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>config.TOL:
         raise NonLinear(f"Lagrangian is non-linear with F={F}, N={N} and detPow={detPow}.")    
 
@@ -235,34 +233,18 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     
     print(f'm2={m2},c={c},ls={ls},la={la}')
     
-    VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
-    if config.PLOT_RUN:
-        if VTree(4*np.pi*fPI)<VTree(fPI):
-            plt.plot(np.linspace(0,4*np.pi*fPI),VTree(np.linspace(0,4*np.pi*fPI)))
-            plt.title('Not BfB')
-        else:
-            plt.plot(np.linspace(0,4*np.pi*fPI),VTree(np.linspace(0,4*np.pi*fPI)))
-            plt.title('BfB')
-        debug_plot(name="Bounded from Below Test", overwrite=False)
-
 
     #CHECKS
     V = lambda sigma: -m2*sigma**2/2 - c*sigma**(F*detPow)/F**2 + ls*sigma**4/8
     dV = lambda sigma: -m2*sigma - c*detPow*sigma**(F*detPow-1)/F + ls*sigma**3/2
     ddV = lambda sigma: -m2 - c*detPow*(F*detPow-1)*sigma**(F*detPow-2)/F + 3*ls*sigma**2/2
     
-    
-    #  === MARTHA === if lambda_sigma is less than zero, it makes msigma^2 less than zero, making V unbounded from below
-    if int(round(F*detPow))==2:
-        #CHECKS
-        if ls<0:
-            print(f'Point is Invalid as lambda_sigma<0')
-            raise BoundedFromBelow('Tree level sigma potential is not bounded from below')
 
-
-    # stationary at fpi
+    #CHIRAL SYMMETRY BREAKING:
+    #Checks to ensure Chiral symmetry is spontaneously broken.
     if V(fPI)>V(0)+config.TOL:
         raise NonTunnelling('Symmetric minimum is true minimum')
+    
     if abs(dV(fPI))>config.TOL:
         print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
         raise NonTunnelling('Symmetric minimum is true minimum')
@@ -270,16 +252,25 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     if ddV(fPI)<-config.TOL:
         print(f'Point is Invalid as fPI is not minimum')
         raise NonTunnelling('Point is Invalid as fPI is not stable')
-                               
-#Boundedness from below:  
+    
+    #BOUNDEDNESS FROM BELOW:                    
+    #Debugging Plot:
+    if config.PLOT_RUN:
+        if V(4*np.pi*fPI)<V(fPI):
+            plt.plot(np.linspace(0,4*np.pi*fPI),V(np.linspace(0,4*np.pi*fPI)))
+            plt.title('Not BfB')
+        else:
+            plt.plot(np.linspace(0,4*np.pi*fPI),V(np.linspace(0,4*np.pi*fPI)))
+            plt.title('BfB')
+        debug_plot(name="BoundedfromBelowTest", overwrite=False)
+
+    #Boundedness from below condition (eq 3.12):  
     if V(4*np.pi*fPI)<V(fPI):
         print(f'Point is Invalid as potential unbounded from below by cutoff')
         raise BoundedFromBelow('Point is not bounded from below by cutoff')
     
     return (m2, c, ls, la)
 
-
-#IT WOULD BE NICE TO HAVE fPI AS INPUT HERE FOR LATER SO WE DON'T HAVE TO RELY ON THE FORMULAE.
 class Potential:
     def __init__(self, m2, c, lambdas, lambdaa, N, F, detPow, Polyakov=True, xi=1, fSIGMA=None):
 		#All the parameters needed to construct the potential.
@@ -296,7 +287,7 @@ class Potential:
         self.tc = None
         self.minT = None #Smallest temperature it makes sense to talk about the potential.
         
-
+        #Degrees of freedom in the plasma.
         self._g_star = lambda TGeV: _g_starSM(TGeV) + 2*(self.N**2 -1) + 7/8 * (self.F * self.N * 4) 
         
 
@@ -312,15 +303,15 @@ class Potential:
             except(InvalidPotential):
                 print("Imaginary fSigma")
         
+
 		#Checking to make sure the Lagrangian is linear.
         if abs(self.F*self.detPow-np.round(self.F*self.detPow)) > 1e-6:
             raise NonLinear(f"Choice of N = {self.N}, F = {self.F}, detPow = {detPow} gives non-linear Lagrangian.")
-        
-        
-        #  automatically set the scale
-        # New interpolator now.
+
+
         if Polyakov:
             ##GLUONIC FITS
+            #Must run VGluonicData Notebook first.
             gluonicdata = np.genfromtxt(f'VGluonicData/VGluonicDataF{int(self.F)}N{int(self.N)}.csv', delimiter=',', dtype=float, skip_header=0)
             TTcs = np.genfromtxt(f'VGluonicData/VGluonicDataF{int(self.F)}N{int(self.N)}TTcs.csv', delimiter=',', dtype=float, skip_header=0)
             sigTcs = np.genfromtxt(f'VGluonicData/VGluonicDataF{int(self.F)}N{int(self.N)}mqTcs.csv', delimiter=',', dtype=float, skip_header=0)
@@ -330,7 +321,7 @@ class Potential:
         #A dictionary containing {'Particle Name': [lambda function for the field dependent masses squared for the mesons, 
         #                                            and their respective DoF]}
         
-        #  === MARTHA === The tree level masses
+        #The tree level masses
         if self.F*self.detPow>=2:
             self.mSq = {
                 #Sigma Mass	
@@ -354,7 +345,7 @@ class Potential:
 						+ (1/2) * self.lambdas * sig ** 2,
 						self.F**2 - 1]
 						}
-            
+        
         self.MSq = None   
 
         #Temperature dependent masses:
@@ -363,9 +354,9 @@ class Potential:
         except BadDressedMassConvergence as e:
             raise e
         
+        #Ensure the new critical temperature is set.
         self.tc = self.criticalT(prnt=config.PLOT_RUN)
-        
-        if self.tc is not None and self.minT is not None: #Should make a 'set' function.
+        if self.tc is not None and self.minT is not None:
             if self.minT > self.tc:
                 raise BadDressedMassConvergence("Minimum converging T is greater than tc.")
         
@@ -398,17 +389,16 @@ class Potential:
         if T==0:
             return np.zeros(sig.shape)
         
-        #One-loop, thermal correction to the potential. See https://arxiv.org/pdf/hep-ph/9901312 eq. 212
+        #One-loop, thermal correction to the potential. See https://arxiv.org/pdf/hep-ph/9901312 eq. 212 or 
         return np.reshape((np.sum([n*Jb_spline(M2(sig,T)/T**2)-(1/4)*(M2(sig,T)-M2(sig,0))*Ib_spline(M2(sig,T)/T**2)/T**2 for M2, n in [self.MSq['Sig'],self.MSq['Eta'],
                                                                         self.MSq['X'],self.MSq['Pi']]],axis=0))*T**4/(2*np.pi**2), sig.shape)
 
             
-            
 
     def VGluonic(self, sig, T):
-        #Wrapper function for _Vg.
+        #Runs VGluonic interpolator. 
         sig = np.array(sig)
-        _tconfinement = self.xi*self.fSIGMA
+        _tconfinement = self.xi*self.fSIGMA #eq 2.9
         return np.reshape(self.VGluonicTc.ev(T/_tconfinement,sig/_tconfinement)*_tconfinement**4,sig.shape)
 	
 
@@ -433,10 +423,10 @@ class Potential:
     def d2VdT2(self,sig,T,eps=0.001):
         #Uses finite difference method to fourth order. Takes scalar sigma and T.
         return (self.dVdT(sig,T-2*eps) - 8*self.dVdT(sig,T-eps) + 8*self.dVdT(sig,T+eps) - self.dVdT(sig,T+2*eps)) / (12.*eps)
-
+    
 
     def fSigma(self):
-        #CHECK THIS IS CORRECT!
+        #UNVERIFIED FUNCTION!
         #Analytic formula for zero-temp vev depends on power of the determinant term detPow. See Mathematica notebook SigmaVev.nb for formulae.
         if int(self.F*self.detPow) == 1:
             x = 9 * self.c * self.F**4 * self.lambdas**2 + np.sqrt(3)*np.sqrt( abs(self.F**8 * self.lambdas**3 * (-8 * self.F**4 *self.m2**3 + 27*self.c**2*self.lambdas)) )
@@ -464,19 +454,16 @@ class Potential:
             raise NotImplemented(f"F*detPow={int(self.F*self.detPow)} not implemented yet in fSigma")
 
 
+
     def findminima(self,T,rstart=None,rcounter=1):
         #For a linear sigma model. Returns the minimum away from the origin if it exists, else None.
         if rstart == None:
-            rstart = self.fSIGMA*.8 #CHANGED!!!
-        
-        #Debugging statements
-        #print(f'rstart={rstart}, T={T}, fPI={self.fSIGMA}')
-        #print(f'min bound = {(0.5-.05*rcounter)*self.fSIGMA}, max bound = {self.fSIGMA*1.05}')
+            rstart = self.fSIGMA*.8 
+    
         
         #Roll down to minimum from the RHS:
         res = optimize.minimize(lambda X: self.Vtot(X, T), rstart,method='Nelder-Mead',bounds=[((0.5-.05*rcounter)*self.fSIGMA,self.fSIGMA*1.05)])
-        #print(res)
-        #print(f'closeness criteria = {abs(res.x[0]-(0.5-.05*rcounter)*self.fSIGMA)/self.fSIGMA}, rcounter={rcounter}')
+ 
     
         #Now check to see if the algorithm succeeded
         if not res.success or abs(res.x[0]-(0.5-.05*rcounter)*self.fSIGMA)/self.fSIGMA < config.TOL or res.x[0]<(0.5-.05*rcounter)*self.fSIGMA:
@@ -510,13 +497,15 @@ class Potential:
 			
 
 
-    def	criticalT(self, guessIn=None,prnt=True,minT=None):
+    def	criticalT(self, guessIn=None,minT=None):
+        prnt=config.PRNT_RUN
+        plot=config.PLOT_RUN
         if self.tc is not None:
             return self.tc
         #Critical temperature is when delta V is zero (i.e. both minima at the same height) THIS HAS TO BE QUITE ACCURATE!
 		
         #Scale with which we can compare potential magnitudes (think large values of sigma, V~sigma^4)
-        scale = self.fSIGMA #CHANGED
+        scale = self.fSIGMA
         
         if minT is not None:
             minTemp=minT
@@ -550,15 +539,6 @@ class Potential:
             print('Coarse scan finds nothing')
             return None
         
-        
-        #JUST taking deltaV's which are greater than zero BUT decreasing. Note the reason for this is often going further can confuse python later.
-        
-        #NOTE TO SELF! THIS MIGHT END UP BEING A PROBLEM!
-        #j = list(takewhile(lambda x: np.concatenate(([0],np.diff(deltaVs_init[:,1])))[x]<=0, range(len(deltaVs_init[:,0])))); deltaVs_init=deltaVs_init[j]
-        #k = list(takewhile(lambda x: deltaVs_init[x,1]>0, range(len(deltaVs_init[:,0]))))
-        #print(k)
-
-        #deltaVs_init=deltaVs_init[k]
         #This is the temperature with deltaV closest to zero:
         T_init = deltaVs_init[-1,0]
         if prnt:
@@ -568,6 +548,7 @@ class Potential:
 
             print(f"Coarse grain scan finds {T_init} being closest Delta V to 0")
 
+        #Some plotting functions for a PLOT_RUN:
         def plotV(V, Ts):
             for T in Ts:
                 plt.plot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=100),V.Vtot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=100),T)-V.Vtot(0,T),label=f"T={T}")
@@ -581,11 +562,11 @@ class Potential:
             plt.plot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000),V.V1T(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000),T)-V.V1T(0,T),label=f"V1T at Tc={T}")
             plt.plot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000),V.V(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000))-V.V(0),label=f"Vtree")
             plt.legend()
-            #debug_plot(name="debug", overwrite=False)
+            debug_plot(name="debug", overwrite=False)
 	
+
 		#Find delta V for a finer scan of temperatures & interpolate between them. 
         Ts = np.linspace(T_init-10,T_init+10,num=150); deltaVs = np.array([[T, self.deltaV(T, rstart=scale*.8)] for T in Ts if self.deltaV(T,rstart=scale) is not None])
-		
         if len(deltaVs)<5: return None #Catches if there are just not enough points to make a verdict.
 		
 		
@@ -609,6 +590,7 @@ class Potential:
             guess = (max(deltaVs[:,0])-min(deltaVs[:,0]))*0.85 + min(deltaVs[:,0])
         else: guess = guessIn
 
+
         #Minimise interpolated function (two methods in case one fails)
         res = optimize.minimize(lambda x: abs(func(x)), guess,bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0])*1.2)])
         if prnt: print(res)
@@ -620,6 +602,7 @@ class Potential:
             self.tc = res.x[0]
             return res.x[0]
         elif res.fun<scale**2 and self.findminima(res.x[0]) is not None:
+            
             if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])	
             if prnt: splitV(self, res.x[0])			
 
@@ -630,7 +613,6 @@ class Potential:
             res = optimize.minimize(lambda x: abs(func(x)), guess,method='Nelder-Mead',bounds=[(min(deltaVs[:,0]),max(deltaVs[:,0])*1.1)])
             if prnt: print(res)
             if res.success and res.fun<scale**3/2 and self.findminima(res.x[0]) is not None:
-                #print(f'minimum = {self.findminima(res.x[0])}, deltaV={self.deltaV(res.x[0])}')	
                 if prnt: plotV(self, [res.x[0]*0.99,res.x[0],res.x[0]*1.01])
                 if prnt: splitV(self, res.x[0])
                 
@@ -644,7 +626,7 @@ class Potential:
 
 
 
-##SPLINE FIT FOR Jb
+##SPLINE FIT FOR Jb. Code modified slightly from https://arxiv.org/abs/1109.4189 and https://github.com/clwainwright/CosmoTransitions 
 # Spline fitting, Jb
 _xbmin = -3.72402637
 # We're setting the lower acceptable bound as the point where it's a minimum
@@ -691,7 +673,6 @@ dat = np.genfromtxt(f'IBData.csv', delimiter=',', dtype=float, skip_header=1)
 
 _xb, _yb = dat[:,0], dat[:,1]
 # Spline fitting, Ib
-#_xbmin = -3.72402637 #Set by CT - can decrease but left to be consistent.
 _xbmin = -10
 _xbmax = 1.41e3
 
@@ -712,9 +693,4 @@ def Ib_spline(X):
 		
 if __name__ == "__main__":
     print('hello world') 
-
-    #plt.semilogx(Ts,g_stars)
-    #plt.semilogx(TsMeV,_g_starSM(TsMeV),linestyle='dashed')#INPUT Ts ARE IN GeV NOW
-    plt.plot(Jb_spline(np.arange(0,10)),np.arange(0,10))
-    debug_plot('Jb_spline')
     

@@ -8,10 +8,14 @@ from scipy.interpolate import interp1d
 import csv
 
 
+'''
+This file builds a numerical interpolator over the functions IB and dIB/dR^2 for use in DressedMasses.py.
 
-# Numerical derivative using central difference
-#another comment
+Running as-is will build the files needed to run DressedMasses.py
+'''
 
+
+#Numerical derivative using central difference
 def numerical_derivative(f, x, h=1e-5):
     return (f(x + h) - f(x - h)) / (2 * h)
 
@@ -66,10 +70,8 @@ def dIB(R2):
     
     if R2>0:
         integrand = lambda x: (-1/2) * (x**2 / (x**2 + R2)) * (1 / (np.exp(np.sqrt(x**2 + R2)) - 1)) * (np.exp(np.sqrt(x**2 + R2))/(np.exp(np.sqrt(x**2 + R2)) - 1) + 1/np.sqrt(x**2 + R2))
-        #AGREES WITH MATHEMATICA NOW
   
         result, error = quad(integrand, 0.000000001, 30)
-        #print(f'result={result}')
         return result
     
     if R2<0:
@@ -77,11 +79,6 @@ def dIB(R2):
         integrand1 = lambda x: (-1/2) * (x**2 / (x**2 - a2)**(3/2)) * (1 / (np.exp(np.sqrt(x**2 - a2)) - 1))**2 * (np.exp(np.sqrt(x**2 - a2))*( 1 + np.sqrt(x**2 - a2)) - 1)
         integrand2 = lambda x: (1/4) * (x**2 / (x**2 - a2)) * (1 / (1 - np.cos(np.sqrt(a2 - x**2)))) * (1 + 1/np.sqrt(a2 - x**2) * np.sin(np.sqrt(a2 - x**2)))
 
-        
-        #print(f'R2={R2}')
-        #print(f'int={integrand2(0.0001)}')
-        #plt.plot(np.linspace(0.001,np.sqrt(a),num=200), integrand2(np.linspace(0.001,np.sqrt(a),num=200)))
-        #plt.show()
         
         if np.sqrt(a2)>10*eps:
             resultA = quad(integrand1, np.sqrt(a2)+eps, 100)[0] 
@@ -99,25 +96,16 @@ def dIB(R2):
         return 10**(2)
 
 if __name__ == "__main__":
-
-    #Create the interpolator for r^2 = M^2 /T^2 ~ Range[(700/100)^2, (800/200)^2] 
+    #Set interpolator domain.
     R2_vals = np.concatenate((np.linspace(-10,-0.0001,num=1000),np.concatenate(([0],np.geomspace(0.001, 100, 2000)))))
-
-    print(numerical_derivative(IB,-0.001))
-    print(numerical_derivative(IB, 0))
-    print(numerical_derivative(IB,0.001))
     
-    print(dIB(-0.001))
-    print(dIB(0))
-    print(dIB(0.001))
-
+    #Computing results for IB/dIB/numerical dIB across interpoloator domain.
     IB_vals = np.array([IB(R2) for R2 in R2_vals])
-    #dIB_vals = np.array([dIB(R2) if R2>=0 else numerical_derivative(IB, R2) for R2 in R2_vals])
     dIB_vals = np.array([dIB(R2) for R2 in R2_vals])
     dIB_numerical = np.array([numerical_derivative(IB, R2) for R2 in R2_vals])
 
     
-
+    #Testing the interpolator.
     IB_interp = interp1d(R2_vals, IB_vals, kind='cubic', fill_value="extrapolate")
     dIB_interp = interp1d(R2_vals, dIB_vals, kind='cubic', fill_value="extrapolate")
     
@@ -131,14 +119,13 @@ if __name__ == "__main__":
     plt.plot(R2_vals, dIB_interp(R2_vals), '-.', label='Interpolated dIb')
     plt.plot(R2_vals, dIB_numerical, ':', label='Numerical Derivative')
     plt.scatter(R2_vals, dIB_vals)
-    #plt.plot(R2_vals, Potential2.Jb_spline(R2_vals),'-.',label='Jb spline')
     plt.xlabel('R2')
     plt.ylabel('IB(R2)')
     plt.legend()
     plt.grid(True)
     plt.savefig(f"Temporal-Plots/Intervssol.pdf", dpi=300)
-    #debug_plot(name="debug", overwrite=False)
     plt.show()
 
+    #Saves arrays as used by DressedMasses.py
     save_arrays_to_csv('IBData.csv',['R2','IB'], R2_vals, IB_vals)
     save_arrays_to_csv('dIBData.csv',['R2','dIB'], R2_vals, dIB_vals)
