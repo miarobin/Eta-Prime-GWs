@@ -1,16 +1,6 @@
 import config
 import numpy as np
 from scipy.integrate import quad
-
-from scipy.optimize import root
-import time
-import matplotlib
-matplotlib.use('Agg') 
-import matplotlib.pyplot as plt
-from scipy import interpolate
-import Potential2
-from debug_plot import debug_plot
-
 from scipy.optimize import root, root_scalar
 import time
 import matplotlib
@@ -22,7 +12,6 @@ if config.PLOT_RUN:
     from debug_plot import debug_plot
 
 
-
 #import seaborn as sns
 
 plt.rcParams["font.family"] = "serif"
@@ -32,10 +21,6 @@ plt.rcParams["font.size"]= 12
 NUMBEROFPOINTS = 150
 EPSILON = 0.1
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 
 def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     """
@@ -46,23 +31,14 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     """
     global NUMBEROFPOINTS
     old_POINTS = NUMBEROFPOINTS      
-<<<<<<< HEAD
-    old_TMULT = Potential2.TMULT      # store original T max multiplier
-
-    # 1) Coarse scan (fast)
-    print(f"[Adaptive] Coarse scan with {coarse_points} points...")
-    NUMBEROFPOINTS = coarse_points
-    Potential2.TMULT = old_TMULT      # keep same T max (just fewer points)
- 
-=======
     old_TMULT = config.TMULT      # store original T max multiplier
 
     # 1) Coarse scan (fast)
     print(f"[Adaptive] Coarse scan with {coarse_points} points...")
     NUMBEROFPOINTS = coarse_points
+
     config.TMULT = old_TMULT      # keep same T max (just fewer points)
 
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
     dressed, RMS, _ = SolveMasses(V, plot=False)
     tc = V.criticalT(plot=False)
  
@@ -84,13 +60,8 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     NUMBEROFPOINTS = fine_points
  
     # Adjust only the T-range (TMULT = Tmax / fπ)
-<<<<<<< HEAD
-    Potential2.TMULT = Tmax / V.fSIGMA
- 
-=======
     config.TMULT = Tmax / V.fSIGMA
 
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
     # Re-run with fine grid, only near Tc
     result = SolveMasses(V, plot=False)
  
@@ -100,14 +71,8 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     return result
 
 
-def SolveMasses(V, plot=None, Tn=None):
-    # If caller doesn’t specify, fall back to global flag
-    if plot is None:
-        plot = config.PLOT_RUN
-    
-    if Tn is not None:
-        V.Tn = float(Tn)
-
+def SolveMasses(V, plot=False):
+    plot=config.PLOT_RUN
     
     #Distinct Feynman rule structures.
     if abs(V.F*V.detPow-4)<1e-20:
@@ -120,13 +85,8 @@ def SolveMasses(V, plot=None, Tn=None):
 
 
     #Setting up the scan.
-<<<<<<< HEAD
-    TRange = np.linspace(0. ,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
-=======
     TRange = np.linspace(0,V.fSIGMA*config.TMULT,num=NUMBEROFPOINTS)
     sigmaRange = np.linspace(EPSILON, V.fSIGMA*config.SIGMULT,num=NUMBEROFPOINTS)
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
     MSqEtaData = np.zeros((len(TRange),len(sigmaRange)))
@@ -346,12 +306,7 @@ def SolveMasses(V, plot=None, Tn=None):
                     
                     failPoints.append([sigma, T])
 
-<<<<<<< HEAD
-        if Potential2.PRNT_RUN: print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
-=======
         if config.PRNT_RUN: print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
-     
->>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
