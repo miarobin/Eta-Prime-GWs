@@ -1,5 +1,7 @@
+import config
 import numpy as np
 from scipy.integrate import quad
+<<<<<<< HEAD
 from scipy.optimize import root
 import time
 import matplotlib
@@ -8,6 +10,17 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 import Potential2
 from debug_plot import debug_plot
+=======
+from scipy.optimize import root, root_scalar
+import time
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from scipy import interpolate
+import Potential2
+if config.PLOT_RUN:
+    from debug_plot import debug_plot
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
@@ -16,7 +29,10 @@ plt.rcParams["font.size"]= 12
 NUMBEROFPOINTS = 150
 EPSILON = 0.1
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 
 def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     """
@@ -27,6 +43,7 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     """
     global NUMBEROFPOINTS
     old_POINTS = NUMBEROFPOINTS      
+<<<<<<< HEAD
     old_TMULT = Potential2.TMULT      # store original T max multiplier
  
     # 1) Coarse scan (fast)
@@ -34,6 +51,15 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     NUMBEROFPOINTS = coarse_points
     Potential2.TMULT = old_TMULT      # keep same T max (just fewer points)
  
+=======
+    old_TMULT = config.TMULT      # store original T max multiplier
+
+    # 1) Coarse scan (fast)
+    print(f"[Adaptive] Coarse scan with {coarse_points} points...")
+    NUMBEROFPOINTS = coarse_points
+    config.TMULT = old_TMULT      # keep same T max (just fewer points)
+
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
     dressed, RMS, _ = SolveMasses(V, plot=False)
     tc = V.criticalT(plot=False)
  
@@ -41,7 +67,7 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     if tc is None:
         print("[Adaptive] No Tc found. Skipping refinement.")
         NUMBEROFPOINTS = old_POINTS
-        Potential2.TMULT = old_TMULT
+        config.TMULT = old_TMULT
         return dressed, RMS, None
  
     # 3) Refine only around Tc
@@ -55,19 +81,24 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     NUMBEROFPOINTS = fine_points
  
     # Adjust only the T-range (TMULT = Tmax / fπ)
+<<<<<<< HEAD
     Potential2.TMULT = Tmax / V.fSIGMA
  
+=======
+    config.TMULT = Tmax / V.fSIGMA
+
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
     # Re-run with fine grid, only near Tc
     result = SolveMasses(V, plot=False)
  
     # Restore original settings (important to not affect next parameter point)
     NUMBEROFPOINTS = old_POINTS
-    Potential2.TMULT = old_TMULT
+    config.TMULT = old_TMULT
     return result
 
 
 def SolveMasses(V, plot=False):
-    plot=Potential2.PLOT_RUN
+    plot=config.PLOT_RUN
     
     #Distinct Feynman rule structures.
     c1 = (V.c/V.F**2)*V.fSIGMA**(V.F*V.detPow-4)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)
@@ -77,8 +108,13 @@ def SolveMasses(V, plot=False):
 
 
     #Setting up the scan.
+<<<<<<< HEAD
     TRange = np.linspace(0. ,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
     sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
+=======
+    TRange = np.linspace(0,V.fSIGMA*config.TMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*config.SIGMULT,num=NUMBEROFPOINTS)
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
     
     MSqSigData = np.zeros((len(TRange),len(sigmaRange)))
     MSqEtaData = np.zeros((len(TRange),len(sigmaRange)))
@@ -91,7 +127,7 @@ def SolveMasses(V, plot=False):
     
 
     for i,T in enumerate(TRange):
-        if Potential2.PRNT_RUN: t_row = time.time()
+        if config.PRNT_RUN: t_row = time.time()
         prev_solution = None # stores last successful solution (Mσ², Mη², MX², Mπ²)
         for j,sigma in enumerate(sigmaRange):
             if T<EPSILON:
@@ -298,7 +334,12 @@ def SolveMasses(V, plot=False):
                     
                     failPoints.append([sigma, T])
 
+<<<<<<< HEAD
         if Potential2.PRNT_RUN: print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
+=======
+        if config.PRNT_RUN: print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
+     
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
@@ -532,8 +573,8 @@ def SolveMasses(V, plot=False):
 
 def plotMassData(massData, V, minT=None, minimal=False):
     #Make sure these are exactly the same ranges as above!
-    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
+    TRange = np.linspace(0,V.fSIGMA*config.TMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*config.SIGMULT,num=NUMBEROFPOINTS)
     
     MSqSigData=massData[0]
     MSqEtaData=massData[1]
@@ -616,8 +657,8 @@ def plotMassData(massData, V, minT=None, minimal=False):
 
 def plotInterpMasses(V):
     #Make sure these are exactly the same ranges as above!
-    TRange = np.linspace(0,V.fSIGMA*Potential2.TMULT,num=NUMBEROFPOINTS)
-    sigmaRange = np.linspace(EPSILON, V.fSIGMA*Potential2.SIGMULT,num=NUMBEROFPOINTS)
+    TRange = np.linspace(0,V.fSIGMA*config.TMULT,num=NUMBEROFPOINTS)
+    sigmaRange = np.linspace(EPSILON, V.fSIGMA*config.SIGMULT,num=NUMBEROFPOINTS)
     
     massDict = V.MSq
     RMS = V.RMS
@@ -636,9 +677,9 @@ def plotInterpMasses(V):
     MSqX = lambda sig, T: massDict['X'][0](sig,T)
     MSqPi = lambda sig, T: massDict['Pi'][0](sig,T)
     
-    print(f'tc+10:{[MSqSig(sigma,tc+10) for sigma in np.linspace(0,V.fSIGMA*Potential2.SIGMULT,num=10)]}')
-    print(f'tc:{[MSqSig(sigma,tc) for sigma in np.linspace(0,V.fSIGMA*Potential2.SIGMULT,num=10)]}')
-    print(f'tc-10:{[MSqSig(sigma,tc-10) for sigma in np.linspace(0,V.fSIGMA*Potential2.SIGMULT,num=10)]}')
+    print(f'tc+10:{[MSqSig(sigma,tc+10) for sigma in np.linspace(0,V.fSIGMA*config.SIGMULT,num=10)]}')
+    print(f'tc:{[MSqSig(sigma,tc) for sigma in np.linspace(0,V.fSIGMA*config.SIGMULT,num=10)]}')
+    print(f'tc-10:{[MSqSig(sigma,tc-10) for sigma in np.linspace(0,V.fSIGMA*config.SIGMULT,num=10)]}')
     
     #Mass data:
     MSqSigVals = np.array([[MSqSig(sigma, T) for T in TRange] for sigma in sigmaRange]) #Taking transpose.
@@ -706,7 +747,7 @@ def plotInterpMasses(V):
         ax[1,1].vlines(minT/V.fSIGMA,min(sigmaRange)/V.fSIGMA,max(sigmaRange)/V.fSIGMA,linestyle='dotted',color='grey',linewidth=3)
         
  
-    fig.suptitle(f"$f_\pi={V.fSIGMA}$")
+    fig.suptitle(f"fpi={V.fSIGMA}")
     debug_plot(name="debug", overwrite=False)
     #plt.show()
         

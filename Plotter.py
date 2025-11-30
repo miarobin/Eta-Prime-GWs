@@ -1,3 +1,4 @@
+import config
 import Potential2
 import GravitationalWave
 import numpy as np
@@ -11,17 +12,25 @@ import DressedMasses
 import os
 from debug_plot import debug_plot
 from functools import partial
-import cProfile
+
 
 import WallVelocity
 import WallVelocityLargeN
 
 from datetime import datetime
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 
 
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
+<<<<<<< HEAD
 CORES = 9  # default to 1 if not set
+=======
+CORES = 2  # default to 1 if not set
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 print(f"Using {CORES} cores")
 
 
@@ -92,7 +101,7 @@ def unwrap_populate(args, N, F, Polyakov, xi, detType):
 
 def plotV(V, Ts):
 	for T in Ts:
-		plt.plot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100)/V.fSIGMA,V.Vtot(np.linspace(-5,V.fSIGMA*Potential2.SIGMULT,num=100),T)/V.fSIGMA**4-V.Vtot(0,T)/V.fSIGMA**4,label=f"T={T}")
+		plt.plot(np.linspace(-5,V.fSIGMA*config.SIGMULT,num=100)/V.fSIGMA,V.Vtot(np.linspace(-5,V.fSIGMA*config.SIGMULT,num=100),T)/V.fSIGMA**4-V.Vtot(0,T)/V.fSIGMA**4,label=f"T={T}")
 
 
 def save_arrays_to_csv(file_path, column_titles, *arrays):
@@ -386,7 +395,7 @@ def parallelScan_refill(N, F, Polyakov, xi, detType, day, hour):
             next(reader)  # skip header
             for row in reader:
                 if row:
-                    if abs(float(row[12]))<Potential2.TOL:
+                    if abs(float(row[12]))<config.TOL:
                         if not float(row[9])>0:
                             todo.add(tuple(map(float, row[:4])))
     else:
@@ -451,6 +460,11 @@ def refill(original_filename, refill_filename, new_filename):
 		for row in data:
 			writer.writerow(list(row))
 			f.flush()
+<<<<<<< HEAD
+=======
+
+	return data
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 
 	return data
 
@@ -458,8 +472,12 @@ def refill(original_filename, refill_filename, new_filename):
 if __name__ == "__main__":
 
     #LARGE SCANS
+<<<<<<< HEAD
     N=4; F=6; detType='Normal'; 
     num=6
+=======
+    N=3; F=3
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 
     detPow = Potential2.get_detPow(N,F,detType)
     m2Sig = np.linspace(1., 10., num=num)*1000**2
@@ -473,6 +491,7 @@ if __name__ == "__main__":
     m2X = np.linspace(1., 25., num=num)*1000**2
     fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)
 
+<<<<<<< HEAD
     parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=False,xi=1)
 
     #parallelScan_refill(N, F, False, 1, 'Normal', 13, 0)
@@ -480,6 +499,20 @@ if __name__ == "__main__":
 	
     '''
     filename = 'F6/N4/N4F6xi1_AMSB_13Nov.csv'; delimiter = ','
+=======
+    #comment out parallelscan norm to plot
+    
+    #parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType='Normal', Polyakov=True,xi=2)
+    #parallelScan_refill(N, F, True, 1, 'AMSB', 13, 0)
+    
+    
+    # SINGLE POINT FROM SCAN
+    POINT_OF_INTEREST=4
+
+	
+
+    filename = 'F3/N3/N3F3xi2_Normal_15Nov22hr.csv'; delimiter = ','
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
     data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
 
     m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
@@ -488,12 +521,20 @@ if __name__ == "__main__":
     print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
     print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
 
+<<<<<<< HEAD
     print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))'''
     '''
     
     
     '''
 	#REFILL TEST (You have to go into the function to manually change the test filenames)
+=======
+    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=2, detType='Normal', plot=True))
+
+
+	#REFILL TEST (You have to go into the function to manually change the test filenames)
+    #config.PRNT_RUN=True
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
     #parallelScan_refill(N, F, False, None, 'AMSB', None, None)
     
     #original_filename = 'RefillTestArray_F6N3_AMSB.csv'

@@ -1,12 +1,24 @@
+import config
 import cosmoTransitions.finiteT as fT
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize
+<<<<<<< HEAD
 from scipy import interpolate, integrate
 from itertools import takewhile
 import os
+=======
+from sympy import diff
+from scipy import interpolate, integrate
+from itertools import takewhile
+import os
+
+>>>>>>> 7503e50 (Adding config file, fixing bug in Gravitational Wave and modifying scan ranges)
 import DressedMasses
-from debug_plot import debug_plot
+if config.PLOT_RUN:
+    from debug_plot import debug_plot
 
 
 '''
@@ -170,15 +182,6 @@ from debug_plot import debug_plot
         
 '''
 
-TOL = 1e-5
-
-IRDIVSMOOTHING=False
-PLOT_RUN=False
-PRNT_RUN=False
-
-TMULT = 2
-SIGMULT = 1.1
-
 #Calculate g_star
 data_array = np.loadtxt('gstar_data.dat')
 TsMeV = data_array[:,0]
@@ -227,7 +230,7 @@ def get_detPow(N, F, termType):
 
 def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     #See appendix D in draft for these formulae.
-    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>TOL:
+    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>config.TOL:
         raise NonLinear(f"Lagrangian is non-linear with F={F}, N={N} and detPow={detPow}.")    
 
     m2 = (_m2Sig/2) - (_m2Eta/2)*(1/(F*detPow))*(4-F*detPow)
@@ -238,7 +241,7 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
     print(f'm2={m2},c={c},ls={ls},la={la}')
     
     VTree = lambda sig: - m2 * sig**2/2 - (c/F**2) * sig**(F*detPow) + (ls/8) * sig**4
-    if PLOT_RUN:
+    if config.PLOT_RUN:
         plt.plot(np.linspace(0,fPI*1.25),VTree(np.linspace(0,fPI*1.25)))
         debug_plot(name="VTree Test", overwrite=False)
 
@@ -258,13 +261,13 @@ def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
 
 
     # stationary at fpi
-    if V(fPI)>V(0)+TOL:
+    if V(fPI)>V(0)+config.TOL:
         raise NonTunnelling('Symmetric minimum is true minimum')
-    if abs(dV(fPI))>TOL:
+    if abs(dV(fPI))>config.TOL:
         print(f'Point is Invalid as dV(fPI) = {dV(fPI)} different of 0')
         raise NonTunnelling('Symmetric minimum is true minimum')
 
-    if ddV(fPI)<-TOL:
+    if ddV(fPI)<-config.TOL:
         print(f'Point is Invalid as fPI is not minimum')
         raise NonTunnelling('Point is Invalid as fPI is not stable')
                                
@@ -360,7 +363,7 @@ class Potential:
         except BadDressedMassConvergence as e:
             raise e
         
-        self.tc = self.criticalT(prnt=PLOT_RUN)
+        self.tc = self.criticalT(prnt=config.PLOT_RUN)
         
         if self.tc is not None and self.minT is not None: #Should make a 'set' function.
             if self.minT > self.tc:
@@ -476,7 +479,7 @@ class Potential:
         #print(f'closeness criteria = {abs(res.x[0]-(0.5-.05*rcounter)*self.fSIGMA)/self.fSIGMA}, rcounter={rcounter}')
     
         #Now check to see if the algorithm succeeded
-        if not res.success or abs(res.x[0]-(0.5-.05*rcounter)*self.fSIGMA)/self.fSIGMA < TOL or res.x[0]<(0.5-.05*rcounter)*self.fSIGMA:
+        if not res.success or abs(res.x[0]-(0.5-.05*rcounter)*self.fSIGMA)/self.fSIGMA < config.TOL or res.x[0]<(0.5-.05*rcounter)*self.fSIGMA:
             #If so, try a new start closer to the axis to avoid overshooting.
             if rcounter<=4:
                 if rstart is not None:
@@ -522,7 +525,7 @@ class Potential:
                     
 		
         #First a coarse scan. Find the minimum deltaV from this initial scan, then do a finer scan later.
-        Ts_init = np.linspace(minTemp,scale*TMULT,num=450); deltaVs_init=[]
+        Ts_init = np.linspace(minTemp,scale*config.TMULT,num=450); deltaVs_init=[]
 
         for T in Ts_init:
             #Computing the difference between symmetric and broken minima.
@@ -567,16 +570,16 @@ class Potential:
 
         def plotV(V, Ts):
             for T in Ts:
-                plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=100),V.Vtot(np.linspace(-10,self.fSIGMA*SIGMULT,num=100),T)-V.Vtot(0,T),label=f"T={T}")
+                plt.plot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=100),V.Vtot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=100),T)-V.Vtot(0,T),label=f"T={T}")
                 if self.findminima(T) is not None:
                     plt.scatter(self.findminima(T), V.Vtot(self.findminima(T),T)-V.Vtot(0,T))
             plt.legend()
             debug_plot(name="debug", overwrite=False)
             
         def splitV(V, T):
-            plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.Vtot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),T)-V.Vtot(0,T),label=f"VTot at Tc={T}")
-            plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.V1T(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),T)-V.V1T(0,T),label=f"V1T at Tc={T}")
-            plt.plot(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000),V.V(np.linspace(-10,self.fSIGMA*SIGMULT,num=1000))-V.V(0),label=f"Vtree")
+            plt.plot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000),V.Vtot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000),T)-V.Vtot(0,T),label=f"VTot at Tc={T}")
+            plt.plot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000),V.V1T(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000),T)-V.V1T(0,T),label=f"V1T at Tc={T}")
+            plt.plot(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000),V.V(np.linspace(-10,self.fSIGMA*config.SIGMULT,num=1000))-V.V(0),label=f"Vtree")
             plt.legend()
             #debug_plot(name="debug", overwrite=False)
 	
