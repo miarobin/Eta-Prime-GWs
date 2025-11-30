@@ -27,125 +27,102 @@ CYAN = "\033[36m" # Cyan color
 MPl = 2.435E18; 
 
 
-def IRProblem():
-	return None
 
 #Calculate the action S3 for a given temperature T using CosmoTransitions SingleFieldInstanton class.
-def action(V,T, plot=False):
-    prnt = config.PRNT_RUN
-    #First find & classify the true & false minima
-    vT = V.findminima(T)
-    IRDivSmoothing = config.IRDIVSMOOTHING
-    
-    #If rhs is none at this point it means there's only one minima. Return action as None.
-    if vT == None:
-        print('No vT found')
-        return None, 0
-    
-    true_min = min([0,vT], key=lambda phi: V.Vtot(phi,T))
-    false_min = max([0,vT], key=lambda phi: V.Vtot(phi,T))
-    
-    if prnt: print(f'True Min = {true_min}, False Min = {false_min}, T = {T}')
-    
- 
-    if false_min > true_min:
-        if prnt:
-            print('Attempting to calculate tunnelling in the wrong direction.')
-        return None, 0
-    
- 
-    #4-point effective vertices.
-    if abs(V.F*V.detPow-4)<1e-20:
-        c1 = (V.c/V.F**2)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)
-        c2 = (V.c/V.F)*V.detPow*(V.F*V.detPow-2)*(V.F*V.detPow-3)
-        c3 = (V.c/V.F)*V.detPow*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6)
-    else:
-        c1=0; c2=0; c3=0
+def action(V,T):
+	prnt = config.PRNT_RUN
+	plot=config.PLOT_RUN
+	#First find & classify the true & false minima
+	vT = V.findminima(T)
+
+	#If rhs is none at this point it means there's only one minima. Return action as None.
+	if vT == None:
+		print('No vT found')
+		return None, 0
+
+	true_min = min([0,vT], key=lambda phi: V.Vtot(phi,T))
+	false_min = max([0,vT], key=lambda phi: V.Vtot(phi,T))
+
+	if prnt: print(f'True Min = {true_min}, False Min = {false_min}, T = {T}')
+
+
+	if false_min > true_min:
+		if prnt:
+			print('Attempting to calculate tunnelling in the wrong direction.')
+		return None, 0
+
+
+	#4-point effective vertices.
+	if abs(V.F*V.detPow-4)<1e-20:
+		c1 = (V.c/V.F**2)*(V.F*V.detPow)*(V.F*V.detPow-1)*(V.F*V.detPow-2)*(V.F*V.detPow-3)
+		c2 = (V.c/V.F)*V.detPow*(V.F*V.detPow-2)*(V.F*V.detPow-3)
+		c3 = (V.c/V.F)*V.detPow*(V.detPow*V.F**3-4*V.F**2+V.detPow*V.F+6)
+	else:
+		c1=0; c2=0; c3=0
 		
+	lSig = np.abs(3*V.lambdas - c1)
+	lPi = np.abs(V.lambdas*(V.F**2+1) + V.lambdaa*(V.F**2-4)- c3)/((V.F**2-1))
 		
-    gSig_eff = np.abs(3*V.lambdas - c1)
-    gPi_eff = np.abs(V.lambdas*(V.F**2+1) + V.lambdaa*(V.F**2-4)- c3)/((V.F**2-1))
-        
-    pSig = lambda sig: gSig_eff * (T/(np.abs(V.MSq['Sig'][0](sig,T))**(1/2)+1e-24))
-    pPi = lambda sig: gPi_eff * (V.F**2-1) * (T/(np.abs(V.MSq['Pi'][0](sig,T))**(1/2)+1e-24))
-    
-    numTests = 500
-    sigmas = np.linspace(false_min,true_min,num=numTests)
-    cut = [i for i,sig in enumerate(sigmas) if pSig(sig)<16*np.pi and pPi(sig)<16*np.pi] #If far too big just throw away point completely. Maybe something like 16 pi?
- 
-    #Straight up how much of the tunneling potential fails to be perturbative.
-    PFrac = len(cut)/numTests
- 
-    if IRDivSmoothing:
-    #A single temperature fit to try & smooth out IR divergences.
- 
-        if len(cut)<numTests*.9:
-            raise BadlyIRDivergent("At least 10 % of points failed to be perturbative.")
- 
-        _sigmas = sigmas[cut]
-            
-        weights=[]
-        for sig in _sigmas:
-            if pSig(sig)<4*np.pi and pPi(sig)<4*np.pi:
-                weights.append(1.)
-            else:
-                weights.append((4*4*np.pi/max(pSig(sig),pPi(sig))-1)/3)#Retains some data.
- 
-        _V = interpolate.UnivariateSpline(_sigmas, V.Vtot(_sigmas,T),w=weights,s=len(_sigmas)*1.1)
- 
-    
-    else:
-        _V = lambda sigma: V.Vtot(sigma,T)
- 
- 
-    #DO SOME PLOTS!
-    if plot:
-        plt.plot(sigmas,V.Vtot(sigmas,T)/V.fSIGMA**3-V.Vtot(0,T)/V.fSIGMA**3, label='Vtot')
-        if IRDivSmoothing:
-            plt.plot(_sigmas,weights,label='weights')
-        plt.plot(sigmas,_V(sigmas)/V.fSIGMA**3-_V(0)/V.fSIGMA**3,label='Weighted Vtot')
-        #plt.plot(sigmas,-pSig(sigmas)/V.fSIGMA,label='Sigma effective')
-        #plt.plot(sigmas,-pPi(sigmas)/V.fSIGMA,label='Pi effective')
-        #plt.plot(sigmas,V.MSq['Sig'][0](sigmas,T)/V.fSIGMA**2-V.MSq['Sig'][0](0,T)/V.fSIGMA**2,label='sig-mass')
-        #plt.plot(sigmas,V.MSq['Pi'][0](sigmas,T)/V.fSIGMA**2-V.MSq['Sig'][0](0,T)/V.fSIGMA**2,label='pi-mass')
-        #plt.ylim = (_V(V.fSIGMA)/V.fSIGMA**4-_V(0)/V.fSIGMA**4-0.01, +0.01)
-        plt.title(f'T={T}')
-        plt.legend()
-        debug_plot(name="debug", overwrite=False)
-  
- 
-    try:
-        #Initialise instanton in CosmoTransitions.
-        Instanton = SingleFieldInstanton(true_min, false_min, _V, alpha=2)
-        Profile = Instanton.findProfile()
-            
-        #Find the action & return it.
-        action = Instanton.findAction(Profile)
-        if action < 0 and prnt:
-            print('negative action')
-            return None, 0
-        elif action < 0:
-            return None, 0
-            
-        return action, PFrac
-            
-    
-    #Sometimes CosmoTransitions throws these errors (not entirely sure why). Might be worth investigating these later. For now, just returning None.
-    except helper_functions.IntegrationError:
-        if prnt: print(RED + "CosmoTransitions has returned IntegrationError" + RESET)
-        return None, 0
-    except ValueError as e:
-        if prnt: print(RED + "CosmoTransitions has returned ValueError" + RESET)
-        print(e)
-        traceback.print_exc()
-        return None, 0
-    except PotentialError:
-        if prnt: print(RED + "CosmoTransitions has returned PotentialError" + RESET)
-        return None, 0
-    except AssertionError:
-        if prnt: print(RED + "CosmoTransitions has returned PotentialError" + RESET)
-        return None, 0
-	
+	lSig_eff = lambda sig: lSig * (T/(np.abs(V.MSq['Sig'][0](sig,T))**(1/2)+1e-24))
+	lPi_eff = lambda sig: lPi * (V.F**2-1) * (T/(np.abs(V.MSq['Pi'][0](sig,T))**(1/2)+1e-24))
+
+	numTests = 500
+	sigmas = np.linspace(false_min,true_min,num=numTests)
+	cut = [i for i,sig in enumerate(sigmas) if lSig_eff(sig)<16*np.pi and lPi_eff(sig)<16*np.pi] #If far too big just throw away point completely. Maybe something like 16 pi?
+
+	#Straight up how much of the tunneling potential fails to be perturbative.
+	PFrac = len(cut)/numTests
+
+	#Wrapper for Vtot.
+	_V = lambda sigma: V.Vtot(sigma,T)
+
+
+	#DO SOME PLOTS!
+	if plot:
+		plt.plot(sigmas,V.Vtot(sigmas,T)/V.fSIGMA**3-V.Vtot(0,T)/V.fSIGMA**3, label='Vtot')
+		plt.plot(sigmas,_V(sigmas)/V.fSIGMA**3-_V(0)/V.fSIGMA**3,label='Weighted Vtot')
+		#plt.plot(sigmas,-pSig(sigmas)/V.fSIGMA,label='Sigma effective')
+		#plt.plot(sigmas,-pPi(sigmas)/V.fSIGMA,label='Pi effective')
+		#plt.plot(sigmas,V.MSq['Sig'][0](sigmas,T)/V.fSIGMA**2-V.MSq['Sig'][0](0,T)/V.fSIGMA**2,label='sig-mass')
+		#plt.plot(sigmas,V.MSq['Pi'][0](sigmas,T)/V.fSIGMA**2-V.MSq['Sig'][0](0,T)/V.fSIGMA**2,label='pi-mass')
+		#plt.ylim = (_V(V.fSIGMA)/V.fSIGMA**4-_V(0)/V.fSIGMA**4-0.01, +0.01)
+		plt.title(f'T={T}')
+		plt.legend()
+		debug_plot(name="debug", overwrite=False)
+
+
+	try:
+		#Initialise instanton in CosmoTransitions.
+		Instanton = SingleFieldInstanton(true_min, false_min, _V, alpha=2)
+		Profile = Instanton.findProfile()
+			
+		#Find the action & return it.
+		action = Instanton.findAction(Profile)
+		if action < 0 and prnt:
+			print('negative action')
+			return None, 0
+		elif action < 0:
+			return None, 0
+			
+		return action, PFrac
+			
+
+	#Sometimes CosmoTransitions throws these errors (not entirely sure why). Might be worth investigating these later. For now, just returning None.
+	except helper_functions.IntegrationError:
+		if prnt: print(RED + "CosmoTransitions has returned IntegrationError" + RESET)
+		return None, 0
+	except ValueError as e:
+		if prnt: print(RED + "CosmoTransitions has returned ValueError" + RESET)
+		print(e)
+		traceback.print_exc()
+		return None, 0
+	except PotentialError:
+		if prnt: print(RED + "CosmoTransitions has returned PotentialError" + RESET)
+		return None, 0
+	except AssertionError:
+		if prnt: print(RED + "CosmoTransitions has returned PotentialError" + RESET)
+		return None, 0
+
 	
 #Plots the potential as a function of temperature
 def plotV(V, Ts):
@@ -165,7 +142,7 @@ def plotAs(As, Ts):
 
 
 #Finds an interpolated function of 3D Action/T as a function of T, and Tn if it exists.
-	#NOTE Print just shows you all of the individual broken points in detail so it can be manually fixed.
+	#NOTE Print just shows you all of the individual broken points in detail.
 def grid(V, tc=None, ext_minT=None):
 	IRDivSmoothing = config.IRDIVSMOOTHING
 	plot = config.PLOT_RUN
@@ -181,6 +158,7 @@ def grid(V, tc=None, ext_minT=None):
 	if ext_minT:
 		if tc<ext_minT:
 			return None, None, tc, 13 #No possibility for PT.
+
 
 	#Maximum temperature of the action scan. CT fails if T is too close to tc.
 	maxT = tc*0.99 #Also want some OK-ish supercooling to get a GW signal.
@@ -235,6 +213,7 @@ def grid(V, tc=None, ext_minT=None):
 		numberOfEvaluations = 50
 	else:
 		numberOfEvaluations = 30
+		
 	#COARSE SAMPLE to find a sensible-ish minT and reduce number of calculations.
 	Sample_Ts = np.linspace(minT, maxT, num=numberOfEvaluations)
 	for i,_T in enumerate(Sample_Ts):
@@ -567,11 +546,12 @@ def checkProfile(V, Instanton, Profile, T):
 
 
 	
-#Compute beta/H for gravitational wave signals.
 def beta_over_H(V, Tn, act):
+	# eq 4.8
 	return act.derivatives(Tn)[1]*Tn
 	
 def alpha(V, Tn):
+	# eq 4.7
 	minima = V.findminima(Tn)
 	delV = (V.Vtot(0,Tn) - V.Vtot(minima,Tn))
 	ddelVdT = (V.dVdT(0,Tn) - V.dVdT(minima,Tn))
@@ -581,7 +561,7 @@ def alpha(V, Tn):
 	
 def gravitationalWave(V):
 	#This method is slow so we only want to run it once, then just pass through the interpolated function to everything else.
-	Tn, grd, message = grid(V,prnt=True,plot=True)
+	Tn, grd, message = grid(V)
 	
 	#Calculate nucleation temperature
 	if Tn == None:
@@ -619,38 +599,5 @@ def save_arrays_to_csv(file_path, column_titles, *arrays):
 
 
 if __name__ == "__main__":
-	print('hello')
-	test = TestCode.TestPotential()
-	'''
-	test.test_F3(0)
-	test.test_F3(1)
-	test.test_F3(2)
-	'''
-	
-	#test.test_F4(0)
-	#test.test_F4(2)
-	#test.test_F4(2)
-	
-	test.testN_F4(1, 2)
-	#test.testSymmRestoration(1,3)
-	
-	#xi, muSig, lmb, kappa, m2Sig, N, F, detPow
-	V=config.Potential(0,*[0.2, 2, 1, 100**2],1,4,1)
-	
-	def fSig1_function(muSig, lmb, kappa, m2Sig): return 2*(2*m2Sig)**0.5 / (kappa + 4*lmb - muSig)**0.5
-	fSig1 = fSig1_function(0.2, 2, 1, 100**2)	
-	#print(fSig1)
-	print(V.V1T(fSig1, 500))
-	print(V.mSq['Phi'][0](fSig1,10))
-	print(V.mSq['Eta'][0](fSig1,10))
-	print(V.mSq['X8'][0](fSig1,10))
-	print(V.mSq['Pi8'][0](fSig1,10))
-
-	
-
-	for T in range(300,500):
-		plt.scatter(T, V.Vtot(fSig1,T))
-	debug_plot(name="debug", overwrite=False)
-	#plt.show()
-	
+	print('Hello World')
 

@@ -26,7 +26,6 @@ CORES = 9  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
-
 '''
 	Please see the dockstring in "Potential2.py" for a parameter dictionary!!
 	
