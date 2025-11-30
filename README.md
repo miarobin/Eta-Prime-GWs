@@ -1,4 +1,4 @@
-## Project: Computing Gravitational-Wave Signals for the Eta Prime
+## Project: Computing Gravitational-Wave Signals
 
 ### What do these files do?
 
