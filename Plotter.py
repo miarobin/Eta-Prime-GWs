@@ -20,10 +20,9 @@ import WallVelocityLargeN
 from datetime import datetime
 
 
-
 # Get number of CPUs allocated by SLURM
 print("SLURM_CPUS_PER_TASK =", os.environ.get("SLURM_CPUS_PER_TASK"))
-CORES = 8  # default to 1 if not set
+CORES = 9  # default to 1 if not set
 print(f"Using {CORES} cores")
 
 
@@ -157,6 +156,7 @@ def populate(mSq, c, lambdas, lambdaa, N, F, detPow, Polyakov=False, xi=1, plot=
 	#   b) An interpolated function grd of action over temperature w/ temperature,
 	#   c) and an error code.
 	Tn, grd, tc, message = GravitationalWave.grid(V,ext_minT=V.minT)
+	V.Tn = Tn
 	
 
 
@@ -358,6 +358,19 @@ def parallelScan_refill(N, F, Polyakov, xi, detType, day, hour):
         filename = f'F{F}/N{N}/N{N}F{F}_{detType}_{day}Nov{hour}hr.csv'
         refill_filename = f'F{F}/N{N}/N{N}F{F}_{detType}_{day}Nov{hour}hr_refill.csv'
         new_filename = f'F{F}/N{N}/N{N}F{F}_{detType}_{day}Nov{hour}hr_toppedup.csv'
+        
+    if Polyakov:
+        filename = f'N{N}F{F}xi{xi}_{detType}_{day}Nov{hour}hr.csv'
+        refill_filename = f'N{N}F{F}xi{xi}_{detType}_{day}Nov{hour}hr_refill.csv'
+        new_filename = f'N{N}F{F}xi{xi}_{detType}_{day}Nov{hour}hr_toppedup.csv'
+    if not Polyakov and detType == 'Normal':
+        filename = f'N{N}F{F}_{detType}_{day}Nov{hour}hr.csv'
+        refill_filename = f'N{N}F{F}_{detType}_{day}Nov{hour}hr_refill.csv'
+        new_filename = f'N{N}F{F}_{detType}_{day}Nov{hour}hr_toppedup.csv'
+    elif not Polyakov:
+        filename = f'N{N}F{F}_{detType}_{day}Nov{hour}hr.csv'
+        refill_filename = f'N{N}F{F}_{detType}_{day}Nov{hour}hr_refill.csv'
+        new_filename = f'N{N}F{F}_{detType}_{day}Nov{hour}hr_toppedup.csv'
     
 	#OPERATIONAL TEST
     #filename = 'RefillTestArray_F6N3_AMSB.csv'
@@ -439,12 +452,56 @@ def refill(original_filename, refill_filename, new_filename):
 			writer.writerow(list(row))
 			f.flush()
 
+
 	return data
 
 
 
 if __name__ == "__main__":
+    #LARGE SCANS
 
+    N=4; F=6; detType='Normal'; 
+    num=6
+
+    N=3; F=3
+
+
+    detPow = Potential2.get_detPow(N,F,detType)
+    m2Sig = np.linspace(1., 10., num=num)*1000**2
+
+    if F*detPow>4:
+        maxm2Eta = (16*np.pi/3) * 1.5**2 * (F*detPow)**3 / (16*(4*np.pi)**(F*detPow-4) * 25) 
+        minm2Eta = maxm2Eta/25 #Arbitrary.
+        m2Eta = np.linspace(minm2Eta, maxm2Eta, num=num)*1000**2 
+    else:
+        m2Eta = np.linspace(1., 25., num=num)*1000**2
+    m2X = np.linspace(1., 25., num=num)*1000**2
+    fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)
+
+
+    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=False,xi=1)
+
+    #parallelScan_refill(N, F, False, 1, 'Normal', 13, 0)
+    Potential2.PRNT_RUN=False
+	
+    '''
+    filename = 'F6/N4/N4F6xi1_AMSB_13Nov.csv'; delimiter = ','
+
+    N=4; F=6; detType='Normal'; 
+    num=3
+    
+    detPow = Potential2.get_detPow(N,F,detType)
+
+	#LARGE SCANS
+	'''
+	#LARGE SCANS
+	N=3; F=3; detType='Normal'; 
+	num=6
+
+	detPow = Potential2.get_detPow(N,F,detType)
+
+	m2Sig = np.linspace(1., 10., num=num)*1000**2
+	#m2Sig = np.array([1.])*1000**2
 	#LARGE SCANS
 	'''
 	N=3; F=3; detType='Normal'; 
@@ -463,7 +520,7 @@ if __name__ == "__main__":
 	m2X = np.linspace(1., 25., num=num)*1000**2
 	fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)#CHANGE
 
-	parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=False,xi=1)'''
+	parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=True,xi=5)
 	
 	#REFILL
 	N=3; F=3; detType='Normal'; Day=19; Hour=23; Polyakov=True; xi=1
@@ -476,6 +533,54 @@ if __name__ == "__main__":
 	# SINGLE POINT FROM SCAN
 	POINT_OF_INTEREST=13
 
+
+
+    filename = 'F3/N3/N3F3xi2_Normal_15Nov22hr.csv'; delimiter = ','
+
+    
+    filename = 'F6/N4/N4F6xi1_AMSB_13Nov0hr.csv'; delimiter = ','
+
+    data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
+
+	#REFILL
+	N=3; F=3; detType='Normal'; Day=19; Hour=23; Polyakov=True; xi=1
+
+	parallelScan_refill(N, F, Polyakov, xi, detType, Day, Hour)
+
+
+
+    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))'''
+    '''
+    
+    
+    '''
+	#REFILL TEST (You have to go into the function to manually change the test filenames)
+	# SINGLE POINT FROM SCAN
+	POINT_OF_INTEREST=10
+
+	N=3; F=3; detType='Normal'; Polyakov=True; xi=1
+
+
+	filename = 'F3/N3/N3F3xi1_Normal_24Nov19hr.csv'; delimiter = ','
+	data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
+
+	m2Sig, m2Eta, m2X, fPI, m2, c, ls, la, Tc, Tn, alpha, beta,message,vwLTE,kappaLTE,vwLN,kappaLN = data[POINT_OF_INTEREST-2]
+
+	print(f'm2Sig = {m2Sig}, m2Eta = {m2Eta}, m2X = {m2X}, fPI = {fPI}')
+	print(f'm2 = {m2}, c = {c}, ls = {ls}, la = {la}')
+	print(f'Tc = {Tc}, Tn = {Tn}, alpha = {alpha}, beta = {beta}')
+      
+      
+	#fPI = 72 * np.sqrt(3/2)
+	#m2Sig= 248**2
+	#m2Eta= 458**2
+	#m2X= 491**2
+
+
+	print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=Polyakov, xi=xi, detType=detType, plot=True))
+	'''
+
+	#REFILL TEST (You have to go into the function to manually change the test filenames)
 
 
 	N=3; F=3; detType='Normal'; Polyakov=True; xi=2
@@ -506,4 +611,6 @@ if __name__ == "__main__":
 	#original_filename = 'RefillTestArray_F6N3_AMSB.csv'
 	#refill_filename = 'RefillTestArray_refill.csv'
 	#new_filename = 'RefillTestArray_toppedup.csv'
+
 	#refill(original_filename, refill_filename, new_filename)
+	#refill(original_filename, refill_filename, new_filename)'''

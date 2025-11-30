@@ -1,0 +1,9 @@
+# SLURM / job outputs
+*.out
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Temporary debug plots
+Temporal-DebugPlots/

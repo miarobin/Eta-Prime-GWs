@@ -1,7 +1,6 @@
 import Potential2
 import numpy as np
 import csv
-
 from scipy.integrate import solve_ivp ,simpson
 from scipy.optimize import root_scalar
 

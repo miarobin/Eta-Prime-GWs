@@ -302,8 +302,6 @@ def grid(V, tc=None, ext_minT=None):
 	As=_As
 	Ts=_Ts
 
-
-
 	### WEIGHT FUNCTION ###
 	#NOTE TO FUTURE SELVES: defining SM part of g_star at the CRITICAL TEMPERATURE.
 	b = 12*np.pi* (30/(V._g_star(tc)*np.pi**2))**2 * 1/(2*np.pi)**(3/2) #Note transfer of MPl to following line to preserve precision

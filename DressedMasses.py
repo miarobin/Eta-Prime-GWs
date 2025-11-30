@@ -12,6 +12,8 @@ if config.PLOT_RUN:
     from debug_plot import debug_plot
 
 
+#import seaborn as sns
+
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["font.size"]= 12
@@ -34,34 +36,35 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     # 1) Coarse scan (fast)
     print(f"[Adaptive] Coarse scan with {coarse_points} points...")
     NUMBEROFPOINTS = coarse_points
+
     config.TMULT = old_TMULT      # keep same T max (just fewer points)
 
     dressed, RMS, _ = SolveMasses(V, plot=False)
     tc = V.criticalT(plot=False)
-
+ 
     # 2) If no phase transition → done
     if tc is None:
         print("[Adaptive] No Tc found. Skipping refinement.")
         NUMBEROFPOINTS = old_POINTS
         config.TMULT = old_TMULT
         return dressed, RMS, None
-
+ 
     # 3) Refine only around Tc
     print(f"[Adaptive] Tc ≈ {tc:.2f}. Refining only near transition...")
-
+ 
     # Narrow region in T, e.g. 0.8 Tc – 1.2 Tc
     Tmin = max(0, tc * 0.8)
     Tmax = tc * 1.2
-
+ 
     # Restore fine resolution
     NUMBEROFPOINTS = fine_points
-
+ 
     # Adjust only the T-range (TMULT = Tmax / fπ)
     config.TMULT = Tmax / V.fSIGMA
 
     # Re-run with fine grid, only near Tc
     result = SolveMasses(V, plot=False)
-
+ 
     # Restore original settings (important to not affect next parameter point)
     NUMBEROFPOINTS = old_POINTS
     config.TMULT = old_TMULT
@@ -244,10 +247,12 @@ def SolveMasses(V, plot=False):
                 initial_guess = solution_grid[i-1, j]            # above neighbor
             elif i > 0 and j > 0 and np.all(np.isfinite(solution_grid[i-1, j-1])):
                 initial_guess = solution_grid[i-1, j-1]          # diagonal neighbor
+                
             elif prev_solution is not None:
-                initial_guess = prev_solution                    # same row fallback
+                initial_guess = prev_solution  # same row fallback
+
             else:
-                # <-- keep your original Debye-based guess
+                # keep your original Debye-based guess
                 initial_guess = [
                     V.mSq['Sig'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa),
                     V.mSq['Eta'][0](sigma) + (T**2/12)*((V.F**2+1)*V.lambdas + (V.F**2-1)*V.lambdaa),
@@ -262,7 +267,7 @@ def SolveMasses(V, plot=False):
             #Root mean squared error with a cutoff at 1.
             RMS[i,j]=min(np.sqrt(np.mean((bagEquations.lhs-bagEquations.rhs)**2)),1)
 
-            if sol.success and RMS[i,j]<1/V.fSIGMA:#arbitrary for now.
+            if sol.success and RMS[i,j]<1/V.fSIGMA: #old(np.sqrt(V.fSIGMA))
                 M_sigma2, M_eta2, M_X2, M_Pi2 = sol.x
 
                 MSqSigData[i,j]=M_sigma2
@@ -294,9 +299,6 @@ def SolveMasses(V, plot=False):
                     
                 else:
                         
-                    #if plot:
-                    #    print(f"Root finding did not converge well for T={T} and sigma={sigma}")
-                    #    print(sol.message)
                     MSqSigData[i,j]=None
                     MSqEtaData[i,j]=None
                     MSqXData[i,j]=None
@@ -305,10 +307,7 @@ def SolveMasses(V, plot=False):
                     failPoints.append([sigma, T])
 
         if config.PRNT_RUN: print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
-     
 
-    
-     
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
     points = np.column_stack((X.ravel(), Y.ravel()))
@@ -331,7 +330,7 @@ def SolveMasses(V, plot=False):
     
     #Sometimes there are issues with the bounding box!
     
-    if np.isnan(_MSqSigData).any:
+    if np.isnan(_MSqSigData).any():
         #First try: patch with real data.
         _broken = np.isnan(_MSqSigData)
         
@@ -341,13 +340,13 @@ def SolveMasses(V, plot=False):
         _MSqPiData[_broken] = MSqPiData[_broken]
         
         #Second try: patch with nearest data
-        if np.isnan(_MSqSigData).any:
+        if np.isnan(_MSqSigData).any():
             _broken =  np.isnan(_MSqSigData)
             
-            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesSigma)],valuesEta[np.isfinite(valuesSigma)],(X[_broken],Y[_broken]),method='nearest'))
+            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesSigma)],valuesSigma[np.isfinite(valuesSigma)],(X[_broken],Y[_broken]),method='nearest'))
             _MSqEtaData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesEta)],valuesEta[np.isfinite(valuesEta)],(X[_broken],Y[_broken]),method='nearest'))
-            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesX)],valuesEta[np.isfinite(valuesX)],(X[_broken],Y[_broken]),method='nearest'))
-            _MSqSigData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesPi)],valuesEta[np.isfinite(valuesPi)],(X[_broken],Y[_broken]),method='nearest'))
+            _MSqXData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesX)],valuesX[np.isfinite(valuesX)],(X[_broken],Y[_broken]),method='nearest'))
+            _MSqPiData[_broken] = np.array(interpolate.griddata(points[np.isfinite(valuesPi)],valuesPi[np.isfinite(valuesPi)],(X[_broken],Y[_broken]),method='nearest'))
     
     if plot:
         plotMassData([MSqSigData,MSqEtaData,MSqXData,MSqPiData], V,minimal=True)
@@ -437,9 +436,10 @@ def SolveMasses(V, plot=False):
 
     if plot:
         tc = V.criticalT()
-        #Plot 1: Individual plots of data vs interpolated.       
+        #Plot 1: Individual plots of data vs interpolated. 
+        
         fig, ax = plt.subplots(2,2)
-        plt.rcParams['figure.figsize'] = [12, 8]
+        plt.rcParams['figure.figsize'] = [10, 6]
         
         TIndexSample = [0, 50, 100, 150, 165, 180, 195]
         colours = ["red", "firebrick", "darkorange", "crimson", "rosybrown", "gold", "palevioletred"]
@@ -482,12 +482,14 @@ def SolveMasses(V, plot=False):
                 if T<tc and abs((tc-T)/tc)<0.25:
                     plt.scatter(T/V.fSIGMA,sig/V.fSIGMA,marker='d',color='orange')
         plt.savefig(f"Temporal-Plots/Vcritical.pdf", dpi=300)    
-        debug_plot(name="debug", overwrite=False)        
+        debug_plot(name="interpolators", overwrite=False)        
         
-
+        '''
         #Plot 3: RMS error and perturbativity.
 
-        fig, ax = plt.subplots(nrows=1,ncols=2)
+        #fig, ax = plt.subplots(nrows=1,ncols=2)
+        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(12, 8))
+        fig.subplots_adjust(wspace=0.35) 
         
         im0 = ax[0].contourf(X/V.fSIGMA, Y/V.fSIGMA, RMS.T)
         cbar0 = plt.colorbar(im0)
@@ -520,7 +522,7 @@ def SolveMasses(V, plot=False):
         cbar1 = plt.colorbar(im1)
         cbar1.set_label(r'Effective Coupling $g_eff$',fontsize=14)
         ax[1].set_xlabel(r'Temperature $T/f_\pi$',fontsize=15)
-        ax[1].set_ylabel(r'$sigma/f_\pi$',fontsize=15)
+        ax[1].set_ylabel(r'$\sigma/f_\pi$',fontsize=15, labelpad=20)
 
 
         
@@ -535,10 +537,182 @@ def SolveMasses(V, plot=False):
             else:
                 ax[1].scatter(T/V.fSIGMA,mins/V.fSIGMA,color='blueviolet')
                 
-        fig.suptitle(r"$f_\pi={V.fSIGMA}$")
-        plt.savefig("Temporal-Plots/secondminimum.pdf",dpi=300)
-        debug_plot(name="debug", overwrite=False)
-        #plt.show()
+        #fig.suptitle(r"$f_\pi={V.fSIGMA}$")
+        fig.tight_layout(rect=[0, 0, 1, 0.94])  # leave space at top for suptitle
+        plt.savefig("Temporal-Plots/SecondMinimum.pdf",dpi=300)
+        debug_plot(name="vampire_plot", overwrite=False)
+        #plt.show()'''
+        
+        # Plot 3: "vampire plots" for g_eff^sigma and g_eff^pi.
+
+        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(9, 6))
+        fig.subplots_adjust(wspace=0.35)
+
+        # IR Problem:
+        # 4-point effective vertices.
+        if abs(V.F*V.detPow - 4) < 1e-20:
+            c1 = (V.c / V.F**2) * (V.F*V.detPow) * (V.F*V.detPow - 1) \
+                 * (V.F*V.detPow - 2) * (V.F*V.detPow - 3)
+            c2 = (V.c / V.F) * V.detPow * (V.F*V.detPow - 2) * (V.F*V.detPow - 3)
+            c3 = (V.c / V.F) * V.detPow * (V.detPow*V.F**3 - 4*V.F**2
+                                           + V.detPow*V.F + 6)
+        else:
+            c1 = 0; c2 = 0; c3 = 0
+
+        # Constant effective 4-point couplings
+        gSig_eff = np.abs(3*V.lambdas - c1)
+        gPi_eff  = np.abs(
+            V.lambdas*(V.F**2 + 1) + V.lambdaa*(V.F**2 - 4) - c3
+        ) / (V.F**2 - 1)
+
+        # Temperature & mass–weighted "effective couplings"
+        pSig = lambda sig, T: gSig_eff * (
+            T / (np.abs(V.MSq['Sig'][0](sig, T))**0.5 + 1e-24)
+        )
+        pPi  = lambda sig, T: gPi_eff * (V.F**2 - 1) * (
+            T / (np.abs(V.MSq['Pi'][0](sig, T))**0.5 + 1e-24)
+        )
+
+        # Evaluate on the grid
+        pSig_grid = pSig(Y, X)
+        pPi_grid  = pPi(Y, X)
+
+        # Clip to perturbative bound (16π)
+        pSig_grid = np.minimum(pSig_grid, 16*np.pi)
+        pPi_grid  = np.minimum(pPi_grid, 16*np.pi)
+
+        cmap = 'viridis'
+
+        
+        n_vals = np.arange(0, 17, 2)
+        levels = n_vals * np.pi       
+        pi_ticks = levels          
+
+        tick_labels = [r'$0$'] + [rf'${n}\pi$' for n in n_vals[1:]]
+
+        
+        # Left panel
+        im0 = ax[0].contourf(
+            X / V.fSIGMA,
+            Y / V.fSIGMA,
+            pSig_grid,
+            levels=levels,
+            cmap=cmap
+        )
+        cbar0 = plt.colorbar(im0, ax=ax[0])
+        cbar0.set_label(r'$\lambda_{\mathrm{eff},\sigma}$', fontsize=19)
+        cbar0.set_ticks(pi_ticks)
+        cbar0.set_ticklabels(tick_labels)
+        ax[0].set_xlabel(r'$T/f_\pi$', fontsize=15)
+        ax[0].set_ylabel(r'$\sigma/f_\pi$', fontsize=19)
+
+        # Right panel
+        im1 = ax[1].contourf(
+            X / V.fSIGMA,
+            Y / V.fSIGMA,
+            pPi_grid,
+            levels=levels,
+            cmap=cmap
+        )
+        cbar1 = plt.colorbar(im1, ax=ax[1])
+        cbar1.set_label(r'$\lambda_{\mathrm{eff},\pi}$', fontsize=19)
+        cbar1.set_ticks(pi_ticks)
+        cbar1.set_ticklabels(tick_labels)
+        ax[1].set_xlabel(r'$T/f_\pi$', fontsize=15)
+        ax[1].set_ylabel(r'$\sigma/f_\pi$', fontsize=19)
+
+
+        # Plot location of second minimum with T (fangs) on BOTH panels
+        RHS_mins = np.array([V.findminima(T) for T in TRange])
+        mask = RHS_mins != None
+        _RHS_mins = RHS_mins[mask]
+        _Ts = TRange[mask]
+
+        #marker_kwargs = dict(s=40, edgecolors='black', linewidths=0.7, zorder=5)
+        # Critical temperature and (optionally) nucleation temperature lines
+        for T, mins in zip(_Ts, _RHS_mins):
+            x = T / V.fSIGMA
+            y = mins / V.fSIGMA
+
+            if V.Vtot(mins, T) > V.Vtot(0, T):
+                # falso mínimo: punto blanco con halo negro
+
+                # halo negro (un poco más grande)
+                ax[0].scatter(x, y, s=60, color='black', marker='o',
+                            alpha=1.0, zorder=4)
+                ax[1].scatter(x, y, s=60, color='black', marker='o',
+                            alpha=1.0, zorder=4)
+
+                # núcleo blanco
+                ax[0].scatter(x, y, s=40, color='ivory', marker='o',
+                            alpha=1.0, zorder=5)
+                ax[1].scatter(x, y, s=40, color='ivory', marker='o',
+                            alpha=1.0, zorder=5)
+
+            else:
+                # verdadero mínimo: punto rojo normal
+                ax[0].scatter(x, y, s=40, color='royalblue', marker='o',
+                            alpha=1.0, zorder=5)
+                ax[1].scatter(x, y, s=40, color='royalblue', marker='o',
+                            alpha=1.0, zorder=5)
+                
+        # --- Vertical lines for Tc (dashed) and Tn (dotted), black, with labels ---
+        tc = V.criticalT()
+        #Tn = getattr(V, "Tn", None)  # will be None if not set
+        # Prefer explicit Tn argument; otherwise fall back to attribute set elsewhere
+        Tn_eff = Tn if Tn is not None else getattr(V, "Tn", None)
+
+        print("[vampire_plot] Tc =", tc, "Tn =", Tn, "has Tn attr?", hasattr(V, "Tn"))
+
+        for a in ax:
+            # 1) Fix x-axis to go from 0 to 1
+            a.set_xlim(0, 1)
+
+            ymin, ymax = a.get_ylim()
+            xmin, xmax = a.get_xlim()
+
+            # draw the lines as you already had
+            if tc is not None:
+                a.axvline(tc / V.fSIGMA, color='black', linestyle='--', linewidth=2, zorder=6)
+
+            Tn_manual = 608.8216727757099  # <-- CHANGE THIS NUMBER PER POINT
+            a.axvline(Tn_manual / V.fSIGMA,
+                    color='crimson', linestyle=':', linewidth=2, zorder=7)
+
+            # ---- labels on the right-hand side, with numbers ----
+            if tc is not None:
+                tc_over_fpi = tc / V.fSIGMA
+                tn_over_fpi = Tn_manual / V.fSIGMA
+
+                x_text = xmin + 0.98 * (xmax - xmin)   # near right edge
+                y_text_tc = ymin + 0.93 * (ymax - ymin)
+                y_text_tn = ymin + 0.83 * (ymax - ymin)  # a bit below
+
+                a.text(
+                    x_text, y_text_tc,
+                    fr"$T_c/f_\pi = {tc_over_fpi:.2f}$",
+                    rotation=0,
+                    va='center', ha='right',
+                    fontsize=12, color='black',
+                    bbox=dict(facecolor='floralwhite', edgecolor='none', alpha=.85),
+                    clip_on=True,
+                )
+
+                a.text(
+                    x_text, y_text_tn,
+                    fr"$T_n/f_\pi = {tn_over_fpi:.2f}$",
+                    rotation=0,
+                    va='center', ha='right',
+                    fontsize=12, color='crimson',
+                    bbox=dict(facecolor='floralwhite', edgecolor='none', alpha=.85),
+                    clip_on=True,
+                )
+
+
+        fig.tight_layout(rect=[0, 0, 1, 0.94])
+        plt.savefig("Temporal-Plots/SecondMinimum.pdf", dpi=300)
+        debug_plot(name="vampire_plot", overwrite=False)
+
         
     if noisyPoint:
         return dressedMasses, RMS, minT
@@ -723,7 +897,7 @@ def plotInterpMasses(V):
         
  
     fig.suptitle(f"fpi={V.fSIGMA}")
-    debug_plot(name="debug", overwrite=False)
+    debug_plot(name="vampire", overwrite=False)
     #plt.show()
         
  
@@ -880,11 +1054,14 @@ if __name__ == "__main__":
     #m2 = -4209; ls = 16.8; la = 12.9; c = 2369; F=3; N=3
     #fPI=88
     #V = Potential2.Potential(m2,c,ls,la,3,3,1,Polyakov=False)
+    Tn_manual = 608.8216727757099
+    V.Tn = Tn_manual
 
     #SolveMasses(V, plot=True)
     SolveMasses_adaptive(V)
 
-    
+
+    #SolveMasses(V, plot=True, Tn=Tn_manual)  # nice vampire with correct Tn line
 
 
 

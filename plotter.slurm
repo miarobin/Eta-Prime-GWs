@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # #SBATCH --mem=150G               # Memory limit
-#SBATCH --mem-per-cpu=300M
+#SBATCH --mem-per-cpu=1G
 #SBATCH --mail-type=END,FAIL    
-##SBATCH --mail-user=m.ulloacalzonzin@ufl.edu 
-#SBATCH --time=09:00:00        
+#SBATCH --mail-user=m.ulloacalzonzin@ufl.edu 
+#SBATCH --time=15:00:00        
 #SBATCH --output=%j.out
-#SBATCH --cpus-per-task=36
-#SBATCH --job-name=plotter 
+#SBATCH --cpus-per-task=9
+#SBATCH --job-name=N4F8xi2AMSB   
 #SBATCH --qos=rachel.houtz
 ##SBATCH --qos=rachel.houtz-b # Use burst QoS to borrow resources
 

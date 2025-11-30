@@ -5,15 +5,15 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize
-from sympy import diff
 from scipy import interpolate, integrate
 from itertools import takewhile
 import os
+from sympy import diff
+
 
 import DressedMasses
 if config.PLOT_RUN:
     from debug_plot import debug_plot
-
 
 
 '''
@@ -317,7 +317,7 @@ class Potential:
             raise NonLinear(f"Choice of N = {self.N}, F = {self.F}, detPow = {detPow} gives non-linear Lagrangian.")
         
         
-        #  === MARTHA ===  Changed to automatically set the scale
+        #  automatically set the scale
         # New interpolator now.
         if Polyakov:
             ##GLUONIC FITS
