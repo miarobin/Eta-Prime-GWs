@@ -22,7 +22,6 @@ os.makedirs(DEBUG_FOLDER, exist_ok=True)  # create folder if it doesn't exist
 def debug_plot(name="debug", overwrite=True):
     """
     Saves or shows the current figure.
-    
     - On cluster/headless: saves figure to Temporal-DebugPlots folder.
         - If overwrite=True → debug.png
         - If overwrite=False → debug_001.png, debug_002.png, etc.
