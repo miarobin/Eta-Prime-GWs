@@ -9,14 +9,9 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 import Potential2
 if config.PLOT_RUN:
-    from debug_plot import debug_plot
+    from config_debug_plots import debug_plot
 
 
-<<<<<<< HEAD
-=======
-#import seaborn as sns
-
->>>>>>> refs/remotes/origin/Martha
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["font.size"]= 12
@@ -43,7 +38,7 @@ def SolveMasses_adaptive(V, coarse_points=50, fine_points=150):
     config.TMULT = old_TMULT      # keep same T max (just fewer points)
 
     dressed, RMS, _ = SolveMasses(V, plot=False)
-    tc = V.criticalT(plot=False)
+    tc = V.criticalT()
  
     # 2) If no phase transition → done
     if tc is None:
@@ -310,10 +305,7 @@ def SolveMasses(V, plot=False):
                     failPoints.append([sigma, T])
 
         if config.PRNT_RUN: print(f"T-row {i}/{len(TRange)} took {time.time() - t_row:.2f} s", flush=True)
-<<<<<<< HEAD
      
-=======
->>>>>>> refs/remotes/origin/Martha
 
 
     X,Y=np.meshgrid(TRange,sigmaRange) 
@@ -378,7 +370,7 @@ def SolveMasses(V, plot=False):
     V.setMSq(dressedMasses)
 
     #Check if run is noisy or not
-    tc = V.criticalT(prnt=plot)
+    tc = V.criticalT()
     print(f'First Try at tc={tc}')
     #Checking for the convergence of dressedMasses around the critical temperature.
     counter = 0; noisyPoint=False

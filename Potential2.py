@@ -13,7 +13,7 @@ from sympy import diff
 
 import DressedMasses
 if config.PLOT_RUN:
-    from debug_plot import debug_plot
+    from config_debug_plots import debug_plot
 
 
 '''
@@ -355,7 +355,7 @@ class Potential:
             raise e
         
         #Ensure the new critical temperature is set.
-        self.tc = self.criticalT(prnt=config.PLOT_RUN)
+        self.tc = self.criticalT()
         if self.tc is not None and self.minT is not None:
             if self.minT > self.tc:
                 raise BadDressedMassConvergence("Minimum converging T is greater than tc.")

@@ -10,7 +10,8 @@ import csv
 from multiprocessing import Pool
 import DressedMasses
 import os
-from config_debug_plot import debug_plot
+if config.PLOT_RUN:
+	from config_debug_plot import debug_plot
 from functools import partial
 import WallVelocity
 import WallVelocityLargeN
@@ -449,7 +450,7 @@ def refill(original_filename, refill_filename, new_filename):
 if __name__ == "__main__":
     
     #LARGE SCANS
-    N=4; F=6; detType='Normal'; 
+    N=3; F=9; detType='largeN'; 
     num=6
 
     detPow = Potential2.get_detPow(N,F,detType)

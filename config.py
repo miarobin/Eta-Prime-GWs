@@ -5,7 +5,7 @@ TOL = 1e-5
 IRDIVSMOOTHING=False
 
 #Plotting and printing.
-PLOT_RUN=True
+PLOT_RUN=False
 PRNT_RUN=False
 
 #Scan ranges in DressedMasses.

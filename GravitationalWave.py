@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import csv
 import traceback
 if config.PLOT_RUN:
-	from debug_plot import debug_plot
+	from config_debug_plots import debug_plot
 
 class BadlyIRDivergent(Exception):
     pass
@@ -150,7 +150,7 @@ def grid(V, tc=None, ext_minT=None):
 	
 	### SETTING THE RANGE OF TEMPERATURES TO SCAN OVER ###
 	if tc==None:
-		tc = V.criticalT(prnt=plot)
+		tc = V.criticalT()
 		if prnt: print(f"Tc = {tc}")
 		if tc == None:
 			#Message 1: tc fails.
