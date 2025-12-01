@@ -3,9 +3,8 @@
 ### What do these files do?
 
 1. **Potential2.py**  
-   Builds a `Potential` class for the “Normal” LSM mesonic potential for a QCD-like theory (see e.g. https://arxiv.org/pdf/2309.16755).  
-   It also implements the “Csáki” potential from https://arxiv.org/abs/2307.04809.
-
+   Builds a `Potential` class for the “Normal” LSM mesonic potential for a QCD-like theory (see e.g. https://arxiv.org/abs/2511.23467).  
+   
 2. **GravitationalWave.py**  
    Computes the gravitational-wave signal for the potentials defined in (1).
 
