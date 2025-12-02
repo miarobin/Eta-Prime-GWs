@@ -218,6 +218,8 @@ def get_detPow(N, F, termType):
         return 1/N
     elif termType=="AMSB":
         return 1/(F-N)
+    elif termType=="Charge2Inst":
+        return 2
     
     else:
         raise InvalidPotential("Check what have you written as termType. It's wrong.")

@@ -11,7 +11,7 @@ from multiprocessing import Pool
 import DressedMasses
 import os
 if config.PLOT_RUN:
-	from config_debug_plot import debug_plot
+	from config_debug_plots import debug_plot
 from functools import partial
 import WallVelocity
 import WallVelocityLargeN
@@ -450,8 +450,8 @@ def refill(original_filename, refill_filename, new_filename):
 if __name__ == "__main__":
     
     #LARGE SCANS
-    N=3; F=9; detType='largeN'; 
-    num=6
+    N=3; F=3; detType='Charge2Inst'; 
+    num=3
 
     detPow = Potential2.get_detPow(N,F,detType)
     m2Sig = np.linspace(1., 10., num=num)*1000**2
@@ -469,70 +469,7 @@ if __name__ == "__main__":
     parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=False,xi=1)
 
     #parallelScan_refill(N, F, False, 1, 'Normal', 13, 0)
-    Potential2.PRNT_RUN=False
-	
-    '''
-    filename = 'F6/N4/N4F6xi1_AMSB_13Nov.csv'; delimiter = ','
-
-    N=4; F=6; detType='Normal'; 
-    num=3
-    
-    detPow = Potential2.get_detPow(N,F,detType)
-
-	#LARGE SCANS 
-	
-	N=3; F=3; detType='Normal'; 
-	num=6
-
-	detPow = Potential2.get_detPow(N,F,detType)
-
-	#m2Sig = np.linspace(1., 10., num=num)*1000**2
-	m2Sig = np.array([1.])*1000**2
-	if F*detPow>4:
-		maxm2Eta = (16*np.pi/3) * 1.5**2 * (F*detPow)**3 / (16*(4*np.pi)**(F*detPow-4) * 25) 
-		minm2Eta = maxm2Eta/25 #Arbitrary.
-		m2Eta = np.linspace(minm2Eta, maxm2Eta, num=num)*1000**2 
-	else:
-		m2Eta = np.linspace(1., 25., num=num)*1000**2
-	m2X = np.linspace(1., 25., num=num)*1000**2
-	fPi = np.linspace(0.5,1.5,num=num)*1000*np.sqrt(F*detPow/2)#CHANGE
-
-	parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=True,xi=5)
-	
-	#REFILL
-	N=3; F=3; detType='Normal'; Day=19; Hour=23; Polyakov=True; xi=1
-
-	parallelScan_refill(N, F, Polyakov, xi, detType, Day, Hour)
-
-	# SINGLE POINT FROM SCAN
-	POINT_OF_INTEREST=13
-	parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=False,xi=1)
-
-	#REFILL
-	#N=3; F=3; detType='Normal'; Day=19; Hour=23; Polyakov=True; xi=1
-	#parallelScan_refill(N, F, Polyakov, xi, detType, Day, Hour)
- 
-	Potential2.PRNT_RUN=False
-	
-	'''
-	#REFILL TEST (You have to go into the function to manually change the test filenames)
-    #config.PRNT_RUN=True
-    #parallelScan_refill(N, F, False, None, 'AMSB', None, None)
-    
-    #original_filename = 'RefillTestArray_F6N3_AMSB.csv'
-    #refill_filename = 'RefillTestArray_refill.csv'
-    #new_filename = 'RefillTestArray_toppedup.csv'
-    #refill(original_filename, refill_filename, new_filename) 
-    
-    filename = 'F6/N4/N4F6xi1_AMSB_13Nov.csv'; delimiter = ','
-    data = np.array(np.genfromtxt(filename, delimiter=delimiter, skip_header=1, dtype=None))
-
-	#comment out parallelscan norm to plot
-    N=4; F=4; detType = 'AMSB'; 
-    num=6
-    detPow = Potential2.get_detPow(N,F,detType)  
-    parallelScan_checkpoint(m2Sig, m2Eta, m2X, fPi, N, F, detType=detType, Polyakov=True,xi=5)
-    print(populateWrapper(m2Sig, m2Eta, m2X, fPI, N, F, Polyakov=True, xi=1, detType='AMSB', plot=True))
+    Potential2.PRNT_RUN=False  
 	
     '''
 	# SINGLE POINT FROM SCAN
