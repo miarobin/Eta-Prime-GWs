@@ -225,8 +225,8 @@ def get_detPow(N, F, termType):
         raise InvalidPotential("Check what have you written as termType. It's wrong.")
 
 def masses_to_lagrangian(_m2Sig, _m2Eta, _m2X, fPI, N, F, detPow):
-    if F*detPow<2 or abs(F*detPow-np.round(F*detPow))>config.TOL:
-        raise NonLinear(f"Lagrangian is non-linear with F={F}, N={N} and detPow={detPow}.")    
+    if abs(detPow-np.int(detPow))>config.TOL:
+        raise NonLinear(f"Lagrangian is non-linear with F={F}, N={N} and detPow={detPow}. Use Forked Repository martha-ulloa/NLDarkSectorChiPT.")    
 
     m2 = (_m2Sig/2) - (_m2Eta/2)*(1/(F*detPow))*(4-F*detPow)
     c = _m2Eta/detPow**2 * np.power(fPI,2-F*detPow)
@@ -307,8 +307,8 @@ class Potential:
         
 
 		#Checking to make sure the Lagrangian is linear.
-        if abs(self.F*self.detPow-np.round(self.F*self.detPow)) > 1e-6:
-            raise NonLinear(f"Choice of N = {self.N}, F = {self.F}, detPow = {detPow} gives non-linear Lagrangian.")
+        if abs(self.detPow-np.int(self.detPow)) > 1e-6:
+            raise NonLinear(f"Choice of detPow = {detPow} gives non-linear Lagrangian. Use forked repository martha-ulloa/NLDarkSectorChiPT.")
 
 
         if Polyakov:
@@ -416,15 +416,14 @@ class Potential:
             return self.V(sig) + self.V1T(sig,T).real
 
 
-    #do we need such level of precision in derivatives?
-    def dVdT(self,sig,T,eps=0.001):
+    def dVdT(self,sig,T,delta=config.TOL):
     #Uses finite difference method to fourth order. Takes scalar sigma and T.
-        return (self.Vtot(sig,T-2*eps) - 8*self.Vtot(sig,T-eps) + 8*self.Vtot(sig,T+eps) - self.Vtot(sig,T+2*eps)) / (12.*eps)
+        return (self.Vtot(sig,T-2*delta) - 8*self.Vtot(sig,T-delta) + 8*self.Vtot(sig,T+delta) - self.Vtot(sig,T+2*delta)) / (12.*delta)
 
 
-    def d2VdT2(self,sig,T,eps=0.001):
+    def d2VdT2(self,sig,T,delta=config.TOL):
         #Uses finite difference method to fourth order. Takes scalar sigma and T.
-        return (self.dVdT(sig,T-2*eps) - 8*self.dVdT(sig,T-eps) + 8*self.dVdT(sig,T+eps) - self.dVdT(sig,T+2*eps)) / (12.*eps)
+        return (self.dVdT(sig,T-2*delta) - 8*self.dVdT(sig,T-delta) + 8*self.dVdT(sig,T+delta) - self.dVdT(sig,T+2*delta)) / (12.*delta)
     
 
     def fSigma(self):
